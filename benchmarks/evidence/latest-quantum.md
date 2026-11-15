@@ -1,6 +1,6 @@
 # Benchmark report — quantum (Qiskit + independent NumPy qudit reference)
 
-Generated: 2026-11-15T17:52:49.881Z  ·  commit: `a04518d7b5a82dd247bda556bad120020870d643`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T17:55:50.710Z  ·  commit: `6c714e3290976edc7c88f4d962c7965d0f2d2a42`  ·  node: v25.9.0  ·  win32 x64
 
 **Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 

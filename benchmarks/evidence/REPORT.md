@@ -1,12 +1,12 @@
 # Invention Lab — independent benchmarking report
 
-Generated 2026-11-15T17:29:17.095Z · commit `7dcfc1548caeb586a7202968a5514152c9ce6a87` · node v25.9.0
+Generated 2026-11-15T17:55:50.716Z · commit `6c714e3290976edc7c88f4d962c7965d0f2d2a42` · node v25.9.0
 
 Engines: ngspice=47 · qiskit=2.6.2 · numpy=independent reference (see per-case engine strings)
 
 # Benchmark report — ngspice (external circuit simulator)
 
-Generated: 2026-11-15T17:28:57.187Z  ·  commit: `7dcfc1548caeb586a7202968a5514152c9ce6a87`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T17:55:19.667Z  ·  commit: `6c714e3290976edc7c88f4d962c7965d0f2d2a42`  ·  node: v25.9.0  ·  win32 x64
 
 **Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 
@@ -207,7 +207,7 @@ Sine 2 V amplitude + 3 V offset at 1 kHz drives R1=1 kOhm into a node carrying C
 - note: Initialization-convention difference (documented, t=0 excluded from comparison): IL v(A,0)=0.375 V (declared vInit=0, companion model active) vs Ngspice DC-operating-point t=0 0.544 V (capacitor open). Difference 0.169 V is a convention difference, not a solver defect; waveforms converge after the first tau.
 # Benchmark report — quantum (Qiskit + independent NumPy qudit reference)
 
-Generated: 2026-11-15T17:29:17.090Z  ·  commit: `7dcfc1548caeb586a7202968a5514152c9ce6a87`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T17:55:50.710Z  ·  commit: `6c714e3290976edc7c88f4d962c7965d0f2d2a42`  ·  node: v25.9.0  ·  win32 x64
 
 **Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 
@@ -395,6 +395,6 @@ Full complex state-vector comparison against Qiskit Statevector AND the independ
 
 ## Evidence-stage summary
 
-- **Cross-solver agreement**: complete (24/24 cases passed) — Every executed benchmark case passed. This is cross-solver agreement for the SUITE cases only — not physical validation, and not coverage of arbitrary user designs.
+- **Cross-solver agreement**: complete (24/24 cases passed) — Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).
 - **Model calibration**: none — no parameter has been estimated from measured data.
 - **Physical validation**: none — agreement with an independent numerical solver is not physical validation.

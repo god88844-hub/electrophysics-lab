@@ -12,7 +12,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runSuite, renderMarkdown, exitCodeFor, crossSolverEvidenceStatus } from './harness.js';
+import { runSuite, renderMarkdown, exitCodeFor, crossSolverEvidenceStatus, combineReports } from './harness.js';
 import { resolveNgspice } from './ngspice-adapter.js';
 import { resolvePython, runQuantumRef, qiskitToIlOrder } from './quantum/quantum-adapter.js';
 import { ngspiceCases } from './cases/ngspice-cases.js';

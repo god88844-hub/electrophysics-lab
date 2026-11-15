@@ -222,8 +222,9 @@ export function combineReports(executedReports, previousReports, currentSHA) {
   const merged = [...executedReports];
   const staleExcluded = [];
   for (const prev of previousReports) {
-    if (prev.commitSHA === currentSHA) merged.push(prev);
-    else staleExcluded.push({ suite: prev.suite, generatedAt: prev.generatedAt, reason: `report was generated at commit ${prev.commitSHA}, not the current ${currentSHA} — excluded from evidence counts` });
+    const prevSHA = prev.environment?.commitSHA ?? prev.commitSHA;
+    if (prevSHA === currentSHA) merged.push(prev);
+    else staleExcluded.push({ suite: prev.suite, generatedAt: prev.generatedAt, reason: `report was generated at commit ${prevSHA ?? 'unknown'}, not the current ${currentSHA} — excluded from evidence counts` });
   }
   return { merged, staleExcluded };
 }

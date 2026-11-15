@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-15T17:29:17.095Z",
-  "commitSHA": "7dcfc1548caeb586a7202968a5514152c9ce6a87",
+  "generatedAt": "2026-11-15T17:55:50.716Z",
+  "commitSHA": "6c714e3290976edc7c88f4d962c7965d0f2d2a42",
   "engines": {
     "ngspice": {
       "version": "47",
@@ -24,7 +24,9 @@
       "unsupported": 0,
       "inconclusive": 0,
       "modelMismatch": 0,
-      "note": "Every executed benchmark case passed. This is cross-solver agreement for the SUITE cases only — not physical validation, and not coverage of arbitrary user designs."
+      "note": "Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).",
+      "declaredScope": "all",
+      "requiredCases": 24
     },
     "physicalValidation": {
       "status": "none",
