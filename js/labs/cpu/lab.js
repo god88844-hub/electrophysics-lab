@@ -44,6 +44,7 @@ loop:   ADD R2, R1
     checks.push({
       name: 'Assembly: source assembles cleanly',
       verdict: res.ok ? 'pass' : 'fail',
+      stage: 'execution',
       actual: res.ok ? 0 : res.asm.errors.length, expected: 0, tolerance: 0,
       note: res.ok ? `${res.asm.size} bytes, labels: ${Object.keys(res.asm.labels).join(', ') || 'none'}` : res.asm.errors.join('; '),
       evidence: null,
@@ -58,17 +59,20 @@ loop:   ADD R2, R1
       checks.push(makeCheck({
         name: 'Pipeline == architectural reference (registers)',
         actual: regsEq ? 0 : 1, expected: 0,
+        stage: 'crossSolver',
         note: regsEq ? `R0..R7 = [${res.cpu.regs.join(', ')}]` : `pipeline ${JSON.stringify(res.cpu.regs)} vs reference ${JSON.stringify(ref.regs)}`,
         evidence: { cycles: res.cpu.stats.cycles, retired: res.cpu.stats.retired, stalls: res.cpu.stats.stalls, flushes: res.cpu.stats.flushes },
       }));
       checks.push(makeCheck({
         name: 'Pipeline == architectural reference (I/O port writes)',
         actual: portsEq ? 0 : 1, expected: 0,
+        stage: 'crossSolver',
         note: portsEq ? `${res.cpu.ports.length} port write(s)` : 'port traces differ',
       }));
       checks.push(makeCheck({
         name: 'Program halts (pipeline and reference agree)',
         actual: haltEq && res.cpu.halted ? 0 : 1, expected: 0,
+        stage: 'execution',
         note: res.cpu.halted ? 'HLT retired cleanly' : 'did not halt within budget',
       }));
       if (res.cpu.stats.stalls > 0) {

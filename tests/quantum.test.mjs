@@ -184,3 +184,51 @@ test('quantum: qubit gate on a qutrit diagram is refused with a clear message', 
   assert.equal(res.ok, false);
   assert.ok(res.problems[0].includes('d=2'), 'error should explain the dimension requirement');
 });
+
+// ---------------- review round 2: concurrence classification ---------------
+test('quantum: partially entangled state (sqrt(0.9)|00> + sqrt(0.1)|11>) is NOT maximally entangled', () => {
+  // Ry(2·acos(√0.9)) on q0 gives cos(θ/2)|0> + sin(θ/2)|1> = √0.9|0> + √0.1|1>;
+  // CNOT then yields √0.9|00> + √0.1|11>: entangled, concurrence C = 2·√0.09 = 0.6.
+  const theta = 2 * Math.acos(Math.sqrt(0.9));
+  const d = new Diagram({ lab: 'quantum', name: 'partial', meta: { d: 2, shots: 10, seed: 3 } });
+  const w0 = d.addBlock('quantum.WIRE', { x: 0, y: 40 });
+  const w1 = d.addBlock('quantum.WIRE', { x: 0, y: 140 });
+  const ry = d.addBlock('quantum.RY', { params: { theta }, x: 150, y: 40 });
+  const cn = d.addBlock('quantum.CNOT', { x: 290, y: 40 });
+  const m0 = d.addBlock('quantum.MEASURE', { x: 440, y: 40 });
+  const m1 = d.addBlock('quantum.MEASURE', { x: 440, y: 140 });
+  d.connect(w0.id, 'out', ry.id, 'qin');
+  d.connect(ry.id, 'qout', cn.id, 'cin');
+  d.connect(w1.id, 'out', cn.id, 'tin');
+  d.connect(cn.id, 'cout', m0.id, 'in');
+  d.connect(cn.id, 'tout', m1.id, 'in');
+  const report = quantumLab.report(d);
+  const cls = report.checks.find((c) => c.name.includes('Entanglement classification'));
+  assert.ok(cls, 'partial-entanglement classification missing');
+  assert.ok(/partially/i.test(cls.note) && /below 1/i.test(cls.note),
+    `note must disclaim maximal entanglement: ${cls.note}`);
+  assert.ok(Math.abs(cls.actual - 0.6) < 1e-9, `concurrence should be 0.6, got ${cls.actual}`);
+  // false-positive scan: no maximally-entangled claim on a partial state
+  const falseMax = report.checks.find((c) =>
+    c.verdict === 'pass' && /maximally entangled/i.test(c.note || ''));
+  assert.equal(falseMax, undefined, 'a partially entangled state must not be labelled maximally entangled');
+});
+
+test('quantum: Bell state reports concurrence ~1 (maximally entangled)', () => {
+  const d = bellDiagram();
+  const report = quantumLab.report(d);
+  const witness = report.checks.find((c) => c.name.includes('maximally entangled'));
+  assert.ok(witness, 'maximally-entangled witness missing for Bell state');
+  assert.ok(Math.abs(witness.actual - 1) < 1e-9, `concurrence should be 1, got ${witness.actual}`);
+});
+
+test('quantum: separable |00> reports concurrence 0', () => {
+  const d = new Diagram({ lab: 'quantum', name: 'separable', meta: { d: 2, shots: 10, seed: 1 } });
+  d.addBlock('quantum.WIRE', { x: 0, y: 0 });
+  d.addBlock('quantum.WIRE', { x: 0, y: 100 });
+  const report = quantumLab.report(d);
+  const cls = report.checks.find((c) => c.name.includes('Two-qubit state classification'));
+  assert.ok(cls, 'product-state classification missing');
+  assert.equal(cls.verdict, 'pass');
+  assert.equal(cls.actual, 0);
+});

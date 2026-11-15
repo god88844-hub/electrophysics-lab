@@ -275,3 +275,26 @@ test('pipeline: adapters quantize/threshold/bits<->bytes round-trip', () => {
   assert.deepEqual(bitsToBytes([1, 0, 0, 0, 0, 0, 0, 1]), [0x81]);
   assert.deepEqual(bytesToBits([0x81]), [1, 0, 0, 0, 0, 0, 0, 1]);
 });
+
+// ---------------- review round 2: evidence-stage honesty -----------------
+test('validation: evidence stages with no checks report "none", never PASS', () => {
+  const d = new Diagram({ lab: 'logic' });
+  d.addBlock('logic.IN');
+  const report = assembleReport({
+    diagram: d,
+    checks: [makeCheck({ name: 'math sanity', actual: 1, expected: 1 })],
+  });
+  assert.equal(report.stages.execution, 'none', 'no execution check was performed');
+  assert.equal(report.stages.crossSolver, 'none', 'no cross-solver comparison was performed');
+  assert.equal(report.stages.mathematical, 'pass');
+});
+
+test('validation: a report with zero checks cannot claim success', () => {
+  const d = new Diagram({ lab: 'logic' });
+  d.addBlock('logic.IN');
+  const report = assembleReport({ diagram: d, checks: [] });
+  assert.equal(report.verdict, 'unknown');
+  assert.notEqual(report.verdict, 'pass');
+  assert.equal(report.stages.mathematical, 'none');
+  assert.equal(report.stages.crossSolver, 'none');
+});

@@ -60,6 +60,36 @@ export const logicLab = {
       verdict: 'pass', actual: 0, expected: 0, tolerance: 0, note: '', evidence: null,
     });
 
+    // audit fix: an electrically incomplete design (undriven inputs, bus
+    // contention) must never receive a PASS — run the engine and gate on it.
+    let sim = null;
+    try {
+      sim = runLogic(diagram);
+    } catch (e) {
+      checks.push({
+        name: 'Simulation executed', verdict: 'fail', stage: 'execution',
+        actual: null, expected: null, tolerance: 0,
+        note: String(e.message), evidence: null,
+      });
+    }
+    if (sim) {
+      const incomplete = sim.warnings.filter((w) => w.includes('unconnected') || w.includes('contention'));
+      checks.push({
+        name: 'Simulation executed: all inputs driven, no contention',
+        verdict: incomplete.length ? 'fail' : 'pass',
+        stage: 'execution',
+        actual: incomplete.length, expected: 0, tolerance: 0,
+        note: incomplete.length ? incomplete.join(' ') : 'no floating inputs, no bus contention',
+        evidence: { events: sim.stats.events, warnings: sim.warnings.length },
+      });
+      for (const p of sim.problems) {
+        checks.push({
+          name: 'Simulation problems', verdict: 'fail', stage: 'execution',
+          actual: 1, expected: 0, tolerance: 0, note: p, evidence: null,
+        });
+      }
+    }
+
     for (const typeId of used) {
       const def = getComponent(typeId);
       if (!def?.logic?.eval) continue;

@@ -257,12 +257,23 @@ test('chip: AC with nonlinear devices is refused, not silently linearized', () =
   assert.ok(res.problems[0].includes('linear'));
 });
 
-test('chip: SPICE deck export contains elements, models and analysis', () => {
-  const deck = toSpiceDeck(dividerDiagram(), { analysis: 'tran', tstop: '1m', dt: '1u' });
+test('chip: SPICE deck export contains elements, per-device models and analysis', () => {
+  // strengthened after the audit fix: model cards are per-device and carry
+  // the user's actual parameters (no hard-coded VTO/KP/Is/N)
+  const d = dividerDiagram();
+  const di = d.addBlock('chip.DIODE', { params: { is: 5e-13, n: 1.5 } });
+  const mos = d.addBlock('chip.NMOS', { params: { k: 0.012, vth: 0.75 } });
+  d.connect(d.block('chipRES1').id, 'n', di.id, 'a');
+  d.connect(di.id, 'c', d.block('chipGND1').id, 'g');
+  d.connect(mos.id, 's', d.block('chipGND1').id, 'g');
+  const deck = toSpiceDeck(d, { analysis: 'tran', tstop: '1m', dt: '1u' });
   assert.ok(deck.includes('RchipRES'));
   assert.ok(deck.includes('VchipVSOURCE'));
   assert.ok(deck.includes('.tran 1u 1m'));
-  assert.ok(deck.includes('.model DMOD'));
+  assert.ok(deck.includes('.model DMOD_chipDIODE1 D(Is=5e-13 N=1.5)'), 'per-device diode model with user params');
+  assert.match(deck, /Vto=0\.75/i, 'NMOS threshold from user params');
+  assert.match(deck, /Kp=0\.012/i, 'NMOS transconductance from user params');
+  assert.ok(deck.includes('NMOD_chipNMOS1'), 'M element references its own model card');
   assert.ok(deck.includes('.end'));
 });
 
@@ -283,4 +294,77 @@ test('chip: lab.validate produces RC cutoff check with pass verdict', () => {
   const cutoff = report.checks.find((c) => c.name.includes('cutoff'));
   assert.ok(cutoff, 'cutoff check missing');
   assert.equal(cutoff.verdict, 'pass');
+});
+
+// ---------------- review round 2: SPICE fidelity + label accuracy ---------
+test('chip: SPICE AC source exports DC bias plus AC magnitude and phase', () => {
+  const d = new Diagram({ lab: 'chip', name: 'ac-export' });
+  const src = d.addBlock('chip.VSOURCE', { params: { mode: 'ac', amp: 2, dc: 0, phase: Math.PI / 2 } });
+  const r = d.addBlock('chip.RES', { params: { r: 1000 } });
+  const gnd = d.addBlock('chip.GND');
+  d.connect(src.id, 'p', r.id, 'p');
+  d.connect(r.id, 'n', gnd.id, 'g');
+  d.connect(src.id, 'n', gnd.id, 'g');
+  const deck = toSpiceDeck(d);
+  const line = deck.split('\n').find((l) => l.startsWith(`V${src.id} `));
+  assert.ok(line, 'voltage source line missing');
+  // SPICE AC phase is in degrees: pi/2 -> 90. An .ac sweep must see the drive.
+  assert.match(line, /DC 0 AC 2 90(\.0+)?$/, `AC excitation missing: ${line}`);
+});
+
+test('chip: PMOS exports correct drain/gate/source mapping with bulk on source, and conducts', () => {
+  const d = new Diagram({ lab: 'chip', name: 'pmos-export' });
+  const vdd = d.addBlock('chip.VSOURCE', { params: { mode: 'dc', dc: 5 } });
+  const vg = d.addBlock('chip.VSOURCE', { params: { mode: 'dc', dc: 0 } });
+  const pm = d.addBlock('chip.PMOS', { params: { k: 0.02, vth: -2, lambda: 0.01, rth: 100 } });
+  const r = d.addBlock('chip.RES', { params: { r: 1000 } });
+  const gnd = d.addBlock('chip.GND');
+  d.connect(vdd.id, 'p', pm.id, 's');
+  d.connect(vg.id, 'p', pm.id, 'g');
+  d.connect(vdd.id, 'n', gnd.id, 'g');
+  d.connect(vg.id, 'n', gnd.id, 'g');
+  d.connect(pm.id, 'd', r.id, 'p');
+  d.connect(r.id, 'n', gnd.id, 'g');
+
+  // internal model: PMOS with Vgs=-5 conducts through the load
+  const solved = solveDC(d);
+  assert.equal(solved.ok, true, (solved.problems || []).join('; '));
+  const device = solved.elements.find((e) => e.blockId === pm.id);
+  assert.ok(device && Math.abs(device.i) > 1e-4, 'PMOS should conduct');
+
+  // export: M<name> drain gate source bulk model — drain and source must map
+  // to their own terminals (not swapped) and bulk must tie to source
+  const line = toSpiceDeck(d).split('\n').find((l) => l.startsWith(`M${pm.id} `));
+  assert.ok(line, 'PMOS element line missing');
+  const fields = line.trim().split(/\s+/);
+  const [, drain, gate, source, bulk] = fields;
+  assert.notEqual(drain, source, 'drain and source terminals must not be swapped');
+  assert.equal(gate, vdd.id ? gate : gate, 'gate present');
+  assert.equal(bulk, source, 'bulk must tie to source for the 3-terminal model');
+});
+
+test('chip: execution-check label names the analysis that actually ran', () => {
+  // default (no meta.analysis): chipLab.run executes the metaSchema default 'tran'
+  const d1 = dividerDiagram();
+  const report1 = chipLab.report(d1);
+  const exec1 = report1.checks.find((c) => c.name.startsWith('Requested'));
+  assert.ok(exec1, 'execution check missing');
+  assert.ok(exec1.name.includes("'tran'"), `label should say 'tran', got: ${exec1.name}`);
+  assert.equal(exec1.verdict, 'pass');
+
+  // explicit ac on a nonlinear circuit: label must say 'ac', verdict must fail
+  const d2 = new Diagram({ lab: 'chip', name: 'ac-diode', meta: { analysis: 'ac' } });
+  const src = d2.addBlock('chip.VSOURCE', { params: { mode: 'ac', amp: 1 } });
+  const di = d2.addBlock('chip.DIODE');
+  const r = d2.addBlock('chip.RES', { params: { r: 1000 } });
+  const gnd = d2.addBlock('chip.GND');
+  d2.connect(src.id, 'p', di.id, 'a');
+  d2.connect(di.id, 'c', r.id, 'p');
+  d2.connect(r.id, 'n', gnd.id, 'g');
+  d2.connect(src.id, 'n', gnd.id, 'g');
+  const report2 = chipLab.report(d2);
+  const exec2 = report2.checks.find((c) => c.name.startsWith('Requested'));
+  assert.ok(exec2.name.includes("'ac'"), `label should say 'ac', got: ${exec2.name}`);
+  assert.equal(exec2.verdict, 'fail');
+  assert.equal(report2.verdict, 'fail');
 });

@@ -84,6 +84,7 @@ export const aiLab = {
     checks.push({
       name: 'Performance model honesty: analytical only',
       verdict: 'warn',
+      stage: 'physical',
       actual: null, expected: null, tolerance: null,
       note: 'Analytical model excludes memory traffic; expect ±30% vs silicon. Not a cycle-accurate simulator.',
       evidence: null,

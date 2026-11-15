@@ -158,22 +158,48 @@ export const quantumLab = {
         : 'single outcome, zero variance',
     }));
 
-    // entanglement witness for 2-quubit circuits with zero cross terms
-    if (res.n === 2 && res.d === 2) {
-      const cross = (res.probs['01'] || 0) + (res.probs['10'] || 0);
-      if (cross === 0) {
+    // two-qubit state classification (audit + review fix): for a normalized
+    // pure two-qubit state the concurrence is C = 2·|a00·a11 − a01·a10| ∈ [0,1].
+    //   C ≈ 0          -> product state (separable)
+    //   0 < C < 1      -> entangled but NOT maximally entangled
+    //   C ≈ 1          -> maximally entangled
+    // Zero cross-term PROBABILITY alone is not a witness: |00> has
+    // P(01)+P(10) = 0 and is still a product state.
+    if (res.n === 2 && res.d === 2 && res.stateVector) {
+      const a = res.stateVector.map((s) => s.amp);
+      const detRe = (a[0].re * a[3].re - a[0].im * a[3].im) - (a[1].re * a[2].re - a[1].im * a[2].im);
+      const detIm = (a[0].re * a[3].im + a[0].im * a[3].re) - (a[1].re * a[2].im + a[1].im * a[2].re);
+      const concurrence = 2 * Math.hypot(detRe, detIm);
+      if (concurrence <= 1e-9) {
         checks.push({
-          name: 'Entanglement witness: P(01)+P(10) = 0 (Bell-type state)',
-          verdict: 'pass', actual: 0, expected: 0, tolerance: 0,
-          note: 'State is (|00>±|11>)/√2 class; maximally entangled.',
-          evidence: null,
+          name: 'Two-qubit state classification',
+          verdict: 'pass', stage: 'mathematical',
+          actual: 0, expected: 0, tolerance: 0,
+          note: 'Product state (separable): concurrence C = 0, so the state factors into single-qubit states. No non-classical two-qubit correlations present.',
+          evidence: { concurrence: 0 },
+        });
+      } else if (concurrence >= 1 - 1e-9) {
+        checks.push({
+          name: 'Entanglement witness: concurrence C ≈ 1 (maximally entangled)',
+          verdict: 'pass', stage: 'mathematical',
+          actual: concurrence, expected: 1, tolerance: 1e-9,
+          note: `State is in the (|00>±|11>)/√2 class; maximally entangled. Concurrence C = ${concurrence.toFixed(4)}.`,
+          evidence: { concurrence },
+        });
+      } else {
+        checks.push({
+          name: 'Entanglement classification: partially entangled state',
+          verdict: 'pass', stage: 'mathematical',
+          actual: concurrence, expected: null, tolerance: null,
+          note: `Concurrence C = ${concurrence.toFixed(4)} ∈ (0, 1): the state is entangled, but only partially — its Bell-class fidelity is below 1 and it does not saturate the two-qubit correlation bound.`,
+          evidence: { concurrence },
         });
       }
     }
 
     checks.push({
       name: 'Model honesty: pure-state simulation, no decoherence',
-      verdict: 'warn', actual: null, expected: null, tolerance: null,
+      verdict: 'warn', stage: 'physical', actual: null, expected: null, tolerance: null,
       note: 'No noise/decoherence modeled. Real-hardware error rates must be budgeted separately — this platform does not pretend otherwise.',
       evidence: null,
     });
