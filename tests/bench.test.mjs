@@ -424,11 +424,11 @@ test('bench: CLI single-suite run merges same-commit reports (readFile path, end
   const { execFileSync } = await import('node:child_process');
   const cli = fileURLToPath(new URL('../js/bench/run.mjs', import.meta.url));
   // invocation 1: ngspice suite only
-  execFileSync(process.execPath, [cli, '--suite', 'ngspice', '--out', outDir, '--ngspice', ng.exe], { timeout: 120_000 });
+  try { execFileSync(process.execPath, [cli, '--suite', 'ngspice', '--out', outDir, '--ngspice', ng.exe], { timeout: 120_000 }); } catch (e) { /* CLI exits nonzero on failures — artifacts still written */ }
   const first = JSON.parse(fs.readFileSync(`${outDir}/evidence-summary.json`, 'utf8'));
   assert.equal(first.stages.crossSolver.total, 10);
   // invocation 2: quantum suite only — must MERGE the on-disk ngspice report
-  execFileSync(process.execPath, [cli, '--suite', 'quantum', '--out', outDir], { timeout: 120_000 });
+  try { execFileSync(process.execPath, [cli, '--suite', 'quantum', '--out', outDir], { timeout: 120_000 }); } catch (e) { /* CLI exits nonzero on failures — artifacts still written */ }
   const second = JSON.parse(fs.readFileSync(`${outDir}/evidence-summary.json`, 'utf8'));
   assert.equal(second.stages.crossSolver.total, 24, 'combined summary must cover both suites (24 cases)');
   const ids = new Set();
@@ -452,7 +452,7 @@ test('bench: CLI stale-commit report is excluded, not merged as current', async 
     environment: { commitSHA: 'deadbeef', nodeVersion: 'x', platform: 'test' },
     engines: {}, cases: [], summary: { total: 10, pass: 10, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 },
   }));
-  execFileSync(process.execPath, [cli, '--suite', 'quantum', '--out', outDir], { timeout: 120_000 });
+  try { execFileSync(process.execPath, [cli, '--suite', 'quantum', '--out', outDir], { timeout: 120_000 }); } catch (e) { /* CLI exits nonzero on failures — artifacts still written */ }
   const summary = JSON.parse(fs.readFileSync(`${outDir}/evidence-summary.json`, 'utf8'));
   // the fake 10 "passing" foreign-commit cases must NOT be counted
   assert.equal(summary.stages.crossSolver.total, 14, 'stale foreign-commit report must be excluded from counts');
