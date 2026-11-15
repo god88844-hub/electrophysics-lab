@@ -50,7 +50,13 @@ export function toSpiceDeck(diagram, { analysis = 'tran', tstop = '1m', dt = '1u
       case 'vsource': {
         if (P.mode === 'sine') lines.push(`V${b.id} ${nd('p')} ${nd('n')} SIN(${P.offset} ${P.amp} ${P.freq})`);
         else if (P.mode === 'pulse') lines.push(`V${b.id} ${nd('p')} ${nd('n')} PULSE(0 ${P.amp} 0 1n 1n ${P.duty / P.freq} ${1 / P.freq})`);
-        else lines.push(`V${b.id} ${nd('p')} ${nd('n')} DC ${P.dc}`);
+        else if (P.mode === 'ac') {
+          // review fix: an AC source must export its AC excitation, otherwise
+          // an Ngspice .ac sweep sees no driven input. SPICE AC phase is in
+          // DEGREES; the internal solver stores radians.
+          const phaseDeg = Number((((P.phase ?? 0) * 180) / Math.PI).toFixed(6));
+          lines.push(`V${b.id} ${nd('p')} ${nd('n')} DC ${P.dc ?? 0} AC ${P.amp ?? 1} ${phaseDeg}`);
+        } else lines.push(`V${b.id} ${nd('p')} ${nd('n')} DC ${P.dc}`);
         break;
       }
       case 'isource':
@@ -61,7 +67,12 @@ export function toSpiceDeck(diagram, { analysis = 'tran', tstop = '1m', dt = '1u
         lines.push(`I${b.id} ${nd('n')} ${nd('p')} DC ${P.i}`);
         break;
       case 'nmos': lines.push(`M${b.id} ${nd('d')} ${nd('g')} ${nd('s')} ${nd('s')} NMOD_${b.id} W=1u L=1u`); break;
-      case 'pmos': lines.push(`M${b.id} ${nd('s')} ${nd('g')} ${nd('d')} ${nd('d')} PMOD_${b.id} W=1u L=1u`); break;
+      // review fix: SPICE MOSFET syntax is M<name> drain gate source bulk model.
+      // The internal PMOS component's drain/gate/source map 1:1 (SPICE's PMOS
+      // model handles the negative VTO itself); bulk ties to source for this
+      // simplified three-terminal model. The old line swapped drain/source and
+      // tied bulk to drain, which could turn a conducting device off.
+      case 'pmos': lines.push(`M${b.id} ${nd('d')} ${nd('g')} ${nd('s')} ${nd('s')} PMOD_${b.id} W=1u L=1u`); break;
       case 'opamp': lines.push(`E${b.id} ${nd('vout')} 0 ${nd('vp')} ${nd('vn')} ${P.gain}`); break;
       case 'voltmeter': lines.push(`* voltmeter ${b.id} probes node ${nd('p')}`); break;
       case 'ammeter': lines.push(`V${b.id} ${nd('p')} ${nd('n')} DC 0 * ammeter (0V source trick)`); break;

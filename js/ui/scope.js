@@ -36,8 +36,9 @@ function table(headers, rows, { numCols = [] } = {}) {
 }
 
 function verdictChip(v) {
-  const sym = { pass: '✔', warn: '⚠', fail: '✘', unknown: '?' }[v] || '?';
-  const chip = el('span', { class: 'chip', 'data-v': v, text: `${sym} ${v.toUpperCase()}` });
+  const sym = { pass: '✔', warn: '⚠', fail: '✘', unknown: '?', none: '–' }[v] || '?';
+  const label = v === 'none' ? 'NOT TESTED' : v.toUpperCase();
+  const chip = el('span', { class: 'chip', 'data-v': v, text: `${sym} ${label}` });
   return chip;
 }
 

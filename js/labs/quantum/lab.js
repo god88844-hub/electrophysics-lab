@@ -158,29 +158,41 @@ export const quantumLab = {
         : 'single outcome, zero variance',
     }));
 
-    // two-qubit state class (audit fix): a pure two-qubit state is entangled
-    // iff |a00·a11 − a01·a10| > 0. Zero cross-term PROBABILITY alone is not a
-    // witness — |00> is a product state with P(01)+P(10) = 0 as well.
+    // two-qubit state classification (audit + review fix): for a normalized
+    // pure two-qubit state the concurrence is C = 2·|a00·a11 − a01·a10| ∈ [0,1].
+    //   C ≈ 0          -> product state (separable)
+    //   0 < C < 1      -> entangled but NOT maximally entangled
+    //   C ≈ 1          -> maximally entangled
+    // Zero cross-term PROBABILITY alone is not a witness: |00> has
+    // P(01)+P(10) = 0 and is still a product state.
     if (res.n === 2 && res.d === 2 && res.stateVector) {
       const a = res.stateVector.map((s) => s.amp);
       const detRe = (a[0].re * a[3].re - a[0].im * a[3].im) - (a[1].re * a[2].re - a[1].im * a[2].im);
       const detIm = (a[0].re * a[3].im + a[0].im * a[3].re) - (a[1].re * a[2].im + a[1].im * a[2].re);
-      const detMag = Math.hypot(detRe, detIm);
-      if (detMag > 1e-9) {
-        checks.push({
-          name: 'Entanglement witness: amplitude determinant |a00·a11 − a01·a10| > 0',
-          verdict: 'pass', stage: 'mathematical',
-          actual: detMag, expected: 0, tolerance: 0,
-          note: `State is in the (|00>±|11>)/√2 class; maximally entangled. Determinant magnitude = ${detMag.toFixed(4)}.`,
-          evidence: null,
-        });
-      } else {
+      const concurrence = 2 * Math.hypot(detRe, detIm);
+      if (concurrence <= 1e-9) {
         checks.push({
           name: 'Two-qubit state classification',
           verdict: 'pass', stage: 'mathematical',
           actual: 0, expected: 0, tolerance: 0,
-          note: 'Product state (separable): amplitude determinant = 0, so the state factors into qubit states. No non-classical two-qubit correlations present.',
-          evidence: null,
+          note: 'Product state (separable): concurrence C = 0, so the state factors into single-qubit states. No non-classical two-qubit correlations present.',
+          evidence: { concurrence: 0 },
+        });
+      } else if (concurrence >= 1 - 1e-9) {
+        checks.push({
+          name: 'Entanglement witness: concurrence C ≈ 1 (maximally entangled)',
+          verdict: 'pass', stage: 'mathematical',
+          actual: concurrence, expected: 1, tolerance: 1e-9,
+          note: `State is in the (|00>±|11>)/√2 class; maximally entangled. Concurrence C = ${concurrence.toFixed(4)}.`,
+          evidence: { concurrence },
+        });
+      } else {
+        checks.push({
+          name: 'Entanglement classification: partially entangled state',
+          verdict: 'pass', stage: 'mathematical',
+          actual: concurrence, expected: null, tolerance: null,
+          note: `Concurrence C = ${concurrence.toFixed(4)} ∈ (0, 1): the state is entangled, but only partially — its Bell-class fidelity is below 1 and it does not saturate the two-qubit correlation bound.`,
+          evidence: { concurrence },
         });
       }
     }

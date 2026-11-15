@@ -136,21 +136,25 @@ export function collectAssumptions(diagram) {
  */
 export function assembleReport({ diagram, checks, title }) {
   const assumptions = collectAssumptions(diagram);
-  let verdict = verdictFrom(checks);
+  // review fix: a report with ZERO checks has validated nothing — it must
+  // not claim success. verdictFrom([]) would return 'pass'.
+  let verdict = checks.length ? verdictFrom(checks) : 'unknown';
   if (assumptions.length > 0 && verdict === 'pass') verdict = 'warn';
 
-  // Evidence stages (audit): reports must distinguish what kind of evidence
-  // each verdict rests on. 'physical' stays 'none' until independent
-  // experimental measurements are supplied and compared within tolerance.
+  // Evidence stages (audit + review fix): reports must distinguish what kind
+  // of evidence each verdict rests on. A stage with no checks reports
+  // 'none' (not tested) — an empty stage must never display as PASS.
+  // 'physical' stays 'none' until independent experimental measurements are
+  // supplied and compared within tolerance.
   const byStage = { execution: [], mathematical: [], crossSolver: [] };
   for (const c of checks) {
     const stage = c.stage ?? 'mathematical';
     if (byStage[stage]) byStage[stage].push(c);
   }
   const stages = {
-    execution: verdictFrom(byStage.execution),
-    mathematical: verdictFrom(byStage.mathematical),
-    crossSolver: verdictFrom(byStage.crossSolver),
+    execution: byStage.execution.length ? verdictFrom(byStage.execution) : 'none',
+    mathematical: byStage.mathematical.length ? verdictFrom(byStage.mathematical) : 'none',
+    crossSolver: byStage.crossSolver.length ? verdictFrom(byStage.crossSolver) : 'none',
     physical: 'none',
   };
 

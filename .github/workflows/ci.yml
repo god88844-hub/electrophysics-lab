@@ -24,4 +24,4 @@ jobs:
         run: npm test
       - name: Report summary
         if: always()
-        run: echo "Node ${{ matrix.node }} — suite result above (115+ tests expected green)."
+        run: echo "Node ${{ matrix.node }} — suite result above (123 tests expected green)."

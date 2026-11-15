@@ -32,8 +32,13 @@ export const chipLab = {
 
     // audit fix: the REQUESTED analysis must actually execute. An unsupported
     // or failed run can never contribute to a PASS verdict.
-    const requested = diagram.meta?.analysis ?? 'dc';
+    // review fix: the label must name the analysis that actually ran —
+    // chipLab.run defaults to 'tran' (metaSchema) when meta.analysis is unset.
     const execution = this.run(diagram);
+    const requested = execution.analysis
+      ?? diagram.meta?.analysis
+      ?? this.metaSchema?.find((s) => s.key === 'analysis')?.default
+      ?? 'dc';
     checks.push({
       name: `Requested '${requested}' analysis executed`,
       verdict: execution.ok ? 'pass' : 'fail',

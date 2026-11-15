@@ -477,7 +477,7 @@ export class App {
   }
 
   _setVerdict(v) {
-    const label = { pass: '✔ PASS', warn: '⚠ WARN', fail: '✘ FAIL', unknown: '? UNKNOWN' }[v] || v;
+    const label = { pass: '✔ PASS', warn: '⚠ WARN', fail: '✘ FAIL', unknown: '? UNKNOWN', none: '– NOT TESTED' }[v] || v;
     this.$verdict.dataset.v = v;
     this.$verdict.textContent = label;
   }
