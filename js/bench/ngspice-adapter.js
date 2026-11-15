@@ -33,8 +33,11 @@ export function defaultNgspicePaths() {
   return candidates;
 }
 
+// review round 5: an explicit path is honored EXCLUSIVELY — the caller
+// asked for that specific binary; silently falling back to defaults would
+// hide the difference between the requested engine and the executed one.
 export async function resolveNgspice(explicitPath) {
-  const candidates = explicitPath ? [explicitPath, ...defaultNgspicePaths()] : defaultNgspicePaths();
+  const candidates = explicitPath ? [explicitPath] : defaultNgspicePaths();
   for (const exe of candidates) {
     try {
       const { version } = await ngspiceVersion(exe);
