@@ -86,6 +86,17 @@ const defs = [
     validation: { provenance: 'Exact 4×4 unitary.' },
   },
   {
+    typeId: 'quantum.CP', lab: 'quantum', category: 'Gates', label: 'CP(θ)',
+    desc: 'Controlled-phase rotation diag(1,1,1,e^{iθ}) on two qubit wires (QFT building block).',
+    params: [{ key: 'theta', label: 'θ (radians)', type: 'number', default: Math.PI / 2, noTolRequired: true }],
+    ports: () => [qport('in', 'cin', 'ctrl'), qport('out', 'cout', 'ctrl'),
+                  qport('in', 'tin', 'target'), qport('out', 'tout', 'target')],
+    quantum: { kind: 'cp', arity: 2, matrix: (p) => G.CP(p.theta) },
+    draw: 'Pθ⊕',
+    passThrough: { cin: 'cout', tin: 'tout' },
+    validation: { provenance: 'Exact 4×4 unitary.' },
+  },
+  {
     typeId: 'quantum.SWAP', lab: 'quantum', category: 'Gates', label: 'SWAP',
     desc: 'Exchanges the states of two wires.',
     params: [],

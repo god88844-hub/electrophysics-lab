@@ -1,0 +1,54 @@
+# External numerical validation (Phase 2): runs the benchmark harness
+# against REAL independent solvers (Ngspice + Qiskit) and publishes evidence
+# artifacts. Separate from the unit-test matrix on purpose: cross-solver
+# agreement is a distinct evidence stage.
+#
+# Review round 3: dependencies are PINNED for reproducibility, both suites
+# run in ONE invocation (so the combined REPORT.md/evidence-summary covers
+# every suite, 24 cases), and --strict requires every case to pass — a
+# skipped/unsupported/inconclusive/missing benchmark fails CI.
+
+name: External validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Ngspice (independent circuit reference)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ngspice
+          ngspice --version | head -2
+      - name: Install pinned Python scientific dependencies (independent quantum reference)
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install "qiskit==2.6.2" "numpy==2.4.6"
+          python3 -c "import qiskit, numpy; print('qiskit', qiskit.__version__, '| numpy', numpy.__version__)"
+      - name: Run benchmark harness tests (includes the two-invocation CLI integration test)
+        run: node --test tests/bench.test.mjs
+      - name: Run ALL benchmark suites (strict mode - every case must pass)
+        run: node js/bench/run.mjs --suite all --strict
+      - name: Publish benchmark summary
+        if: always()
+        run: |
+          echo "## External validation summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f benchmarks/evidence/REPORT.md ]; then
+            cat benchmarks/evidence/REPORT.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Benchmark report missing — the harness did not complete." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-evidence
+          path: benchmarks/evidence/

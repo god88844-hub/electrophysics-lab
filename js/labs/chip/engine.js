@@ -170,7 +170,7 @@ function waveValue(params, t) {
 // real MNA system builder (DC + transient + Newton states)
 // vNode: 1-based array [_, v1..vN] used to linearize nonlinear devices.
 // ---------------------------------------------------------------------------
-function buildRealSystem(nl, opts) {
+export function buildRealSystem(nl, opts) {
   const {
     dt = null, dcMode = false, t = 0,
     vNode = null, iPrevL = {}, vPrevC = {}, opampClamp = {}, gmin = 1e-12,
@@ -519,14 +519,17 @@ export function runTransient(diagram, opts = {}) {
       }
     }
     // update state companions for next step
+    // (benchmark-found defect: this read def.params — the component
+    // DEFINITION's spec array, whose .l/.iInit are undefined — so NaN
+    // poisoned the next step's rhs. The block's ACTUAL parameters are used.)
     const nextC = {}, nextL = {};
-    for (const { block, def } of nl.entries) {
+    for (const { block, def, params: P } of nl.entries) {
       const kind = def.chip.kind;
       const bid = block.id;
       const vp = (() => { const i = nl.netOf.get(`${bid}/p`) ?? 0; return i ? vNode[i] : 0; })();
       const vn = (() => { const i = nl.netOf.get(`${bid}/n`) ?? 0; return i ? vNode[i] : 0; })();
       if (kind === 'cap') nextC[bid] = vp - vn;
-      if (kind === 'ind') nextL[bid] = (iPrevL[bid] ?? def.params.iInit ?? 0) + (dt / Math.max(1e-15, def.params.l)) * (vp - vn);
+      if (kind === 'ind') nextL[bid] = (iPrevL[bid] ?? P.iInit ?? 0) + (dt / Math.max(1e-15, P.l)) * (vp - vn);
     }
     vPrevC = nextC; iPrevL = nextL;
   }
@@ -556,9 +559,15 @@ export function runAC(diagram, opts = {}) {
   }
   const fstart = opts.fstart ?? 10;
   const fstop = opts.fstop ?? 1e7;
-  const points = opts.points ?? 200;
+  // benchmark-found defect: points=1 (single-frequency AC) divided by
+  // (points-1)=0 and produced NaN frequencies. Guard it.
+  const points = Math.max(2, opts.points ?? 200);
   const f = [];
-  for (let i = 0; i < points; i++) f.push(fstart * Math.pow(fstop / fstart, i / (points - 1)));
+  if (fstart === fstop) {
+    f.push(fstart);
+  } else {
+    for (let i = 0; i < points; i++) f.push(fstart * Math.pow(fstop / fstart, i / (points - 1)));
+  }
 
   const meterIds = nl.entries.filter((e) => ['voltmeter', 'ammeter'].includes(e.def.chip.kind)).map((e) => e.block.id);
   const out = { ok: true, analysis: 'ac', f, meters: {}, nodeAliases: nl.aliases };

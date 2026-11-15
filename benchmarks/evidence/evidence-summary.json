@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-11-15T19:03:18.757Z",
+  "commitSHA": "c663b3bcb91a8088c766bd4e2579e5d8a06616f9",
+  "engines": {
+    "ngspice": {
+      "version": "47",
+      "exe": "C:/Users/Simulation apps/computer simulation/tools/ngspice-47/Spice64/bin/ngspice_con.exe"
+    },
+    "qiskit": {
+      "version": "2.6.2",
+      "note": null
+    },
+    "numpy": {
+      "version": "independent reference (see per-case engine strings)"
+    }
+  },
+  "staleExcludedReports": [],
+  "stages": {
+    "crossSolver": {
+      "status": "complete",
+      "total": 24,
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "unsupported": 0,
+      "inconclusive": 0,
+      "modelMismatch": 0,
+      "missingIds": [],
+      "note": "Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).",
+      "declaredScope": "all",
+      "manifest": {
+        "source": "js/bench/manifest.json",
+        "requiredCases": 24,
+        "phase": 2
+      },
+      "requiredCases": 24
+    },
+    "physicalValidation": {
+      "status": "none",
+      "note": "No physical measurements exist. Numerical agreement with Ngspice/Qiskit is NOT physical validation."
+    },
+    "modelCalibration": {
+      "status": "none",
+      "note": "No model parameter has been estimated from measured data."
+    }
+  }
+}

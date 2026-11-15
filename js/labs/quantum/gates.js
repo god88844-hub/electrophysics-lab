@@ -12,7 +12,9 @@ export const X = [[c(0), c(1)], [c(1), c(0)]];
 export const Y = [[c(0), c(0, -1)], [c(0, 1), c(0)]];
 export const Z = [[c(1), c(0)], [c(0), c(-1)]];
 export const S = [[c(1), c(0)], [c(0), c(0, 1)]];
-export const T = [[c(1), c(0)], [c(0, Math.SQRT1_2), c(0, Math.SQRT1_2)]];
+// benchmark-found defect: T was previously [[1,0],[0.707i, 0.707i]] — not
+// unitary, not diagonal. Correct: diag(1, e^{i pi/4}).
+export const T = [[c(1), c(0)], [c(0), cExpI(Math.PI / 4)]];
 
 export function PHASE(theta) { return [[c(1), c(0)], [c(0), cExpI(theta)]]; }
 export function RX(theta) {
@@ -37,6 +39,10 @@ export function CNOT() {
 }
 export function CZ() {
   return [[c(1), c(0), c(0), c(0)], [c(0), c(1), c(0), c(0)], [c(0), c(0), c(1), c(0)], [c(0), c(0), c(0), c(-1)]];
+}
+/** controlled-phase: diag(1, 1, 1, e^{i theta}) on the |control target> pair */
+export function CP(theta) {
+  return [[c(1), c(0), c(0), c(0)], [c(0), c(1), c(0), c(0)], [c(0), c(0), c(1), c(0)], [c(0), c(0), c(0), cExpI(theta)]];
 }
 export function SWAP() {
   return [[c(1), c(0), c(0), c(0)], [c(0), c(0), c(1), c(0)], [c(0), c(1), c(0), c(0)], [c(0), c(0), c(0), c(1)]];

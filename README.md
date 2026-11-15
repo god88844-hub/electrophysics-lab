@@ -37,6 +37,31 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080), pick a lab, load an example
 press **▶ Run**. Every design gets a verdict badge (✔ PASS / ⚠ WARN / ✘ FAIL / ? UNKNOWN) and a
 full report in the **Report** tab. Press **?** for the beginner tutorial.
 
+
+## Independent benchmarking (Phase 2)
+
+Invention Lab's numbers are validated against **real external solvers** — not against its own
+tests. `npm run bench` executes 24 cross-solver benchmarks:
+
+- **Ngspice 47** (independent circuit solver, separate process, batch mode): ten circuit
+  benchmarks — divider, current-source polarity, RC transient, RC AC sweep, AC phase, RL,
+  diode operating points, NMOS and PMOS transfer curves (documented Level-1 parameter
+  mapping), and a combined nonlinear transient. All agree within documented tolerances
+  (≤ 5e-4 A / 0.005 V / 0.05 dB as appropriate — every tolerance is justified in the case
+  definition, never a global magic percentage).
+- **Qiskit 2.6.2** (independent quantum reference): eleven qubit state-vector benchmarks
+  (gates, Bell, GHZ, Deutsch-Jozsa, QFT, seeded sampling within 4 sigma) — all agree after
+  index-convention mapping and global-phase normalization.
+- **Independent NumPy qudit reference**: qutrit/ququart gate sequences, labelled honestly as
+  "independent mathematical reference agreement" (Qiskit itself was not executed for qudits).
+
+The benchmarks have already paid for themselves: their first run exposed and pinned down
+**five real defects** the original test suite missed (inductor-transient NaN, a non-unitary T
+gate, a Qiskit index-mapping error, a `runAC` single-point NaN, and invalid SPICE inline
+comments). See [docs/BENCHMARKING.md](docs/BENCHMARKING.md) for the full protocol, evidence
+taxonomy, tolerance rationale, and the explicit boundary: **cross-solver agreement is not
+physical validation** — the reports keep those stages separate.
+
 ## The labs
 
 | Lab | Engine | Highlights |
