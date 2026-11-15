@@ -1,6 +1,6 @@
 # Benchmark report — ngspice (external circuit simulator)
 
-Generated: 2026-11-15T19:03:02.146Z  ·  commit: `c663b3bcb91a8088c766bd4e2579e5d8a06616f9`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T20:05:08.204Z  ·  commit: `1a0171801684868a16a2f88a817c4c1e2a014697`  ·  node: v25.9.0  ·  win32 x64
 
 **Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 

@@ -1,0 +1,42 @@
+{
+  "format": "invention-lab/acceptance-specification/1",
+  "phase": 3,
+  "title": "Phase 3 acceptance specification — software acceptance vs experimental acceptance",
+  "referenceDocuments": [
+    { "id": "NASA-STD-7009B", "note": "Standard for Models and Simulations — guidance framework only; no clause-by-clause conformity assessment performed or claimed" },
+    { "id": "NASA-HDBK-7009", "note": "implementation guidance; referenced for V&V terminology" },
+    { "id": "JCGM 100 (GUM)", "note": "Guide to the Expression of Uncertainty in Measurement — uncertainty framework reference" },
+    { "id": "JCGM 101", "note": "Monte Carlo propagation of distributions — reference for the MC implementation" },
+    { "id": "ASME V&V 20", "note": "simulation-vs-experiment comparison principles (scope is CFD/heat transfer; used conceptually only)" }
+  ],
+  "softwareAcceptance": {
+    "description": "Infrastructure works: datasets import with provenance and QC, calibration is reproducible and detects non-identifiability, uncertainty propagation is tested, validation separation prevents leakage, evidence gating blocks synthetic data.",
+    "criteria": [
+      "all Phase 3 unit tests pass on the CI matrix",
+      "dataset ingestion rejects malformed input, checksum mismatches, non-finite values, and unsupported units",
+      "synthetic fixtures are labelled synthetic-test-fixture and cannot unlock physicalValidation",
+      "calibration reproduces under recorded seeds and reports convergence and identifiability",
+      "non-identifiable parameter combinations are detected and reported without invented confidence intervals",
+      "calibration/validation split manifests are immutable and leakage-checked",
+      "validation-envelope classification covers within/interpolation/outside/unsupported/insufficient",
+      "physicalValidation stage remains none unless a real-measurement dataset with accepted quality meets prespecified criteria inside the demonstrated envelope"
+    ]
+  },
+  "experimentalAcceptance": {
+    "description": "Requires genuine physical measurement data of suitable quality, acquired under the documented protocols, with instrument calibration records, prespecified criteria, and independent held-out validation observations.",
+    "status": "NOT MET — no real measurement dataset exists in this repository",
+    "criteria": [
+      "real-measurement dataset with complete provenance and accepted quality",
+      "prespecified validation criteria met within measurement uncertainty",
+      "validation dataset independent of calibration data (group-based split)",
+      "predictions classified within-demonstrated-envelope"
+    ]
+  },
+  "honestyRules": [
+    "validation thresholds are prespecified before results are seen",
+    "a failed validation is a legitimate scientific outcome and is reported as such",
+    "calibration accuracy is never presented as independent validation accuracy",
+    "synthetic, analytical, numerical, or unknown-origin data can never support a physical-validation claim",
+    "no global physical-validity percentage; every claim is scoped to model + quantity + experiment + envelope"
+  ]
+}
