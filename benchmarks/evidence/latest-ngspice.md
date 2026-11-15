@@ -1,12 +1,12 @@
 # Benchmark report — ngspice (external circuit simulator)
 
-Generated: 2026-11-15T16:52:40.533Z  ·  commit: `5decbdb45f988fa9dc987578f3da661bf88e62c3`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T17:28:57.187Z  ·  commit: `7dcfc1548caeb586a7202968a5514152c9ce6a87`  ·  node: v25.9.0  ·  win32 x64
 
 **Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 
 **Summary:** 10 cases — 10 pass · 0 fail · 0 skipped · 0 unsupported · 0 model-mismatch · 0 inconclusive
 
-> A skipped case is missing evidence, not a pass. Agreement with an independent numerical solver is cross-solver evidence, not physical validation.
+> A skipped case is missing evidence, not a pass — skipped cases are never counted as a pass. Agreement with an independent numerical solver is cross-solver evidence, not physical validation.
 
 | Case | Status | Classification | Detail |
 |---|---|---|---|
@@ -19,7 +19,7 @@ Generated: 2026-11-15T16:52:40.533Z  ·  commit: `5decbdb45f988fa9dc987578f3da66
 | ngspice-diode | **pass** | pass | diode voltage IL vs bisection @ Vs=3V: pass; diode voltage Ngspice vs bisection @ Vs=3V: pass; diode voltage IL vs Ngspi |
 | ngspice-nmos | **pass** | pass | NMOS Id sweep IL vs Ngspice (11 points, saturation): pass; sweep point count matches: pass; linear-region Id IL vs Ngspi |
 | ngspice-pmos | **pass** | pass | exported M line maps d/g/s 1:1 with bulk on source: pass; PMOS |Id| sweep IL vs Ngspice (11 points): pass; conducting PM |
-| ngspice-combined | **pass** | pass | combined waveform IL vs Ngspice (19 points, t > 0): pass; t=0 initialization-convention difference (documented, excluded |
+| ngspice-combined | **pass** | pass | combined waveform IL vs Ngspice (19 points, t > 0): pass; diode clamp engaged (peak held below unclamped divider level): |
 
 ## Case details
 
@@ -197,5 +197,5 @@ Sine 2 V amplitude + 3 V offset at 1 kHz drives R1=1 kOhm into a node carrying C
 *Tolerance rationale:* maxAbs 0.02 V and RMS 0.01 V (1-2% of signal): backward Euler (internal, dt=20us) vs Ngspice trapezoidal integration differ at O(dt) on a smooth waveform; temperature matched at 300 K for the diode; residual differences are documented discretization effects, not model mismatches.
 *Model note:* All elements supported on both sides. The diode enters forward conduction near waveform peaks (both engines must show the same clamped shape).
 - **PASS** combined waveform IL vs Ngspice (19 points, t > 0) — {"maxAbsErr":0.006321424001484943,"rmsErr":0.002124987861755571}
-- **PASS** t=0 initialization-convention difference (documented, excluded from series) — IL v(A,0)=0.375 V (vInit=0, companion active) vs Ngspice DC-OP t=0 0.544 V (cap open). Conventions differ by design; see model notes.
 - **PASS** diode clamp engaged (peak held below unclamped divider level) — peak node voltage 0.566 V (unclamped would reach ~1.0 V)
+- note: Initialization-convention difference (documented, t=0 excluded from comparison): IL v(A,0)=0.375 V (declared vInit=0, companion model active) vs Ngspice DC-operating-point t=0 0.544 V (capacitor open). Difference 0.169 V is a convention difference, not a solver defect; waveforms converge after the first tau.

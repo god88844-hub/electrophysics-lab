@@ -3,9 +3,10 @@
 # artifacts. Separate from the unit-test matrix on purpose: cross-solver
 # agreement is a distinct evidence stage.
 #
-# This job installs its dependencies and FAILS if a required benchmark
-# exceeds tolerance or cannot execute — a missing engine here is CI failure,
-# not a silent skip.
+# Review round 3: dependencies are PINNED for reproducibility, both suites
+# run in ONE invocation (so the combined REPORT.md/evidence-summary covers
+# every suite, 24 cases), and --strict requires every case to pass — a
+# skipped/unsupported/inconclusive/missing benchmark fails CI.
 
 name: External validation
 
@@ -27,15 +28,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ngspice
           ngspice --version | head -2
-      - name: Install Python scientific dependencies (independent quantum reference)
+      - name: Install pinned Python scientific dependencies (independent quantum reference)
         run: |
           python3 -m pip install --upgrade pip
-          pip3 install "qiskit" numpy
-          python3 -c "import qiskit; print('qiskit', qiskit.__version__)"
-      - name: Run Ngspice benchmark suite
-        run: node js/bench/run.mjs --suite ngspice
-      - name: Run quantum benchmark suite
-        run: node js/bench/run.mjs --suite quantum
+          pip3 install "qiskit==2.6.2" "numpy==2.4.6"
+          python3 -c "import qiskit, numpy; print('qiskit', qiskit.__version__, '| numpy', numpy.__version__)"
+      - name: Run ALL benchmark suites (strict: every case must pass)
+        run: node js/bench/run.mjs --suite all --strict
       - name: Publish benchmark summary
         if: always()
         run: |

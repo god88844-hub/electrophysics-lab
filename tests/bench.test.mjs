@@ -175,7 +175,8 @@ test('bench: case verdict is the worst of its checks', async () => {
 });
 
 test('bench: runSuite counts statuses honestly (skip never folded into pass)', async () => {
-  const mk = (id, status) => defineCase({ id, suite: 's', title: 't', purpose: 'p', run: async () => ({ status }) });
+  // legitimate passes carry at least one check (review-3 policy)
+  const mk = (id, status) => defineCase({ id, suite: 's', title: 't', purpose: 'p', run: async () => status === 'pass' ? { status, checks: [{ name: 'c', verdict: 'pass' }] } : { status } });
   const suite = await runSuite([
     mk('a', 'pass'), mk('b', 'skipped'), mk('c', 'fail'), mk('d', 'unsupported'), mk('e', 'model-mismatch'),
   ], {}, { suiteLabel: 'test' });
@@ -208,4 +209,79 @@ test('bench: qiskitToIlOrder maps amplitudes by identity (conventions documented
 test('bench: bitReverse helper stays available for convention tooling', () => {
   assert.equal(bitReverse(1, 3), 4);
   assert.equal(bitReverse(4, 3), 1);
+});
+
+// ---------------- review round 3: acceptance-policy regressions -------------
+import { exitCodeFor, crossSolverEvidenceStatus } from '../js/bench/harness.js';
+
+test('bench: explicit "pass" with no checks is rejected as inconclusive', async () => {
+  const c = defineCase({
+    id: 'unsubstantiated', suite: 's', title: 't', purpose: 'p',
+    run: async () => ({ status: 'pass', notes: [] }), // claims pass, produced nothing
+  });
+  const rec = await runCase(c, {});
+  assert.equal(rec.status, 'inconclusive');
+  assert.ok(rec.notes.some((n) => n.includes('unsubstantiated passes are not evidence')));
+});
+
+test('bench: a checks-derived pass over an EMPTY checks array is rejected', async () => {
+  // worst([]) would be 'pass' — the harness must not accept it as evidence
+  const c = defineCase({
+    id: 'no-checks', suite: 's', title: 't', purpose: 'p',
+    run: async () => ({ checks: [] }),
+  });
+  const rec = await runCase(c, {});
+  assert.equal(rec.status, 'inconclusive');
+  assert.ok(rec.notes.some((n) => n.includes('not evidence of agreement')));
+});
+
+test('bench: a legitimate pass (>=1 passing check) is still accepted', async () => {
+  const c = defineCase({
+    id: 'real-pass', suite: 's', title: 't', purpose: 'p',
+    run: async () => ({ checks: [{ name: 'comparison', verdict: 'pass' }] }),
+  });
+  const rec = await runCase(c, {});
+  assert.equal(rec.status, 'pass');
+});
+
+test('bench: exitCodeFor strict mode fails on skipped/unsupported/inconclusive', () => {
+  const mk = (id, status) => ({ summary: { total: 1, pass: status === 'pass' ? 1 : 0, fail: status === 'fail' ? 1 : 0, skipped: status === 'skipped' ? 1 : 0, unsupported: status === 'unsupported' ? 1 : 0, inconclusive: status === 'inconclusive' ? 1 : 0, 'model-mismatch': status === 'model-mismatch' ? 1 : 0 } });
+  // non-strict: only hard failures exit non-zero (informational runs)
+  assert.equal(exitCodeFor([mk('a', 'skipped')], { strict: false }), 0);
+  // strict: any non-pass outcome fails
+  assert.equal(exitCodeFor([mk('a', 'pass')], { strict: true }), 0);
+  assert.equal(exitCodeFor([mk('a', 'skipped')], { strict: true }), 1);
+  assert.equal(exitCodeFor([mk('a', 'unsupported')], { strict: true }), 1);
+  assert.equal(exitCodeFor([mk('a', 'inconclusive')], { strict: true }), 1);
+  assert.equal(exitCodeFor([mk('a', 'model-mismatch')], { strict: true }), 1);
+  assert.equal(exitCodeFor([mk('a', 'fail')], { strict: true }), 1);
+  // empty suite in strict mode: nothing validated -> fail
+  assert.equal(exitCodeFor([mk('a', 'pass')].slice(0, 0), { strict: true }), 1);
+});
+
+test('bench: exitCodeFor non-strict still fails on hard failures', () => {
+  const reports = [{ summary: { total: 2, pass: 1, fail: 1, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 } }];
+  assert.equal(exitCodeFor(reports, { strict: false }), 1);
+});
+
+test('bench: cross-solver evidence status is graded, not overstated', () => {
+  const mk = (id, status) => ({ summary: (() => {
+    const s = { total: 1, pass: 0, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 };
+    s[status] = 1;
+    return s;
+  })() });
+  // all passed -> complete
+  assert.equal(crossSolverEvidenceStatus([mk('a', 'pass'), mk('b', 'pass')]).status, 'complete');
+  // one pass + one skipped -> partial (never "complete")
+  const partial = crossSolverEvidenceStatus([mk('a', 'pass'), mk('b', 'skipped')]);
+  assert.equal(partial.status, 'partial');
+  assert.ok(partial.note.includes('Incomplete coverage'));
+  // zero passes -> failed
+  assert.equal(crossSolverEvidenceStatus([mk('a', 'fail')]).status, 'failed');
+  // nothing executed -> missing
+  assert.equal(crossSolverEvidenceStatus([]).status, 'missing');
+  assert.equal(crossSolverEvidenceStatus([mk('a', 'skipped')]).status, 'missing');
+  // a single passing case must NOT claim complete coverage
+  const single = crossSolverEvidenceStatus([mk('a', 'pass'), mk('b', 'fail')]);
+  assert.equal(single.status, 'partial');
 });

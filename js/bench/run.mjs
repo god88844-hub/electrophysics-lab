@@ -1,16 +1,18 @@
 // run.mjs — benchmark CLI.
 //
 // Usage:
-//   node js/bench/run.mjs --suite ngspice|quantum|all [--ngspice <path>] [--python <path>] [--out benchmarks/evidence]
+//   node js/bench/run.mjs --suite ngspice|quantum|all [--ngspice <path>] [--python <path>] [--out benchmarks/evidence] [--strict]
 //
 // Writes machine-readable JSON + human-readable Markdown artifacts and a
-// combined evidence summary. Skipped/failed benchmarks are reported as such —
-// never folded into a pass count.
+// combined evidence summary (merging latest on-disk reports of suites not run
+// in this invocation, so totals always cover every suite). Skipped/failed
+// benchmarks are reported as such — never folded into a pass count.
+// --strict (CI): exits non-zero unless EVERY case in every suite passed.
 
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runSuite, renderMarkdown } from './harness.js';
+import { runSuite, renderMarkdown, exitCodeFor, crossSolverEvidenceStatus } from './harness.js';
 import { resolveNgspice } from './ngspice-adapter.js';
 import { resolvePython, runQuantumRef, qiskitToIlOrder } from './quantum/quantum-adapter.js';
 import { ngspiceCases } from './cases/ngspice-cases.js';
@@ -86,6 +88,7 @@ if (suiteArg === 'quantum' || suiteArg === 'all') {
 
 await mkdir(outDir, { recursive: true });
 const allReports = [];
+const executedBases = new Set();
 for (const s of suitesToRun) {
   console.log(`=== ${s.label}: ${s.cases.length} cases ===`);
   const report = await runSuite(s.cases, ctx, {
@@ -94,6 +97,7 @@ for (const s of suitesToRun) {
     suiteLabel: s.label,
   });
   const fileBase = s.label.split(' ')[0];
+  executedBases.add(fileBase);
   await writeFile(path.join(outDir, `latest-${fileBase}.json`), JSON.stringify(report, null, 2));
   await writeFile(path.join(outDir, `latest-${fileBase}.md`), renderMarkdown(report));
   allReports.push(report);
@@ -104,27 +108,31 @@ for (const s of suitesToRun) {
   console.log('');
 }
 
+// review round 3: when only one suite ran in THIS invocation, merge in the
+// latest on-disk reports of the other suites so the combined REPORT.md and
+// evidence-summary always reflect every benchmark suite (accurate totals),
+// while the per-suite files are retained unchanged.
+const KNOWN_SUITE_FILES = ['latest-ngspice.json', 'latest-quantum.json'];
+const combinedReports = [...allReports];
+for (const file of KNOWN_SUITE_FILES) {
+  const base = file.replace('latest-', '').replace('.json', '');
+  if (executedBases.has(base)) continue;
+  try {
+    const prev = JSON.parse(await readFile(path.join(outDir, file), 'utf8'));
+    combinedReports.push(prev);
+    console.log(`(merged previous on-disk report for suite "${base}" — generated ${prev.generatedAt})`);
+  } catch { /* no previous report for this suite */ }
+}
+
 // combined machine-readable evidence summary for the validation-stage system
 const evidence = {
   generatedAt: new Date().toISOString(),
   commitSHA,
   engines,
   stages: {
-    // honest stage mapping: external solver agreement exists ONLY for passed
-    // comparisons; skipped/failed provide no evidence and never count as pass.
-    crossSolver: {
-      status: allReports.every((r) => r.summary.pass > 0) && allReports.length ? 'available' : 'partial-or-missing',
-      suites: allReports.map((r) => ({
-        suite: r.suite,
-        passed: r.summary.pass,
-        failed: r.summary.fail,
-        skipped: r.summary.skipped,
-        unsupported: r.summary.unsupported,
-        modelMismatch: r.summary['model-mismatch'] || 0,
-        inconclusive: r.summary.inconclusive,
-      })),
-      note: 'Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).',
-    },
+    // review round 3: honest, graded cross-solver evidence — a single passing
+    // case must never imply complete coverage.
+    crossSolver: crossSolverEvidenceStatus(combinedReports),
     physicalValidation: { status: 'none', note: 'No physical measurements exist. Numerical agreement with Ngspice/Qiskit is NOT physical validation.' },
     modelCalibration: { status: 'none', note: 'No model parameter has been estimated from measured data.' },
   },
@@ -139,19 +147,20 @@ const md = [
   '',
   `Engines: ${Object.entries(engines).map(([k, v]) => `${k}=${v?.version ?? 'unavailable'}`).join(' · ')}`,
   '',
-  ...allReports.map((r) => renderMarkdown(r)),
+  ...combinedReports.map((r) => renderMarkdown(r)),
   '',
   '## Evidence-stage summary',
   '',
-  '- **Cross-solver agreement**: ' + evidence.stages.crossSolver.status + ' — ' + evidence.stages.crossSolver.note,
+  '- **Cross-solver agreement**: ' + evidence.stages.crossSolver.status + ` (${evidence.stages.crossSolver.passed}/${evidence.stages.crossSolver.total} cases passed) — ` + evidence.stages.crossSolver.note,
   '- **Model calibration**: none — no parameter has been estimated from measured data.',
   '- **Physical validation**: none — agreement with an independent numerical solver is not physical validation.',
 ].join('\n');
 await writeFile(path.join(outDir, 'REPORT.md'), md);
 
 console.log(`Artifacts written to ${outDir} (JSON + Markdown).`);
-// exit honestly: non-zero if any benchmark FAILED (skips are reported but do
-// not fail CI in the informational path — see external-validation workflow,
-// which installs engines so skips indicate real CI breakage)
-const failed = allReports.reduce((a, r) => a + r.summary.fail, 0);
-process.exit(failed > 0 ? 1 : 0);
+console.log(`Evidence: cross-solver ${evidence.stages.crossSolver.status} (${evidence.stages.crossSolver.passed}/${evidence.stages.crossSolver.total} passed)`);
+// exit per policy: --strict (used by CI, which installs the engines) requires
+// EVERY case in every suite to pass — skipped/unsupported/inconclusive/
+// model-mismatch/missing all fail strict CI. Without --strict (local
+// informational runs) only hard failures exit non-zero.
+process.exit(exitCodeFor(combinedReports, { strict: process.argv.includes('--strict') }));

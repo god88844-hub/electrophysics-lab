@@ -717,23 +717,22 @@ export function ngspiceCases() {
       const checks = [
         seriesCheck('combined waveform IL vs Ngspice (19 points, t > 0)', ilSamples, ngSamples, { maxAbs: 0.02, rms: 0.01 }),
       ];
-      // initialization-convention difference (documented, made explicit per
-      // Phase 2 §4B): Ngspice's t=0 point is the DC OPERATING POINT with the
-      // capacitor OPEN (v(A) = diode-clamped divider ≈ 0.54 V), while
-      // Invention Lab starts the transient from the declared capacitor
-      // vInit = 0 with the backward-Euler companion active (v(A,0) ≈ 0.38 V
-      // while the capacitor charges). This is an initialization-convention
-      // difference, not a solver defect; both waveforms converge after the
-      // first tau. The t=0 sample is therefore excluded from the series
-      // comparison and reported separately below.
+      // review round 3: the initialization-convention difference is reported
+      // as a NOTE, not as a tolerance-free PASS check — a documented
+      // difference is not validated numerical agreement.
+      // (Ngspice's t=0 point is the DC OPERATING POINT with the capacitor
+      // OPEN — v(A) = diode-clamped divider ≈ 0.54 V — while Invention Lab
+      // starts the transient from the declared vInit = 0 with the
+      // backward-Euler companion active, so v(A,0) ≈ 0.38 V while the
+      // capacitor charges. Both waveforms converge after the first tau.)
       const ilT0 = interpolate(vaSeries, 0);
       const ngT0 = interpolate(ngVa, 0);
-      checks.push({
-        name: 't=0 initialization-convention difference (documented, excluded from series)',
-        verdict: 'pass', stage: 'mathematical',
-        actual: ilT0, expected: ngT0, tolerance: null,
-        note: `IL v(A,0)=${ilT0.toFixed(3)} V (vInit=0, companion active) vs Ngspice DC-OP t=0 ${ngT0.toFixed(3)} V (cap open). Conventions differ by design; see model notes.`,
-      });
+      const initNotes = [
+        `Initialization-convention difference (documented, t=0 excluded from comparison): ` +
+        `IL v(A,0)=${ilT0.toFixed(3)} V (declared vInit=0, companion model active) vs ` +
+        `Ngspice DC-operating-point t=0 ${ngT0.toFixed(3)} V (capacitor open). ` +
+        `Difference ${Math.abs(ilT0 - ngT0).toFixed(3)} V is a convention difference, not a solver defect; waveforms converge after the first tau.`,
+      ];
       // sanity: the clamp must actually engage — the UNCLAMPED divider would
       // peak near 1.0 V (3 V · R2/(R1+R2)); a working diode holds the node
       // at its forward voltage (~0.55-0.6 V). Peak in [0.4, 0.9] = engaged.
@@ -745,7 +744,7 @@ export function ngspiceCases() {
       });
       return {
         il: { samples: ilSamples }, ref: { samples: ngSamples },
-        checks, artifacts: { deck: deckText, tranTxt: result.artifacts['tran.txt'] },
+        checks, notes: initNotes, artifacts: { deck: deckText, tranTxt: result.artifacts['tran.txt'] },
       };
     },
   }));

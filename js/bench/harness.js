@@ -59,8 +59,15 @@ export async function runCase(caseDef, ctx) {
   };
   try {
     const result = await caseDef.run(ctx, record);
+    // review round 3: a case with NO checks has produced no evidence — an
+    // explicit 'pass' (or a worst-of over an empty checks array, which also
+    // yields 'pass') must never be accepted as validation evidence.
+    if (result.status === 'pass' && (result.checks ?? []).length === 0) {
+      result.status = 'inconclusive';
+      (result.notes ??= []).push('Explicit "pass" rejected: the case produced no checks — unsubstantiated passes are not evidence.');
+    }
     if (result.status) {
-      // explicit early status (skipped / unsupported / model-mismatch)
+      // explicit early status (skipped / unsupported / model-mismatch / inconclusive)
       record.status = result.status;
       record.classification = result.classification ?? result.status;
       record.notes.push(...(result.notes || []));
@@ -76,9 +83,14 @@ export async function runCase(caseDef, ctx) {
       record.checks = result.checks ?? [];
       record.notes.push(...(result.notes || []));
       record.artifacts = result.artifacts ?? null;
-      const w = worst(record.checks);
-      record.status = w;
-      record.classification = w === 'fail' ? (result.classification ?? 'numerical-discrepancy') : w;
+      if (record.checks.length === 0) {
+        record.status = 'inconclusive';
+        record.notes.push('No checks produced — a benchmark without checks is not evidence of agreement.');
+      } else {
+        const w = worst(record.checks);
+        record.status = w;
+        record.classification = w === 'fail' ? (result.classification ?? 'numerical-discrepancy') : w;
+      }
     }
   } catch (e) {
     record.status = 'fail';
@@ -162,4 +174,64 @@ export function renderMarkdown(report) {
     for (const n of c.notes || []) L.push(`- note: ${n}`);
   }
   return L.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// acceptance policy (review round 3): explicit, testable exit/evidence rules
+// ---------------------------------------------------------------------------
+
+/**
+ * CI exit-code policy.
+ *   non-strict: exit 1 only when a benchmark FAILED (informational runs).
+ *   strict:     exit 1 unless EVERY case in EVERY suite is 'pass' and there
+ *               is at least one case — skipped, unsupported, inconclusive,
+ *               model-mismatch, or missing suites all fail strict CI.
+ */
+export function exitCodeFor(reports, { strict = false } = {}) {
+  const fail = reports.reduce((a, r) => a + (r.summary.fail || 0), 0);
+  const total = reports.reduce((a, r) => a + (r.summary.total || 0), 0);
+  const pass = reports.reduce((a, r) => a + (r.summary.pass || 0), 0);
+  if (!strict) return fail > 0 ? 1 : 0;
+  if (total === 0 || pass !== total) return 1;
+  return 0;
+}
+
+/**
+ * Cross-solver evidence status (review round 3): a single passing case must
+ * never imply complete coverage.
+ *   missing  — no executed cases at all
+ *   failed   — cases ran but none passed
+ *   partial  — some passed; failures/skips/model mismatches remain
+ *   complete — every executed case passed AND nothing was skipped/failed
+ */
+export function crossSolverEvidenceStatus(reports) {
+  let total = 0, passed = 0, failed = 0, skipped = 0, unsupported = 0, inconclusive = 0, modelMismatch = 0;
+  for (const r of reports) {
+    const s = r.summary || {};
+    total += s.total || 0;
+    passed += s.pass || 0;
+    failed += s.fail || 0;
+    skipped += s.skipped || 0;
+    unsupported += s.unsupported || 0;
+    inconclusive += s.inconclusive || 0;
+    modelMismatch += s['model-mismatch'] || 0;
+  }
+  let status;
+  const executed = total - skipped - unsupported; // cases that actually ran
+  if (total === 0) status = 'missing';
+  else if (executed === 0 && failed === 0 && inconclusive === 0 && modelMismatch === 0) status = 'missing'; // nothing actually executed
+  else if (passed === total) status = 'complete';
+  else if (passed > 0) status = 'partial';
+  else status = 'failed';
+  return {
+    status,
+    total, passed, failed, skipped, unsupported, inconclusive, modelMismatch,
+    note: status === 'complete'
+      ? 'Every executed benchmark case passed. This is cross-solver agreement for the SUITE cases only — not physical validation, and not coverage of arbitrary user designs.'
+      : status === 'partial'
+        ? `Incomplete coverage: ${passed}/${total} passed; ${failed} failed, ${skipped} skipped, ${unsupported} unsupported, ${inconclusive} inconclusive, ${modelMismatch} model-mismatch. Skipped cases are missing evidence, not passes.`
+        : status === 'failed'
+          ? `No benchmark case passed (${failed} failed). No cross-solver evidence is available.`
+          : 'No benchmark cases were executed.',
+  };
 }

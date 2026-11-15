@@ -1,7 +1,11 @@
 {
-  "generatedAt": "2026-11-15T17:01:10.320Z",
-  "commitSHA": "5decbdb45f988fa9dc987578f3da661bf88e62c3",
+  "generatedAt": "2026-11-15T17:29:17.095Z",
+  "commitSHA": "7dcfc1548caeb586a7202968a5514152c9ce6a87",
   "engines": {
+    "ngspice": {
+      "version": "47",
+      "exe": "C:/Users/Simulation apps/computer simulation/tools/ngspice-47/Spice64/bin/ngspice_con.exe"
+    },
     "qiskit": {
       "version": "2.6.2",
       "note": null
@@ -12,19 +16,15 @@
   },
   "stages": {
     "crossSolver": {
-      "status": "available",
-      "suites": [
-        {
-          "suite": "quantum (Qiskit + independent NumPy qudit reference)",
-          "passed": 14,
-          "failed": 0,
-          "skipped": 0,
-          "unsupported": 0,
-          "modelMismatch": 0,
-          "inconclusive": 0
-        }
-      ],
-      "note": "Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence)."
+      "status": "complete",
+      "total": 24,
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "unsupported": 0,
+      "inconclusive": 0,
+      "modelMismatch": 0,
+      "note": "Every executed benchmark case passed. This is cross-solver agreement for the SUITE cases only — not physical validation, and not coverage of arbitrary user designs."
     },
     "physicalValidation": {
       "status": "none",

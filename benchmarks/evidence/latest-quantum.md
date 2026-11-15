@@ -1,12 +1,12 @@
 # Benchmark report — quantum (Qiskit + independent NumPy qudit reference)
 
-Generated: 2026-11-15T17:01:10.314Z  ·  commit: `5decbdb45f988fa9dc987578f3da661bf88e62c3`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T17:29:17.090Z  ·  commit: `7dcfc1548caeb586a7202968a5514152c9ce6a87`  ·  node: v25.9.0  ·  win32 x64
 
-**Engines:** qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
+**Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 
 **Summary:** 14 cases — 14 pass · 0 fail · 0 skipped · 0 unsupported · 0 model-mismatch · 0 inconclusive
 
-> A skipped case is missing evidence, not a pass. Agreement with an independent numerical solver is cross-solver evidence, not physical validation.
+> A skipped case is missing evidence, not a pass — skipped cases are never counted as a pass. Agreement with an independent numerical solver is cross-solver evidence, not physical validation.
 
 | Case | Status | Classification | Detail |
 |---|---|---|---|
