@@ -1,0 +1,11 @@
+{
+  "name": "invention-lab",
+  "version": "1.0.0",
+  "description": "Invention Lab — a modular multi-domain simulation platform (digital twin) with logic, chip, CPU, AI-accelerator and quantum labs.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "start": "node serve.mjs",
+    "test": "node --test tests/"
+  }
+}

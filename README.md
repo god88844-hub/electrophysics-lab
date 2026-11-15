@@ -1,0 +1,111 @@
+# ⚗ Invention Lab
+
+A modular multi-domain simulation platform (digital twin) where you design, simulate, test, and
+validate engineered systems: **logic circuits, analog chips, CPUs, AI accelerators, quantum
+devices — and whatever the plugin API lets you add next**.
+
+## The mission
+
+Simulation outcomes must **predict real hardware behavior within stated tolerances** — and the
+platform never claims more than it can prove:
+
+- Every component carries **model provenance** (what model is used, what it ignores).
+- Every physical parameter carries a **tolerance** (e.g. resistors ±5%).
+- Every design run produces a **validation report**: checks with pass/warn/fail/unknown verdicts,
+  statistical confidence, and an explicit list of *assumptions & unknowns*.
+- Monte Carlo support: sample parameters within their tolerances and observe output spread.
+- Nothing is ever marked "safe to build" without documented evidence. If a component has no
+  validated model, the report says **unknown** — it does not quietly pass.
+
+This follows George Box's maxim: *"all models are wrong; the practical question is how wrong do
+they have to be to not be useful."*
+
+## Quick start
+
+```bash
+npm start          # zero dependencies — starts http://127.0.0.1:8080
+npm test           # 106 tests across all engines (node --test)
+```
+
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080), pick a lab, load an example from the menu,
+press **▶ Run**. Every design gets a verdict badge (✔ PASS / ⚠ WARN / ✘ FAIL / ? UNKNOWN) and a
+full report in the **Report** tab. Press **?** for the beginner tutorial.
+
+## The labs
+
+| Lab | Engine | Highlights |
+|---|---|---|
+| **Logic** | discrete-event digital simulator | arbitrary radix (binary/ternary/quaternary), min/max/mod algebra, clocks, D flip-flops, full adders, waveform scope, honest `'Z'` propagation, oscillation detection |
+| **Chip** | SPICE-style MNA (DC / transient / AC) | R, C, L, diode (Shockley), NMOS/PMOS (square-law + CLM), op-amp with rails, Newton with source-stepping homotopy, power/thermal/Johnson-noise estimates, SPICE deck export |
+| **CPU** | IL-8 8-bit RISC, cycle-level 5-stage pipeline | full assembler, forwarding, load-use stalls, branch flushes, I/O ports; **differential validation**: pipeline result must equal an unpipelined architectural reference |
+| **AI** | tensor kernels + analytical accelerator model | f64/f32/int8 precision modes with documented error bounds, conv2d, systolic-array cycles/utilization/energy, trainable XOR MLP (deterministic seed) |
+| **Quantum** | pure state-vector qudit simulator | qubits, qutrits, ququarts; H/X/Y/Z/S/T/rotations/CNOT/CZ/SWAP + qudit SHIFT/FOURIER/PHASE/SUM; Bell, GHZ, Deutsch-Jozsa, QFT; exact probabilities + sampled counts with binomial standard errors |
+| **Optics** *(plugin)* | paraxial thin-lens ray trace | demonstrates the third-party plugin API end-to-end |
+| **Cross-Lab** | pipeline orchestration | CPU → AI accelerator and Quantum RNG → CPU demos with data-consistency verification |
+
+## Design principles
+
+1. **Honesty over flattery.** Unconnected inputs read `'Z'`; AC analysis *refuses* nonlinear
+   devices rather than silently linearizing; non-convergent Newton iterations raise an error
+   instead of returning a wrong number; the AI performance model calls itself analytical (±30%).
+2. **Determinism.** Seeded RNGs everywhere (Monte Carlo, quantum sampling, MLP init) — the same
+   design always produces the same result, so validation claims are reproducible.
+3. **Differential testing.** The CPU pipeline is checked against a reference interpreter; matrix
+   kernels against f64; the RC filter against 1/(2πRC); QFT against the direct DFT.
+4. **Everything is a plugin.** Labs, components, examples register into one registry; the UI
+   discovers them automatically. See [docs/PLUGIN_API.md](docs/PLUGIN_API.md).
+
+## Project layout
+
+```
+index.html            app shell
+serve.mjs             zero-dependency static server
+js/core/              universal data model (Block, Port, Diagram, units, events, validation, pipeline)
+js/labs/logic/        Logic Lab: components.js, engine.js, lab.js
+js/labs/chip/         Chip Lab: MNA engine (mna.js, engine.js), SPICE export
+js/labs/cpu/          IL-8: isa.js, assembler.js, cpu.js (pipeline + reference)
+js/labs/ai/           tensor.js, systolic.js, mlp.js
+js/labs/quantum/      qudit.js (state vector), gates.js, algorithms.js
+js/plugins/           third-party labs (optics demo) — one import line registers a lab
+js/examples/          16 built-in examples + 2 cross-lab pipelines
+js/ui/                canvas editor, palette, inspector, scopes, app shell
+tests/                106 node --test tests (no browser needed)
+docs/                 PLUGIN_API.md, TUTORIALS.md
+```
+
+## Data format
+
+Projects are JSON documents (`"format": "invention-lab/1"`) holding blocks, wires and per-lab
+metadata. Save/Load round-trips exactly; autosave goes to localStorage. Chip Lab designs export
+SPICE decks; reports export as standalone HTML.
+
+## Testing
+
+`npm test` runs the full suite in Node (no browser required):
+
+- core: units, event queue, diagram serialization, Monte Carlo, adapters
+- logic: exhaustive truth tables for every gate at radix 2/3/4, quaternary ripple adder,
+  `'Z'` propagation, contention warnings, oscillation abort, DFF edge behavior
+- chip: divider exactness, RC τ within 1%, −3 dB cutoff within 2%, NMOS Id-Vg vs square law,
+  CMOS inverter transfer curve, diode vs bisection reference, op-amp gain, power balance
+- cpu: assembler encodings, Fibonacci/XOR-swap programs, forwarding (0 stalls), load-use
+  (exactly 1 stall), branch flush accounting, flags, differential pipeline-vs-reference fuzz
+- ai: f64 vs naive reference, f32/int8 error bounds, conv2d identities, systolic
+  self-consistency, deterministic XOR training
+- quantum: Bell/GHZ outcomes within 4σ, Deutsch-Jozsa verdicts, QFT vs direct DFT at 1e-9,
+  qutrit SUM/SHIFT/FOURIER, unitarity refusal, state-size guard
+- plugin: optics registration + thin-lens physics
+
+## Known limitations (stated, not hidden)
+
+- Analog: level-1 MOSFET (no subthreshold/body/capacitances), ideal op-amp (no GBW/slew),
+  no temperature-dependent device models, AC analysis is linear-only.
+- Quantum: pure states only — no density matrices, no decoherence channels.
+- CPU: multi-byte fetch modeled as one IF cycle; no caches/interrupts.
+- AI performance model is analytical (±30% vs typical silicon).
+- The platform does not integrate external engines (Ngspice/Verilator/Qiskit) yet — the
+  adapter points are the lab `run()` interface and the SPICE/QASM-style exporters.
+
+## License
+
+MIT. Physics constants from NIST/CODATA (2019 SI).
