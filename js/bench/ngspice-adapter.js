@@ -126,8 +126,12 @@ export function detectNgspiceFailure(result) {
     const m = text.match(p);
     if (m) return `Ngspice reported a problem: "${m[0]}"`;
   }
-  if (typeof result.code === 'number' && result.code !== 0 && !result.stdout.includes('quit')) {
-    return `Ngspice exited with code ${result.code}`;
+  // review round 4: a nonzero exit is a failure, period. (The previous
+  // 'quit in stdout' exemption could swallow real crashes.) If a legitimate
+  // nonzero-exit exception is ever identified, it must be documented and
+  // verified explicitly here.
+  if (typeof result.code === 'number' && result.code !== 0) {
+    return `Ngspice exited with nonzero code ${result.code}`;
   }
   return null;
 }

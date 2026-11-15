@@ -108,21 +108,29 @@ for (const s of suitesToRun) {
   console.log('');
 }
 
-// review round 3: when only one suite ran in THIS invocation, merge in the
-// latest on-disk reports of the other suites so the combined REPORT.md and
-// evidence-summary always reflect every benchmark suite (accurate totals),
-// while the per-suite files are retained unchanged.
+// review round 4: merge in the latest on-disk reports of suites not run in
+// this invocation — but ONLY reports generated at the CURRENT commit; stale
+// reports (different SHA) are excluded from evidence counts and recorded as
+// such, never published as current under the "latest" label.
 const KNOWN_SUITE_FILES = ['latest-ngspice.json', 'latest-quantum.json'];
-const combinedReports = [...allReports];
+const previousReports = [];
 for (const file of KNOWN_SUITE_FILES) {
   const base = file.replace('latest-', '').replace('.json', '');
   if (executedBases.has(base)) continue;
   try {
-    const prev = JSON.parse(await readFile(path.join(outDir, file), 'utf8'));
-    combinedReports.push(prev);
-    console.log(`(merged previous on-disk report for suite "${base}" — generated ${prev.generatedAt})`);
-  } catch { /* no previous report for this suite */ }
+    previousReports.push(JSON.parse(await readFile(path.join(outDir, file), 'utf8')));
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.log(`(could not read previous report ${file}: ${e.message})`);
+    // missing previous report for a suite is fine — strict mode enforces the manifest
+  }
 }
+const { merged: combinedReports, staleExcluded } = combineReports(allReports, previousReports, commitSHA);
+for (const st of staleExcluded) {
+  console.log(`(stale report excluded from evidence counts: suite "${st.suite}" generated at a different commit — current is ${commitSHA.slice(0, 7)})`);
+}
+
+// Phase 2 required-case manifest: every case id from both suites.
+const requiredCaseIds = [...ngspiceCases().map((c) => c.id), ...quantumCases().map((c) => c.id)];
 
 // combined machine-readable evidence summary for the validation-stage system
 const evidence = {
@@ -132,7 +140,12 @@ const evidence = {
   stages: {
     // review round 3: honest, graded cross-solver evidence — a single passing
     // case must never imply complete coverage.
-    crossSolver: crossSolverEvidenceStatus(combinedReports),
+    crossSolver: {
+      ...crossSolverEvidenceStatus(combinedReports),
+      declaredScope: suiteArg,
+      requiredCases: requiredCaseIds.length,
+      note: 'Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).',
+    },
     physicalValidation: { status: 'none', note: 'No physical measurements exist. Numerical agreement with Ngspice/Qiskit is NOT physical validation.' },
     modelCalibration: { status: 'none', note: 'No model parameter has been estimated from measured data.' },
   },
@@ -160,7 +173,13 @@ await writeFile(path.join(outDir, 'REPORT.md'), md);
 console.log(`Artifacts written to ${outDir} (JSON + Markdown).`);
 console.log(`Evidence: cross-solver ${evidence.stages.crossSolver.status} (${evidence.stages.crossSolver.passed}/${evidence.stages.crossSolver.total} passed)`);
 // exit per policy: --strict (used by CI, which installs the engines) requires
-// EVERY case in every suite to pass — skipped/unsupported/inconclusive/
-// model-mismatch/missing all fail strict CI. Without --strict (local
-// informational runs) only hard failures exit non-zero.
-process.exit(exitCodeFor(combinedReports, { strict: process.argv.includes('--strict') }));
+// EVERY case in the required manifest (all 24: 10 ngspice + 14 quantum) to be
+// present and passing — skipped/unsupported/inconclusive/model-mismatch/
+// missing suites all fail strict CI. Scoped runs (e.g. --suite ngspice) in
+// strict mode therefore fail unless the manifest scope is narrowed; the
+// declared scope is recorded in the evidence summary. Without --strict
+// (local informational runs) only hard failures exit non-zero.
+process.exit(exitCodeFor(combinedReports, {
+  strict: process.argv.includes('--strict'),
+  requiredIds: requiredCaseIds,
+}));

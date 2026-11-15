@@ -198,6 +198,11 @@ def run_numpy(spec, n, d, gates):
         "notes": notes,
     }
     json.dump(out, sys.stdout)
+    # TEST-ONLY hook: lets the JS adapter regression suite verify that a
+    # nonzero exit after plausible output is classified as a reference
+    # failure. Never triggered by real benchmarks.
+    if spec.get("sabotage") == "exit-nonzero":
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

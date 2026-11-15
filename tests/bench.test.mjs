@@ -212,7 +212,7 @@ test('bench: bitReverse helper stays available for convention tooling', () => {
 });
 
 // ---------------- review round 3: acceptance-policy regressions -------------
-import { exitCodeFor, crossSolverEvidenceStatus } from '../js/bench/harness.js';
+import { exitCodeFor, crossSolverEvidenceStatus, combineReports } from '../js/bench/harness.js';
 
 test('bench: explicit "pass" with no checks is rejected as inconclusive', async () => {
   const c = defineCase({
@@ -284,4 +284,80 @@ test('bench: cross-solver evidence status is graded, not overstated', () => {
   // a single passing case must NOT claim complete coverage
   const single = crossSolverEvidenceStatus([mk('a', 'pass'), mk('b', 'fail')]);
   assert.equal(single.status, 'partial');
+});
+
+// ---------------- review round 4: evidence-integrity regressions -------------
+// These tests were written FIRST and failed against the pre-fix code
+// (demonstrated in the PR discussion), then the fixes were implemented.
+
+test('bench: explicit PASS cannot override a FAILING check (verdict derived from checks)', async () => {
+  const c = defineCase({
+    id: 'pass-overrides-fail', suite: 's', title: 't', purpose: 'p',
+    run: async () => ({ status: 'pass', checks: [{ name: 'numeric comparison', verdict: 'fail' }] }),
+  });
+  const rec = await runCase(c, {});
+  assert.equal(rec.status, 'fail', 'a recorded FAIL must win over a claimed PASS');
+  assert.ok(rec.notes.some((n) => n.includes('overridden')));
+});
+
+test('bench: exitCodeFor strict enforces the required case manifest, not just included cases', () => {
+  // a quantum-only run where every included case passed
+  const quantumOnly = [{
+    suite: 'quantum',
+    summary: { total: 14, pass: 14, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 },
+    cases: [{ id: 'quantum-basis-identity' }, { id: 'quantum-hadamard-all' }], // subset shown
+  }];
+  const all10Ngspice = ['ngspice-divider', 'ngspice-isource-polarity', 'ngspice-rc-transient',
+    'ngspice-rc-ac', 'ngspice-ac-phase', 'ngspice-rl', 'ngspice-diode', 'ngspice-nmos',
+    'ngspice-pmos', 'ngspice-combined'];
+  // without a manifest: passes (old behavior)
+  assert.equal(exitCodeFor(quantumOnly, { strict: true }), 0);
+  // with the required manifest: the 10 missing ngspice cases fail strict mode
+  assert.equal(exitCodeFor(quantumOnly, { strict: true, requiredIds: all10Ngspice }), 1,
+    'quantum-only strict run must not claim complete Phase 2 validation');
+  // a full passing report satisfies the manifest
+  const full = [{
+    suite: 'all',
+    summary: { total: 24, pass: 24, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 },
+    cases: [...all10Ngspice, 'quantum-basis-identity', 'quantum-qft-3'].map((id) => ({ id })),
+  }];
+  assert.equal(exitCodeFor(full, { strict: true, requiredIds: all10Ngspice }), 0);
+});
+
+test('bench: combineReports merges same-commit reports and excludes stale ones', () => {
+  const CURRENT = 'abc123';
+  const executed = [{ suite: 'quantum', generatedAt: 'T2', commitSHA: CURRENT, summary: { total: 14, pass: 14, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 }, cases: [] }];
+  const sameCommit = { suite: 'ngspice', generatedAt: 'T1', commitSHA: CURRENT, summary: { total: 10, pass: 10, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 }, cases: [] };
+  const stale = { suite: 'ngspice', generatedAt: 'T0', commitSHA: 'deadbeef', summary: { total: 10, pass: 10, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 }, cases: [] };
+
+  const merged = combineReports(executed, [sameCommit], CURRENT);
+  assert.equal(merged.merged.length, 2, 'same-commit report is merged');
+  assert.equal(merged.staleExcluded.length, 0);
+
+  const withStale = combineReports(executed, [stale], CURRENT);
+  assert.equal(withStale.merged.length, 1, 'stale-commit report is NOT merged as current');
+  assert.equal(withStale.staleExcluded.length, 1);
+  assert.ok(withStale.staleExcluded[0].reason.includes('deadbeef'), 'stale exclusion records the foreign SHA');
+});
+
+// ---------------- external process exit codes --------------------------------
+test('bench: python adapter treats nonzero exit as reference failure even with stdout', async () => {
+  const { resolvePython, runQuantumRef } = await import('../js/bench/quantum/quantum-adapter.js');
+  const py = await resolvePython();
+  if (!py) return; // python unavailable in this environment — skip honestly
+  // a runner that prints plausible JSON and THEN exits nonzero must fail
+  const bad = await runQuantumRef(py.exe, {
+    mode: 'numpy', n: 1, d: 2,
+    gates: [{ kind: 'H', qubits: [0] }],
+    sabotage: 'exit-nonzero',
+  });
+  assert.equal(bad.status, 'reference-failure');
+});
+
+test('bench: ngspice nonzero exit is a failure even when stdout contains quit', () => {
+  const r = {
+    status: 'ok', code: 1, timedOut: false,
+    stdout: 'v(n1) = 1.0\nquit\n', stderr: '', log: '',
+  };
+  assert.ok(detectNgspiceFailure(r), 'nonzero exit must be classified as failure');
 });

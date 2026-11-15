@@ -49,6 +49,9 @@ export async function runQuantumRef(pythonExe, circuit, { timeoutMs = DEFAULT_TI
     n: circuit.n,
     d: circuit.d ?? 2,
     gates: circuit.gates ?? [],
+    // test-only hook (see quantum-runner.py): lets the adapter regression
+    // suite verify nonzero-exit classification
+    sabotage: circuit.sabotage,
   }), timeoutMs);
   if (r.status !== 'ok') return r;
   let parsed;
@@ -91,8 +94,11 @@ function runPython(exe, args, stdinText, timeoutMs) {
     child.on('close', (code) => {
       clearTimeout(timer);
       if (timedOut) { resolve({ status: 'timeout', error: `python timed out after ${timeoutMs} ms` }); return; }
-      if (code !== 0 && !stdout) {
-        resolve({ status: 'reference-failure', error: `python exited ${code}: ${stderr.slice(0, 300)}` });
+      // review round 4: a nonzero exit is a REFERENCE FAILURE even when stdout
+      // contains plausible output — a crashed reference must never be treated
+      // as successful execution.
+      if (code !== 0) {
+        resolve({ status: 'reference-failure', error: `python exited ${code}: ${(stderr || stdout).slice(0, 300)}` });
         return;
       }
       resolve({ status: 'ok', stdout, stderr, code });

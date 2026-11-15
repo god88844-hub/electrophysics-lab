@@ -66,6 +66,15 @@ export async function runCase(caseDef, ctx) {
       result.status = 'inconclusive';
       (result.notes ??= []).push('Explicit "pass" rejected: the case produced no checks — unsubstantiated passes are not evidence.');
     }
+    // review round 4: the verdict is DERIVED from the checks. An explicit
+    // 'pass' must never override a failing, inconclusive, or invalid check.
+    if (result.status === 'pass' && (result.checks ?? []).length > 0) {
+      const w = worst(result.checks);
+      if (w !== 'pass') {
+        result.status = w;
+        (result.notes ??= []).push('Explicit "pass" overridden: recorded checks contain a ' + w + ' verdict — checks win over claims.');
+      }
+    }
     if (result.status) {
       // explicit early status (skipped / unsupported / model-mismatch / inconclusive)
       record.status = result.status;
@@ -187,13 +196,36 @@ export function renderMarkdown(report) {
  *               is at least one case — skipped, unsupported, inconclusive,
  *               model-mismatch, or missing suites all fail strict CI.
  */
-export function exitCodeFor(reports, { strict = false } = {}) {
+export function exitCodeFor(reports, { strict = false, requiredIds = null } = {}) {
   const fail = reports.reduce((a, r) => a + (r.summary.fail || 0), 0);
   const total = reports.reduce((a, r) => a + (r.summary.total || 0), 0);
   const pass = reports.reduce((a, r) => a + (r.summary.pass || 0), 0);
   if (!strict) return fail > 0 ? 1 : 0;
   if (total === 0 || pass !== total) return 1;
+  // review round 4: strict mode enforces the REQUIRED case manifest — a
+  // partial run (e.g. quantum-only) must not claim complete validation even
+  // if every included case passed.
+  if (requiredIds && requiredIds.length) {
+    const executed = new Set(reports.flatMap((r) => (r.cases || []).map((c) => c.id)));
+    const missing = requiredIds.filter((id) => !executed.has(id));
+    if (missing.length > 0) return 1;
+  }
   return 0;
+}
+
+/**
+ * combineReports (review round 4): merge same-commit suite reports; reports
+ * from a different commit are STALE and are excluded from the evidence
+ * counts (recorded separately so the exclusion is visible).
+ */
+export function combineReports(executedReports, previousReports, currentSHA) {
+  const merged = [...executedReports];
+  const staleExcluded = [];
+  for (const prev of previousReports) {
+    if (prev.commitSHA === currentSHA) merged.push(prev);
+    else staleExcluded.push({ suite: prev.suite, generatedAt: prev.generatedAt, reason: `report was generated at commit ${prev.commitSHA}, not the current ${currentSHA} — excluded from evidence counts` });
+  }
+  return { merged, staleExcluded };
 }
 
 /**
