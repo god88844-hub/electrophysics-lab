@@ -1,8 +1,8 @@
 # Benchmark report — quantum (Qiskit + independent NumPy qudit reference)
 
-Generated: 2026-11-15T18:33:42.679Z  ·  commit: `308ba242671511f201aa9f15e9a6134f912e179d`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T18:34:24.090Z  ·  commit: `18394c966b3066120438e744b040e549f1aea8f1`  ·  node: v25.9.0  ·  win32 x64
 
-**Engines:** ngspice: unavailable · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
+**Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 
 **Summary:** 14 cases — 14 pass · 0 fail · 0 skipped · 0 unsupported · 0 model-mismatch · 0 inconclusive
 

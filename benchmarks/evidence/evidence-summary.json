@@ -1,11 +1,10 @@
 {
-  "generatedAt": "2026-11-15T18:33:42.686Z",
-  "commitSHA": "308ba242671511f201aa9f15e9a6134f912e179d",
+  "generatedAt": "2026-11-15T18:34:24.096Z",
+  "commitSHA": "18394c966b3066120438e744b040e549f1aea8f1",
   "engines": {
     "ngspice": {
-      "version": null,
-      "exe": null,
-      "note": "NOT FOUND — ngspice suite will be SKIPPED, not passed"
+      "version": "47",
+      "exe": "C:/Users/Simulation apps/computer simulation/tools/ngspice-47/Spice64/bin/ngspice_con.exe"
     },
     "qiskit": {
       "version": "2.6.2",
@@ -18,26 +17,15 @@
   "staleExcludedReports": [],
   "stages": {
     "crossSolver": {
-      "status": "partial",
+      "status": "complete",
       "total": 24,
-      "passed": 14,
+      "passed": 24,
       "failed": 0,
-      "skipped": 10,
+      "skipped": 0,
       "unsupported": 0,
       "inconclusive": 0,
       "modelMismatch": 0,
-      "missingIds": [
-        "ngspice-divider",
-        "ngspice-isource-polarity",
-        "ngspice-rc-transient",
-        "ngspice-rc-ac",
-        "ngspice-ac-phase",
-        "ngspice-rl",
-        "ngspice-diode",
-        "ngspice-nmos",
-        "ngspice-pmos",
-        "ngspice-combined"
-      ],
+      "missingIds": [],
       "note": "Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).",
       "declaredScope": "all",
       "requiredCases": 24
