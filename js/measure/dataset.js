@@ -48,7 +48,8 @@ export function createDataset(meta, samples, { rawSource = null } = {}) {
     // provenance
     source: {
       file: meta.source?.file ?? null,
-      sha256: rawSource !== null ? sha256(rawSource) : (meta.source?.sha256 ?? null),
+      rawFileSha256: meta.source?.rawFileSha256 ?? null,
+      datasetSha256: rawSource !== null ? sha256(rawSource) : (meta.source?.datasetSha256 ?? null),
       retrievedFrom: meta.source?.retrievedFrom ?? null,
       derivedFrom: meta.source?.derivedFrom ?? null,
       selfChecksum: meta.source?.selfChecksum ?? null,
@@ -136,7 +137,7 @@ export function parseDataset(text) {
  * (e.g. the instrument export). Throws when the raw file was altered.
  */
 export function verifyChecksum(dataset, rawText) {
-  const recorded = dataset.source?.sha256;
+  const recorded = dataset.source?.rawFileSha256;
   if (!recorded) throw new Error('no source checksum recorded — provenance not verifiable');
   const computed = sha256(rawText);
   if (computed !== recorded) {

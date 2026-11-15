@@ -196,7 +196,7 @@ export function solveLinear(A, b) {
  *   multistart: number of additional starts (seeded, sampled within bounds)
  *   confidenceLevel: 0.95 (normal-approximation intervals — documented)
  */
-export function runCalibration({ id, modelFn, measurements, p0, lower, upper, weights = null, parameterNames, multistart = 0, seed = 7, confidenceLevel = 0.95, dataset = null, convergenceTolerance = 1e-12 }) {
+export function runCalibration({ id, modelFn, measurements, p0, lower, upper, weights = null, parameterNames, multistart = 0, seed = 7, confidenceLevel = 0.95, dataset = null, convergenceTolerance = 1e-12, maxIterations = 200 }) {
   if (!parameterNames || parameterNames.length !== p0.length) {
     throw new Error('runCalibration: parameterNames must match the parameter vector length');
   }
@@ -213,7 +213,7 @@ export function runCalibration({ id, modelFn, measurements, p0, lower, upper, we
 
   const runs = starts.map((start, i) => ({
     start,
-    ...levenbergMarquardt(modelFn, measurements, start, { lower, upper, weights, tolerance: convergenceTolerance, logger: null }),
+    ...levenbergMarquardt(modelFn, measurements, start, { lower, upper, weights, tolerance: convergenceTolerance, maxIterations, logger: null }),
     startIndex: i,
   }));
   const best = runs.reduce((bestRun, r) => (r.cost < bestRun.cost ? r : bestRun), runs[0]);

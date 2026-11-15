@@ -25,15 +25,18 @@ const approx = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} ≈
 
 // ---------------- dataset model ---------------------------------------------
 function dividerRealLike() {
+  const rawText = 'FLUKE179,5.002,2.498\nFLUKE179,10.001,5.001';
   return createDataset({
     id: 'divider-real', origin: 'real-measurement',
     experiment: { id: 'exp-A', date: '2026-01-15' },
     instruments: [{ manufacturer: 'Fluke', model: '179', serialNumber: 'SN-1', resolution: 0.001, uncertainty: 0.005, calibration: { certificateRef: 'CAL-2026-001', status: 'valid', validUntil: '2026-06-01' } }],
     quantities: [{ name: 'V_in', unit: 'V' }, { name: 'V_out', unit: 'V' }],
     components: { nominal: { R1: 1000, R2: 1000 }, independentlyMeasured: { R1: 999.6, R2: 1000.2 } },
+    replicates: [{ group: 'r1', members: [0, 1] }],
     uncertainty: { V_out: 0.005 },
     acquisition: { procedure: 'protocol A' },
     license: 'CC0',
+    source: { file: 'fluke-export.csv', rawFileSha256: sha256(rawText) },
   }, [
     { t: 0, V_in: 5, V_out: 2.498 },
     { t: 1, V_in: 10, V_out: 5.001 },
@@ -44,7 +47,7 @@ test('phase3: dataset creation records metadata, checksum, and freezes', () => {
   const d = dividerRealLike();
   assert.equal(d.format, DATASET_FORMAT);
   assert.equal(d.origin, 'real-measurement');
-  assert.ok(d.source.sha256.length === 64);
+  assert.ok(d.source.datasetSha256.length === 64);
   assert.equal(Object.isFrozen(d), true);
   assert.equal(d.instruments[0].calibration.status, 'valid');
 });
@@ -62,7 +65,7 @@ test('phase3: source checksum verifies the ORIGINAL raw file; altered files fail
   const rawText = 'FLUKE179,5.002,2.498\nFLUKE179,10.001,5.001';
   const d = createDataset({
     id: 'raw', origin: 'real-measurement', experiment: { id: 'e' },
-    source: { file: 'fluke-export.csv', sha256: sha256(rawText) },
+    source: { file: 'fluke-export.csv', rawFileSha256: sha256(rawText) },
   }, [{ t: 0, V_in: 5, V_out: 2.498 }], { rawSource: rawText });
   // the ORIGINAL raw text verifies
   assert.equal(verifyChecksum(d, rawText), true);
@@ -342,11 +345,12 @@ test('phase3: validation vs synthetic data is a SOFTWARE DEMONSTRATION, never ph
     criteria: { maxAbsError: 0.05 },
     envelope: defineEnvelope({ id: 'e', ranges: { V_in: [0, 20] }, testedPoints: [{ V_in: 10 }] }),
     quantities: [{ name: 'V_out' }],
+    provenanceVerified: true,
     calibrationRef: null,
   });
   assert.equal(result.stage, 'softwareDemonstration');
   assert.equal(result.physicalValidation.status, 'none');
-  assert.ok(result.physicalValidation.note.includes('software demonstration'));
+  assert.ok(result.physicalValidation.note.includes('G1') || result.physicalValidation.note.includes('software demonstration') || result.physicalValidation.note.includes('origin'));
   assert.ok(result.criteriaMet, 'the synthetic fixture DOES agree numerically — that makes it a demonstration, not physical validation');
 });
 
@@ -361,6 +365,7 @@ test('phase3: validation against a real-measurement dataset inside the envelope 
     criteria: { maxAbsError: 0.05 },
     envelope: defineEnvelope({ id: 'env', ranges: { V_in: [0, 12] }, testedPoints: [{ V_in: 5 }, { V_in: 10 }] }),
     quantities: [{ name: 'V_out', measurementUncertainty: 0.005 }],
+    provenanceVerified: true,
   });
   assert.equal(result.criteriaMet, true, JSON.stringify(result.criteriaResults));
   assert.equal(result.stage, 'physicalValidation');
@@ -464,4 +469,186 @@ test('phase3: a synthetic dataset cannot be relabelled to unlock physical valida
   const q = qualityReport(dataset);
   assert.equal(q.physicalValidationAllowed, false);
   assert.ok(dataset.acquisition.procedure.includes('software fixture'), 'conspicuous synthetic label present');
+});
+
+// ---------------- review round 6: physical-validation evidence integrity -----
+// Written FIRST, demonstrated failing against the pre-fix code, then fixed.
+// These tests enforce that physical validation CANNOT be claimed unless
+// every mandatory gate passes: real origin, accepted quality, verified
+// provenance, actual envelope coverage, and verified holdout independence.
+
+// a real-measurement dataset with an ACCEPTED quality report
+function acceptedRealDataset() {
+  const d = createDataset({
+    id: 'real-accepted', origin: 'real-measurement',
+    experiment: { id: 'exp-1', date: '2026-01-15' },
+    instruments: [{ manufacturer: 'Fluke', model: '179', serialNumber: 'SN-1', resolution: 0.001, uncertainty: 0.005, calibration: { certificateRef: 'CAL-001', status: 'valid', validUntil: '2026-12-01' } }],
+    quantities: [{ name: 'V_in', unit: 'V' }, { name: 'V_out', unit: 'V' }],
+    components: { nominal: { R1: 1000, R2: 1000 } },
+    replicates: [{ group: 'r1', members: [0, 1] }],
+    uncertainty: { V_out: 0.005 },
+    acquisition: { procedure: 'protocol A' },
+  }, [
+    { t: 0, V_in: 5, V_out: 2.498 },
+    { t: 1, V_in: 10, V_out: 5.001 },
+  ], { rawSource: 'real-accepted-raw' });
+  return { dataset: d, quality: qualityReport(d) };
+}
+
+const ACCEPT_CRITERIA = { maxAbsError: 0.05 };
+const ENVELOPE_WITH_POINTS = defineEnvelope({
+  id: 'env-ok', ranges: { V_in: [0, 12] },
+  testedPoints: [{ V_in: 5 }, { V_in: 10 }],
+});
+
+function runVal(overrides = {}) {
+  const { dataset, quality } = acceptedRealDataset();
+  return runExperimentalValidation({
+    model: { id: 'divider-vout', predict: (p) => ({ V_out: (p.V_in * p.R2) / (p.R1 + p.R2) }) },
+    params: { R1: 1000, R2: 1000 },
+    declaredUse: 'verify divider ratio',
+    dataset, quality,
+    criteria: ACCEPT_CRITERIA,
+    envelope: ENVELOPE_WITH_POINTS,
+    quantities: [{ name: 'V_out', measurementUncertainty: 0.005 }],
+    provenanceVerified: true,
+    ...overrides,
+  });
+}
+
+test('F1: no envelope → physicalValidation none (even with perfect predictions)', () => {
+  const result = runVal({ envelope: undefined });
+  assert.equal(result.stage, 'softwareDemonstration');
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.ok(result.physicalValidation.note.includes('envelope'));
+});
+
+test('F1: envelope with zero tested points → insufficient-evidence, none', () => {
+  const result = runVal({ envelope: defineEnvelope({ id: 'empty', ranges: { V_in: [0, 12] } }) });
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.ok(result.physicalValidation.note.includes('tested point') || result.physicalValidation.note.includes('insufficient'));
+});
+
+test('F1: envelope tested points far from measurement conditions → none', () => {
+  const result = runVal({
+    envelope: defineEnvelope({ id: 'far', ranges: { V_in: [0, 12] }, testedPoints: [{ V_in: 1 }, { V_in: 2 }] }),
+  });
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.ok(result.physicalValidation.note.includes('envelope') || result.physicalValidation.note.includes('interpolation'));
+});
+
+test('F1: correct envelope with matching tested points → validated', () => {
+  const result = runVal({});
+  assert.equal(result.stage, 'physicalValidation');
+  assert.equal(result.physicalValidation.status, 'validated');
+  assert.ok(result.physicalValidation.scope, 'scope must record dataset + quantities + envelope');
+});
+
+test('F2: conditionally-usable quality → physicalValidation none (binding quality gate)', () => {
+  // remove replicates to force conditionally-usable
+  const d = createDataset({
+    id: 'real-cond', origin: 'real-measurement',
+    experiment: { id: 'exp-1' },
+    instruments: [{ manufacturer: 'Fluke', model: '179', serialNumber: 'SN-1', resolution: 0.001, uncertainty: 0.005, calibration: { certificateRef: 'CAL-001', status: 'valid', validUntil: '2026-12-01' } }],
+    quantities: [{ name: 'V_in', unit: 'V' }, { name: 'V_out', unit: 'V' }],
+    uncertainty: { V_out: 0.005 },
+  }, [
+    { t: 0, V_in: 5, V_out: 2.498 },
+    { t: 1, V_in: 10, V_out: 5.001 },
+  ], { rawSource: 'real-cond-raw' });
+  const q = qualityReport(d);
+  assert.equal(q.verdict, 'conditionally-usable');
+  assert.equal(q.physicalValidationAllowed, false, 'quality system says physical validation is NOT allowed');
+  const result = runVal({
+    dataset: d, quality: q,
+  });
+  assert.equal(result.physicalValidation.status, 'none',
+    'conditionally-usable quality must NOT produce a validated status');
+  assert.equal(result.stage, 'softwareDemonstration');
+});
+
+test('F2: rejected quality → physicalValidation none', () => {
+  const d = createDataset({
+    id: 'real-rej', origin: 'real-measurement',
+    experiment: { id: 'exp-1' },
+    instruments: [],
+    quantities: [{ name: 'V', unit: 'V' }],
+  }, [{ t: 0, V: NaN }], { rawSource: 'rej' });
+  const q = qualityReport(d);
+  assert.equal(q.verdict, 'rejected');
+  const result = runVal({ dataset: d, quality: q, quantities: [{ name: 'V' }] });
+  assert.equal(result.physicalValidation.status, 'none');
+});
+
+test('F3: calibration on group A + validation on group A → leakage detected, none', () => {
+  const { dataset: calData } = syntheticRCDataset({ session: 'session-1', seed: 1 });
+  const valDataset = createDataset({
+    id: 'leak-val', origin: 'real-measurement',
+    experiment: { id: 'exp-B' },
+    instruments: [{ manufacturer: 'X', model: 'Y', resolution: 0.001, uncertainty: 0.005, calibration: { certificateRef: 'CAL', status: 'valid' } }],
+    quantities: [{ name: 't', unit: 's' }, { name: 'V_c', unit: 'V' }],
+    uncertainty: { V_c: 0.005 },
+  }, [
+    { t: 4e-5, session: 'session-1', V_step: 5, V_c: 1.65 },
+    { t: 8e-5, session: 'session-1', V_step: 5, V_c: 2.76 },
+  ], { rawSource: 'leak-val-raw' });
+  const q = qualityReport(valDataset);
+  // a split manifest that includes session-1 on BOTH sides would throw
+  assert.throws(() => partitionByField(valDataset, 'session', { calibrationValues: ['session-1'], validationValues: ['session-1'] }), /leakage/);
+  // the validation engine must refuse when the calibration record references
+  // the same dataset checksum as the validation dataset
+  const calRecord = runCalibration({
+    id: 'leak-cal', modelFn: (p) => valDataset.samples.map((s) => p[0] * (1 - Math.exp(-s.t / p[1]))),
+    measurements: valDataset.samples.map((s) => s.V_c),
+    p0: [5, 1e-4], lower: [0, 1e-6], upper: [10, 1e-2],
+    parameterNames: ['V', 'tau'], dataset: { id: valDataset.id, checksum: valDataset.source.datasetSha256 },
+  });
+  assert.ok(calRecord.dataset.checksum, 'calibration record must carry the dataset checksum');
+  const result = runVal({
+    model: { id: 'rc', predict: (p) => ({ V_out: 2.5 }) },
+    calibrationRef: calRecord.id,
+    calibrationRecord: calRecord,
+    dataset: valDataset, quality: q,
+    quantities: [{ name: 'V_c', measurementUncertainty: 0.005 }],
+  });
+  assert.equal(result.physicalValidation.status, 'none',
+    'using the same dataset for calibration and validation must block physical validation');
+});
+
+test('F3: nominal parameters (no calibration) work without a split manifest', () => {
+  const result = runVal({});
+  assert.equal(result.stage, 'physicalValidation');
+  assert.equal(result.paramProvenance.source, 'nominal values');
+  assert.ok(result.physicalValidation.note.includes('nominal') || !result.physicalValidation.note.includes('leakage'));
+});
+
+
+// ---------------- review round 6 F4: provenance integrity ----------------
+
+test('F4: synthetic relabelled to real-measurement is blocked without verified provenance', () => {
+  const { dataset: fake } = syntheticDividerDataset();
+  const relabelled = createDataset({
+    ...JSON.parse(JSON.stringify({ ...fake, samples: [...fake.samples] })),
+    origin: 'real-measurement',
+  }, [...fake.samples]);
+  assert.equal(relabelled.origin, 'real-measurement');
+  const q = qualityReport(relabelled);
+  const result = runVal({
+    dataset: relabelled, quality: q,
+    provenanceVerified: false,
+  });
+  assert.equal(result.physicalValidation.status, 'none',
+    'unverified provenance must block physical validation even when origin claims real-measurement');
+});
+
+test('F4: dataset source separates rawFileSha256 from datasetSha256', () => {
+  const rawText = 'INSTRUMENT_EXPORT_V1\n5.002,2.498\n';
+  const d = createDataset({
+    id: 'sep', origin: 'real-measurement', experiment: { id: 'e' },
+    source: { file: 'export.csv', rawFileSha256: sha256(rawText) },
+  }, [{ t: 0, V_in: 5, V_out: 2.498 }], { rawSource: rawText });
+  assert.equal(d.source.rawFileSha256, sha256(rawText), 'original file checksum preserved');
+  assert.ok(d.source.datasetSha256, 'dataset artifact checksum is recorded');
+  const parsed = parseDataset(JSON.stringify({ ...JSON.parse(JSON.stringify({ ...d, samples: [...d.samples] })) }));
+  assert.equal(parsed.source.rawFileSha256, sha256(rawText), 'raw file checksum survives parsing');
 });

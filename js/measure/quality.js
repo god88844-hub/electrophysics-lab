@@ -52,8 +52,9 @@ export function qualityReport(dataset, { quantityChecks = {}, requireCalibration
   }
 
   // ---- checksum ------------------------------------------------------------
-  if (dataset.source?.sha256) {
-    record('checksum.present', 'pass', dataset.source.sha256.slice(0, 16) + '…');
+  const hasChecksum = dataset.source?.datasetSha256 || dataset.source?.rawFileSha256;
+  if (hasChecksum) {
+    record('checksum.present', 'pass', (dataset.source.datasetSha256 || dataset.source.rawFileSha256).slice(0, 16) + '…');
   } else {
     record('checksum.present', 'fail', 'no SHA-256 of the raw source text — provenance not verifiable');
   }
@@ -138,7 +139,7 @@ export function qualityReport(dataset, { quantityChecks = {}, requireCalibration
 
   // checksum verification of the raw source
   if (dataset.rawSourceText) {
-    const ok = sha256(dataset.rawSourceText) === dataset.source?.sha256;
+    const ok = sha256(dataset.rawSourceText) === (dataset.source?.datasetSha256 || dataset.source?.rawFileSha256);
     record('checksum.verified', ok ? 'pass' : 'fail', ok ? 'raw source matches recorded SHA-256' : 'RAW SOURCE DOES NOT MATCH the recorded checksum — data may have been altered');
   }
 

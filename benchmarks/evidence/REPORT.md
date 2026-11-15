@@ -1,12 +1,12 @@
 # Invention Lab — independent benchmarking report
 
-Generated 2026-11-15T20:05:29.169Z · commit `1a0171801684868a16a2f88a817c4c1e2a014697` · node v25.9.0
+Generated 2026-11-15T20:57:54.388Z · commit `8583201b33dbdfe9696e5a3c6c6cc5b2bef5168f` · node v25.9.0
 
 Engines: ngspice=47 · qiskit=2.6.2 · numpy=independent reference (see per-case engine strings)
 
 # Benchmark report — ngspice (external circuit simulator)
 
-Generated: 2026-11-15T20:05:08.204Z  ·  commit: `1a0171801684868a16a2f88a817c4c1e2a014697`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T20:57:37.543Z  ·  commit: `8583201b33dbdfe9696e5a3c6c6cc5b2bef5168f`  ·  node: v25.9.0  ·  win32 x64
 
 **Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 
@@ -207,7 +207,7 @@ Sine 2 V amplitude + 3 V offset at 1 kHz drives R1=1 kOhm into a node carrying C
 - note: Initialization-convention difference (documented, t=0 excluded from comparison): IL v(A,0)=0.375 V (declared vInit=0, companion model active) vs Ngspice DC-operating-point t=0 0.544 V (capacitor open). Difference 0.169 V is a convention difference, not a solver defect; waveforms converge after the first tau.
 # Benchmark report — quantum (Qiskit + independent NumPy qudit reference)
 
-Generated: 2026-11-15T20:05:29.164Z  ·  commit: `1a0171801684868a16a2f88a817c4c1e2a014697`  ·  node: v25.9.0  ·  win32 x64
+Generated: 2026-11-15T20:57:54.383Z  ·  commit: `8583201b33dbdfe9696e5a3c6c6cc5b2bef5168f`  ·  node: v25.9.0  ·  win32 x64
 
 **Engines:** ngspice: 47 · qiskit: 2.6.2 · numpy: independent reference (see per-case engine strings)
 
