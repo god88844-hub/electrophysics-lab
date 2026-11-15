@@ -26,17 +26,28 @@ export function toSpiceDeck(diagram, { analysis = 'tran', tstop = '1m', dt = '1u
   const netName = (key) => {
     const r = find(key);
     if (!nodeNames.has(r)) {
-      // ground check
       n += 1;
       nodeNames.set(r, `n${n}`);
     }
     return nodeNames.get(r);
   };
   // ground nets first
+  const netAliases = new Map(); // deck node -> member port keys (benchmark cases use this for mapping)
   for (const b of diagram.blocks) {
     const def = getComponent(b.type);
     if (def?.chip?.kind === 'gnd') nodeNames.set(find(`${b.id}/g`), '0');
   }
+  for (const key of parent.keys()) {
+    const r = find(key);
+    const name = nodeNames.has(r) ? nodeNames.get(r) : netName(key);
+    if (!netAliases.has(name)) netAliases.set(name, []);
+    netAliases.get(name).push(key.replace('/', '.'));
+  }
+  lines.push('* node map (deck node = member ports):');
+  for (const [name, aliases] of netAliases) {
+    lines.push(`* node ${name}: ${aliases.join(', ')}`);
+  }
+  lines.push('');
   for (const b of diagram.blocks) {
     const def = getComponent(b.type);
     if (!def?.chip) continue;
@@ -75,7 +86,12 @@ export function toSpiceDeck(diagram, { analysis = 'tran', tstop = '1m', dt = '1u
       case 'pmos': lines.push(`M${b.id} ${nd('d')} ${nd('g')} ${nd('s')} ${nd('s')} PMOD_${b.id} W=1u L=1u`); break;
       case 'opamp': lines.push(`E${b.id} ${nd('vout')} 0 ${nd('vp')} ${nd('vn')} ${P.gain}`); break;
       case 'voltmeter': lines.push(`* voltmeter ${b.id} probes node ${nd('p')}`); break;
-      case 'ammeter': lines.push(`V${b.id} ${nd('p')} ${nd('n')} DC 0 * ammeter (0V source trick)`); break;
+      // 0 V source trick; comment on its own line ('*' is only a comment at
+      // line start in SPICE — never inline)
+      case 'ammeter':
+        lines.push(`* ammeter ${b.id} (0 V source trick)`);
+        lines.push(`V${b.id} ${nd('p')} ${nd('n')} DC 0`);
+        break;
       default: break;
     }
   }
@@ -92,7 +108,6 @@ export function toSpiceDeck(diagram, { analysis = 'tran', tstop = '1m', dt = '1u
       default: break;
     }
   }
-  const sim = getComponent(diagram.blocks[0]?.type) ? '' : '';
   if (analysis === 'tran') lines.push(`.tran ${dt} ${tstop}`);
   else if (analysis === 'ac') lines.push(`.ac dec 10 ${fstart} ${fstop}`);
   else if (analysis === 'dc') lines.push('*.dc <sweep source> <from> <to> <step>');

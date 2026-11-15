@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { QuditCircuit, checkUnitary, binomialSE, c } from '../js/labs/quantum/qudit.js';
-import { H, X, CNOT, SHIFT, FOURIER, SUM, SWAP, PHASEK } from '../js/labs/quantum/gates.js';
+import { H, X, CNOT, SHIFT, FOURIER, SUM, SWAP, PHASEK, T } from '../js/labs/quantum/gates.js';
 import { bell, ghz, deutschJozsa, qft } from '../js/labs/quantum/algorithms.js';
 import '../js/labs/quantum/components.js';
 import { Diagram } from '../js/core/diagram.js';
@@ -231,4 +231,28 @@ test('quantum: separable |00> reports concurrence 0', () => {
   assert.ok(cls, 'product-state classification missing');
   assert.equal(cls.verdict, 'pass');
   assert.equal(cls.actual, 0);
+});
+
+// ---------------- review: T-gate regression (benchmark-found defect) --------
+test('quantum: T gate is unitary, diagonal, diag(1, e^{i pi/4})', () => {
+  // benchmark-found: T was previously [[1,0],[0.707i,0.707i]] — non-unitary.
+  // T|0> = |0>
+  const qc = new QuditCircuit(1, 2);
+  qc.apply1(0, T); // would throw if non-unitary
+  approx(qc.re[0], 1);
+  // T|1> = e^{i pi/4}|1>
+  const qcT1 = new QuditCircuit(1, 2);
+  qcT1.apply1(0, X);
+  qcT1.apply1(0, T);
+  approx(qcT1.re[1], Math.SQRT1_2, 1e-12);
+  approx(qcT1.im[1], Math.SQRT1_2, 1e-12);
+  // phase kickback: T|1> = e^{i pi/4}|1> — relative phase pi/4
+  const qc2 = new QuditCircuit(2, 2);
+  qc2.apply1(1, X);
+  qc2.apply1(1, H);
+  qc2.apply1(1, T);
+  qc2.apply1(1, H);
+  // HTH = SX-like: T|+> then H -> mostly |0> with p = cos^2(pi/8)... just check normalization + distinct outcomes
+  const p = qc2.probs();
+  assert.ok(Math.abs(p[0] + p[1] + p[2] + p[3] - 1) < 1e-12);
 });

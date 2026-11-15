@@ -1,0 +1,53 @@
+# External numerical validation (Phase 2): runs the benchmark harness
+# against REAL independent solvers (Ngspice + Qiskit) and publishes evidence
+# artifacts. Separate from the unit-test matrix on purpose: cross-solver
+# agreement is a distinct evidence stage.
+#
+# This job installs its dependencies and FAILS if a required benchmark
+# exceeds tolerance or cannot execute — a missing engine here is CI failure,
+# not a silent skip.
+
+name: External validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Ngspice (independent circuit reference)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ngspice
+          ngspice --version | head -2
+      - name: Install Python scientific dependencies (independent quantum reference)
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install "qiskit" numpy
+          python3 -c "import qiskit; print('qiskit', qiskit.__version__)"
+      - name: Run Ngspice benchmark suite
+        run: node js/bench/run.mjs --suite ngspice
+      - name: Run quantum benchmark suite
+        run: node js/bench/run.mjs --suite quantum
+      - name: Publish benchmark summary
+        if: always()
+        run: |
+          echo "## External validation summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f benchmarks/evidence/REPORT.md ]; then
+            cat benchmarks/evidence/REPORT.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Benchmark report missing — the harness did not complete." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-evidence
+          path: benchmarks/evidence/

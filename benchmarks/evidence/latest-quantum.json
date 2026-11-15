@@ -1,0 +1,976 @@
+{
+  "generatedAt": "2026-11-15T17:01:10.314Z",
+  "suite": "quantum (Qiskit + independent NumPy qudit reference)",
+  "environment": {
+    "commitSHA": "5decbdb45f988fa9dc987578f3da661bf88e62c3",
+    "nodeVersion": "v25.9.0",
+    "platform": "win32 x64"
+  },
+  "engines": {
+    "qiskit": {
+      "version": "2.6.2",
+      "note": null
+    },
+    "numpy": {
+      "version": "independent reference (see per-case engine strings)"
+    }
+  },
+  "cases": [
+    {
+      "id": "quantum-basis-identity",
+      "suite": "quantum",
+      "title": "Basis state |000> (identity preparation)",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:00:51.201Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 3,
+        "d": 2,
+        "gates": 0
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:00:52.580Z"
+    },
+    {
+      "id": "quantum-hadamard-all",
+      "suite": "quantum",
+      "title": "Hadamard on 3 qubits",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:00:52.580Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 3,
+        "d": 2,
+        "gates": 3
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:00:54.175Z"
+    },
+    {
+      "id": "quantum-pauli-sequence",
+      "suite": "quantum",
+      "title": "Pauli X/Y/Z sequence",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:00:54.175Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 2,
+        "d": 2,
+        "gates": 3
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:00:56.358Z"
+    },
+    {
+      "id": "quantum-phase-gates",
+      "suite": "quantum",
+      "title": "S, T and PHASE(pi/6) mixture",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:00:56.358Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 2,
+        "d": 2,
+        "gates": 5
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:00:58.469Z"
+    },
+    {
+      "id": "quantum-cnot-bell",
+      "suite": "quantum",
+      "title": "Bell state (H + CNOT)",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:00:58.469Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 2,
+        "d": 2,
+        "gates": 2
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:00:59.792Z"
+    },
+    {
+      "id": "quantum-swap-chain",
+      "suite": "quantum",
+      "title": "SWAP chain across 3 qubits",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:00:59.792Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 3,
+        "d": 2,
+        "gates": 3
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:01.111Z"
+    },
+    {
+      "id": "quantum-rx-ry-rz",
+      "suite": "quantum",
+      "title": "Rotation gates Rx/Ry/Rz with non-trivial angles",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:01:01.111Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 2,
+        "d": 2,
+        "gates": 4
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:02.393Z"
+    },
+    {
+      "id": "quantum-ghz-3",
+      "suite": "quantum",
+      "title": "GHZ-3 (H + CNOT chain)",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:01:02.393Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 3,
+        "d": 2,
+        "gates": 3
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:03.797Z"
+    },
+    {
+      "id": "quantum-dj-balanced",
+      "suite": "quantum",
+      "title": "Deutsch-Jozsa (balanced oracle as explicit CX gates; 2 inputs + ancilla)",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector (global phase normalized, index conventions mapped). ",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:01:03.797Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 6.734631938767465e-18,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 6.734631938767465e-18,
+            "relErr": 0.0000067346319387674655
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 4.5355267350666824e-35,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 4.5355267350666824e-35,
+            "relErr": 4.535526735066682e-23
+          }
+        }
+      ],
+      "il": {
+        "n": 3,
+        "d": 2,
+        "gates": 8
+      },
+      "ref": {
+        "engines": [
+          "qiskit"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:05.057Z"
+    },
+    {
+      "id": "quantum-qft-3",
+      "suite": "quantum",
+      "title": "QFT on |1> — H + controlled phases + swaps vs Qiskit Statevector and direct DFT",
+      "purpose": "Build the standard 3-qubit QFT circuit from its gate list (H, controlled phase rotations, SWAPs), run it on Invention Lab and Qiskit, and compare full state vectors. Additionally compare against the analytic DFT of |1>.",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Controlled phases are expressed as CP gates in both engines; the index-order mapping is bit-reversal, identical to the other qubit cases."
+      ],
+      "toleranceRationale": "max amplitude error < 1e-9 after global-phase normalization (double precision unitary products); controlled-phase construction must match between the engines exactly.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:01:05.057Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs Qiskit (global phase normalized)",
+          "verdict": "pass",
+          "actual": 2.7755575615628914e-17,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 2.7755575615628914e-17,
+            "relErr": 0.000027755575615628914
+          }
+        },
+        {
+          "name": "max |amplitude| error vs analytic DFT of |1>",
+          "verdict": "pass",
+          "actual": 1.2412670766236366e-16,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 1.2412670766236366e-16,
+            "relErr": 0.00012412670766236367
+          }
+        }
+      ],
+      "il": {
+        "n": 3
+      },
+      "ref": {
+        "engine": "qiskit 2.6.2"
+      },
+      "analytical": null,
+      "notes": [
+        "global phase: 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:06.794Z"
+    },
+    {
+      "id": "quantum-bell-sampling",
+      "suite": "quantum",
+      "title": "Bell-state measurement statistics (seeded sampler vs exact Qiskit distribution)",
+      "purpose": "Sample the Bell circuit 4000 times on Invention Lab (seeded mulberry32). The independent reference is the EXACT distribution from Qiskit Statevector — no RNG-vs-RNG sequence comparison is demanded; sampled counts must be consistent within 4 sigma of the binomial bound.",
+      "units": {
+        "probability": "dimensionless"
+      },
+      "modelNotes": [
+        "Invention Lab samples with mulberry32(seed); the exact distribution comes from Qiskit. No shared RNG, no shared stream."
+      ],
+      "toleranceRationale": "exact probabilities: abs 1e-9 (same unitary). Sampled counts: |p_sampled - p_exact| <= 4*sqrt(p(1-p)/N) — a statistically justified two-sided bound.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:01:06.794Z",
+      "checks": [
+        {
+          "name": "exact probabilities (via state vectors, global phase normalized)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "sampled P(00) consistent with exact distribution (4 sigma)",
+          "verdict": "pass",
+          "stage": "crossSolver",
+          "actual": 0.489,
+          "expected": 0.4999999999999999,
+          "tolerance": 0.03162277660168379,
+          "metrics": {
+            "z": 1.3914021704740742
+          },
+          "note": "1956/4000 samples, z=1.39"
+        },
+        {
+          "name": "sampled P(01) consistent with exact distribution (4 sigma)",
+          "verdict": "pass",
+          "stage": "crossSolver",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 6.324555320336758e-8,
+          "metrics": {
+            "z": 0
+          },
+          "note": "0/4000 samples, z=0.00"
+        },
+        {
+          "name": "sampled P(10) consistent with exact distribution (4 sigma)",
+          "verdict": "pass",
+          "stage": "crossSolver",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 6.324555320336758e-8,
+          "metrics": {
+            "z": 0
+          },
+          "note": "0/4000 samples, z=0.00"
+        },
+        {
+          "name": "sampled P(11) consistent with exact distribution (4 sigma)",
+          "verdict": "pass",
+          "stage": "crossSolver",
+          "actual": 0.511,
+          "expected": 0.4999999999999999,
+          "tolerance": 0.03162277660168379,
+          "metrics": {
+            "z": 1.3914021704741022
+          },
+          "note": "2044/4000 samples, z=1.39"
+        },
+        {
+          "name": "concurrence agrees with Qiskit state (C=1 for Bell)",
+          "verdict": "pass",
+          "actual": 0.9999999999999998,
+          "reference": 1,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 2.220446049250313e-16,
+            "relErr": 2.220446049250313e-16
+          }
+        }
+      ],
+      "il": {
+        "counts": {
+          "11": 2044,
+          "00": 1956
+        },
+        "shots": 4000
+      },
+      "ref": {
+        "engine": "qiskit 2.6.2"
+      },
+      "analytical": null,
+      "notes": [
+        "global phase: 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:08.258Z"
+    },
+    {
+      "id": "qudit-qutrit-shift-fourier",
+      "suite": "quantum",
+      "title": "Qutrit (d=3): SHIFT + Fourier + Phase_k + SUM on 2 qudits",
+      "purpose": "Full complex state-vector comparison against the independent NumPy qudit reference (global phase normalized, index conventions mapped). Verifies mod-d arithmetic and tensor conventions against the independent NumPy reference.",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qudit reference: independent NumPy tensordot implementation (axis 0 = q0) with fresh matrix definitions; labelled \"independent mathematical reference agreement\", NOT Qiskit validation.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:01:08.258Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs numpy (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs numpy",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 2,
+        "d": 3,
+        "gates": 4
+      },
+      "ref": {
+        "engines": [
+          "numpy"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs numpy: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:08.522Z"
+    },
+    {
+      "id": "qudit-ququart-sum",
+      "suite": "quantum",
+      "title": "Ququart (d=4): |2>|1> through SUM -> |2>|3>",
+      "purpose": "Full complex state-vector comparison against the independent NumPy qudit reference (global phase normalized, index conventions mapped). Qudit adder arithmetic: (2+1) mod 4 = 3.",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qudit reference: independent NumPy tensordot implementation (axis 0 = q0) with fresh matrix definitions; labelled \"independent mathematical reference agreement\", NOT Qiskit validation.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:01:08.522Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs numpy (after global phase)",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        },
+        {
+          "name": "max probability error vs numpy",
+          "verdict": "pass",
+          "actual": 0,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 0,
+            "relErr": 0
+          }
+        }
+      ],
+      "il": {
+        "n": 2,
+        "d": 4,
+        "gates": 4
+      },
+      "ref": {
+        "engines": [
+          "numpy"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs numpy: global phase 0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:08.794Z"
+    },
+    {
+      "id": "qudit-cross-check-qubits",
+      "suite": "quantum",
+      "title": "Reference cross-validation: H+CNOT+T circuit through Qiskit AND the NumPy reference",
+      "purpose": "Full complex state-vector comparison against Qiskit Statevector AND the independent NumPy qudit reference (global phase normalized, index conventions mapped). If NumPy and Qiskit agree on a circuit both can compute, the NumPy reference implementation is validated for the qudit cases that Qiskit cannot express.",
+      "units": {
+        "amplitude": "dimensionless complex"
+      },
+      "modelNotes": [
+        "Qubit ordering: Qiskit little-endian (qubit 0 = LSB) vs Invention Lab q0-most-significant — resolved by index bit-reversal, then amplitudes compared element-wise.",
+        "Global phase is physically irrelevant: the comparison reports the phase it removed instead of reporting a false disagreement."
+      ],
+      "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
+      "status": "pass",
+      "classification": "pass",
+      "startedAt": "2026-11-15T17:01:08.794Z",
+      "checks": [
+        {
+          "name": "max |amplitude| error vs qiskit (after global phase)",
+          "verdict": "pass",
+          "actual": 1.1102230246251565e-16,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 1.1102230246251565e-16,
+            "relErr": 0.00011102230246251565
+          }
+        },
+        {
+          "name": "max probability error vs qiskit",
+          "verdict": "pass",
+          "actual": 1.1102230246251565e-16,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 1.1102230246251565e-16,
+            "relErr": 0.00011102230246251565
+          }
+        },
+        {
+          "name": "max |amplitude| error vs numpy (after global phase)",
+          "verdict": "pass",
+          "actual": 7.850462293418875e-17,
+          "reference": 0,
+          "tol": {
+            "abs": 1e-9
+          },
+          "metrics": {
+            "absErr": 7.850462293418875e-17,
+            "relErr": 0.00007850462293418875
+          }
+        },
+        {
+          "name": "max probability error vs numpy",
+          "verdict": "pass",
+          "actual": 1.1102230246251565e-16,
+          "reference": 0,
+          "tol": {
+            "abs": 2e-9
+          },
+          "metrics": {
+            "absErr": 1.1102230246251565e-16,
+            "relErr": 0.00011102230246251565
+          }
+        }
+      ],
+      "il": {
+        "n": 2,
+        "d": 2,
+        "gates": 3
+      },
+      "ref": {
+        "engines": [
+          "qiskit",
+          "numpy"
+        ]
+      },
+      "analytical": null,
+      "notes": [
+        "vs qiskit: global phase 0.000000 deg",
+        "vs numpy: global phase -0.000000 deg"
+      ],
+      "artifacts": null,
+      "error": null,
+      "finishedAt": "2026-11-15T17:01:10.314Z"
+    }
+  ],
+  "summary": {
+    "total": 14,
+    "pass": 14,
+    "inconclusive": 0,
+    "model-mismatch": 0,
+    "skipped": 0,
+    "unsupported": 0,
+    "fail": 0,
+    "passed": 14
+  },
+  "verdictDoc": {
+    "pass": "Invention Lab and the independent reference agree within the documented tolerance.",
+    "fail": "A comparison exceeded its tolerance or an engine produced invalid data.",
+    "skipped": "The benchmark did not run (e.g. external engine unavailable). NEVER counted as a pass.",
+    "unsupported": "The benchmark targets behavior the platform explicitly does not support.",
+    "model-mismatch": "The two engines implement genuinely different mathematical models; documented, not a bug.",
+    "inconclusive": "The benchmark ran but the comparison cannot decide (e.g. missing tolerance)."
+  }
+}

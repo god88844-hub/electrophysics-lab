@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-11-15T17:01:10.320Z",
+  "commitSHA": "5decbdb45f988fa9dc987578f3da661bf88e62c3",
+  "engines": {
+    "qiskit": {
+      "version": "2.6.2",
+      "note": null
+    },
+    "numpy": {
+      "version": "independent reference (see per-case engine strings)"
+    }
+  },
+  "stages": {
+    "crossSolver": {
+      "status": "available",
+      "suites": [
+        {
+          "suite": "quantum (Qiskit + independent NumPy qudit reference)",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "unsupported": 0,
+          "modelMismatch": 0,
+          "inconclusive": 0
+        }
+      ],
+      "note": "Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence)."
+    },
+    "physicalValidation": {
+      "status": "none",
+      "note": "No physical measurements exist. Numerical agreement with Ngspice/Qiskit is NOT physical validation."
+    },
+    "modelCalibration": {
+      "status": "none",
+      "note": "No model parameter has been estimated from measured data."
+    }
+  }
+}
