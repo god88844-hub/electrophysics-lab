@@ -33,7 +33,7 @@ jobs:
           python3 -m pip install --upgrade pip
           pip3 install "qiskit==2.6.2" "numpy==2.4.6"
           python3 -c "import qiskit, numpy; print('qiskit', qiskit.__version__, '| numpy', numpy.__version__)"
-      - name: Run ALL benchmark suites (strict: every case must pass)
+      - name: Run ALL benchmark suites (strict mode - every case must pass)
         run: node js/bench/run.mjs --suite all --strict
       - name: Publish benchmark summary
         if: always()
