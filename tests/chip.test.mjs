@@ -257,12 +257,23 @@ test('chip: AC with nonlinear devices is refused, not silently linearized', () =
   assert.ok(res.problems[0].includes('linear'));
 });
 
-test('chip: SPICE deck export contains elements, models and analysis', () => {
-  const deck = toSpiceDeck(dividerDiagram(), { analysis: 'tran', tstop: '1m', dt: '1u' });
+test('chip: SPICE deck export contains elements, per-device models and analysis', () => {
+  // strengthened after the audit fix: model cards are per-device and carry
+  // the user's actual parameters (no hard-coded VTO/KP/Is/N)
+  const d = dividerDiagram();
+  const di = d.addBlock('chip.DIODE', { params: { is: 5e-13, n: 1.5 } });
+  const mos = d.addBlock('chip.NMOS', { params: { k: 0.012, vth: 0.75 } });
+  d.connect(d.block('chipRES1').id, 'n', di.id, 'a');
+  d.connect(di.id, 'c', d.block('chipGND1').id, 'g');
+  d.connect(mos.id, 's', d.block('chipGND1').id, 'g');
+  const deck = toSpiceDeck(d, { analysis: 'tran', tstop: '1m', dt: '1u' });
   assert.ok(deck.includes('RchipRES'));
   assert.ok(deck.includes('VchipVSOURCE'));
   assert.ok(deck.includes('.tran 1u 1m'));
-  assert.ok(deck.includes('.model DMOD'));
+  assert.ok(deck.includes('.model DMOD_chipDIODE1 D(Is=5e-13 N=1.5)'), 'per-device diode model with user params');
+  assert.match(deck, /Vto=0\.75/i, 'NMOS threshold from user params');
+  assert.match(deck, /Kp=0\.012/i, 'NMOS transconductance from user params');
+  assert.ok(deck.includes('NMOD_chipNMOS1'), 'M element references its own model card');
   assert.ok(deck.includes('.end'));
 });
 

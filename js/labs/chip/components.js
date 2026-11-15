@@ -15,7 +15,7 @@ const defs = [
     typeId: 'chip.VSOURCE', lab: 'chip', category: 'Sources', label: 'Voltage Source',
     desc: 'Independent voltage source. DC, sine, or pulse waveform.',
     params: [
-      { key: 'mode', label: 'Mode', type: 'select', options: ['dc', 'sine', 'pulse'], default: 'dc' },
+      { key: 'mode', label: 'Mode', type: 'select', options: ['dc', 'ac', 'sine', 'pulse'], default: 'dc' },
       p('dc', 'DC value (V)', 5, { unit: 'V' }),
       p('amp', 'Amplitude (V)', 1, { unit: 'V' }),
       p('freq', 'Frequency (Hz)', 1000, { unit: 'Hz' }),

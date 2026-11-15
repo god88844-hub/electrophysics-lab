@@ -24,7 +24,13 @@ const Vt = (T = 300) => (CONST.k_B * T) / CONST.q_e; // ≈ 25.85 mV @ 300 K
 export function buildNetlist(diagram) {
   const problems = [];
   const entries = diagram.blocks
-    .map((block) => ({ block, def: getComponent(block.type), params: block.params }))
+    .map((block) => ({
+      block,
+      def: getComponent(block.type),
+      // deep-copy params: analyses must never mutate the caller's design
+      // (audit regression: paramOverrides changed the original resistor)
+      params: JSON.parse(JSON.stringify(block.params)),
+    }))
     .filter((e) => e.def?.chip);
 
   const parent = new Map();
@@ -430,21 +436,26 @@ function elementReport(nl, { dc = false, t = 0, dt = null, vNode, vPrevC = {}, i
     const kind = def.chip.kind;
     const bid = block.id;
     const vp = nodeV(`${bid}/p`), vn = nodeV(`${bid}/n`);
-    const v = vp - vn;
+    let v = vp - vn;
     let i = 0, label = `${kind} ${bid}`;
     switch (kind) {
       case 'res': i = v / P.r; break;
       case 'cap': i = dc ? 0 : (P.c * (v - (vPrevC[bid] ?? P.vInit ?? 0))) / dt; break;
       case 'ind': i = dc ? (currents.get(bid) ?? 0) : (iPrevL[bid] ?? P.iInit ?? 0) + (dt / P.l) * v; break;
       case 'diode': {
+        // audit fix: diodes have anode/cathode, not p/n — power = Va·Ia
         const va = nodeV(`${bid}/a`), vc = nodeV(`${bid}/c`);
+        v = va - vc;
         i = diodeCurrents([va, vc], P)[0];
         break;
       }
       case 'nmos': case 'pmos': {
+        // audit fix: MOSFETs have drain/gate/source, not p/n —
+        // dissipated power is P = Vds · Id (gate dissipates nothing)
         const vd = nodeV(`${bid}/d`), vg = nodeV(`${bid}/g`), vs = nodeV(`${bid}/s`);
+        v = vd - vs;
         i = mosCurrents([vd, vg, vs], kind, P)[0];
-        label = `${kind} ${bid} (Vds=${(vd - vs).toFixed(3)}V)`;
+        label = `${kind} ${bid} (Vds=${v.toFixed(3)}V)`;
         break;
       }
       case 'vsource': i = -(currents.get(bid) ?? 0); break; // delivered to circuit

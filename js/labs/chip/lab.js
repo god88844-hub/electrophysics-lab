@@ -30,6 +30,20 @@ export const chipLab = {
       ? { name: 'Structure: no dangling wires or unknown types', verdict: 'pass', actual: 0, expected: 0, tolerance: 0, note: '', evidence: null }
       : { name: `Structure: ${issues.length} issue(s)`, verdict: 'fail', actual: issues.length, expected: 0, tolerance: 0, note: issues.join('; '), evidence: null });
 
+    // audit fix: the REQUESTED analysis must actually execute. An unsupported
+    // or failed run can never contribute to a PASS verdict.
+    const requested = diagram.meta?.analysis ?? 'dc';
+    const execution = this.run(diagram);
+    checks.push({
+      name: `Requested '${requested}' analysis executed`,
+      verdict: execution.ok ? 'pass' : 'fail',
+      stage: 'execution',
+      actual: execution.ok ? 0 : 1, expected: 0, tolerance: 0,
+      note: execution.ok ? 'solver completed without errors' : (execution.problems || []).join('; '),
+      evidence: null,
+    });
+    if (!execution.ok) return checks; // remaining checks would be meaningless
+
     const nl = buildNetlist(diagram);
     if (nl.problems.length) {
       checks.push({ name: 'Netlist: solvable topology', verdict: 'fail', actual: nl.problems.length, expected: 0, tolerance: 0, note: nl.problems.join('; '), evidence: null });
@@ -78,6 +92,7 @@ export const chipLab = {
       checks.push(makeCheck({
         name: 'DC operating point: all element currents/powers finite',
         actual: bad.length, expected: 0,
+        stage: 'mathematical',
         note: bad.length ? `non-finite at: ${bad.map((b) => b.blockId).join(', ')}` : `total power ${dc.elements.reduce((a, b) => a + b.power, 0).toExponential(3)} W`,
       }));
       // thermal estimates within plausible range

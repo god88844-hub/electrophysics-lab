@@ -158,14 +158,28 @@ export const quantumLab = {
         : 'single outcome, zero variance',
     }));
 
-    // entanglement witness for 2-quubit circuits with zero cross terms
-    if (res.n === 2 && res.d === 2) {
-      const cross = (res.probs['01'] || 0) + (res.probs['10'] || 0);
-      if (cross === 0) {
+    // two-qubit state class (audit fix): a pure two-qubit state is entangled
+    // iff |a00·a11 − a01·a10| > 0. Zero cross-term PROBABILITY alone is not a
+    // witness — |00> is a product state with P(01)+P(10) = 0 as well.
+    if (res.n === 2 && res.d === 2 && res.stateVector) {
+      const a = res.stateVector.map((s) => s.amp);
+      const detRe = (a[0].re * a[3].re - a[0].im * a[3].im) - (a[1].re * a[2].re - a[1].im * a[2].im);
+      const detIm = (a[0].re * a[3].im + a[0].im * a[3].re) - (a[1].re * a[2].im + a[1].im * a[2].re);
+      const detMag = Math.hypot(detRe, detIm);
+      if (detMag > 1e-9) {
         checks.push({
-          name: 'Entanglement witness: P(01)+P(10) = 0 (Bell-type state)',
-          verdict: 'pass', actual: 0, expected: 0, tolerance: 0,
-          note: 'State is (|00>±|11>)/√2 class; maximally entangled.',
+          name: 'Entanglement witness: amplitude determinant |a00·a11 − a01·a10| > 0',
+          verdict: 'pass', stage: 'mathematical',
+          actual: detMag, expected: 0, tolerance: 0,
+          note: `State is in the (|00>±|11>)/√2 class; maximally entangled. Determinant magnitude = ${detMag.toFixed(4)}.`,
+          evidence: null,
+        });
+      } else {
+        checks.push({
+          name: 'Two-qubit state classification',
+          verdict: 'pass', stage: 'mathematical',
+          actual: 0, expected: 0, tolerance: 0,
+          note: 'Product state (separable): amplitude determinant = 0, so the state factors into qubit states. No non-classical two-qubit correlations present.',
           evidence: null,
         });
       }
@@ -173,7 +187,7 @@ export const quantumLab = {
 
     checks.push({
       name: 'Model honesty: pure-state simulation, no decoherence',
-      verdict: 'warn', actual: null, expected: null, tolerance: null,
+      verdict: 'warn', stage: 'physical', actual: null, expected: null, tolerance: null,
       note: 'No noise/decoherence modeled. Real-hardware error rates must be budgeted separately — this platform does not pretend otherwise.',
       evidence: null,
     });

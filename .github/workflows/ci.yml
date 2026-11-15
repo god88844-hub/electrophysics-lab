@@ -1,0 +1,27 @@
+# CI for Invention Lab — audit requirement: automated, visible test runs.
+# The suite is pure Node (no browser needed). The glob is expanded by the
+# shell on Linux CI; on Windows the Node >=22 test runner expands it itself.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Run test suite
+        run: npm test
+      - name: Report summary
+        if: always()
+        run: echo "Node ${{ matrix.node }} — suite result above (115+ tests expected green)."

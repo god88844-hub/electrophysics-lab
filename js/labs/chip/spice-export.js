@@ -46,25 +46,41 @@ export function toSpiceDeck(diagram, { analysis = 'tran', tstop = '1m', dt = '1u
       case 'res': lines.push(`R${b.id} ${nd('p')} ${nd('n')} ${P.r}`); break;
       case 'cap': lines.push(`C${b.id} ${nd('p')} ${nd('n')} ${P.c} IC=${P.vInit ?? 0}`); break;
       case 'ind': lines.push(`L${b.id} ${nd('p')} ${nd('n')} ${P.l} IC=${P.iInit ?? 0}`); break;
-      case 'diode': lines.push(`D${b.id} ${nd('a')} ${nd('c')} DMOD`); break;
+      case 'diode': lines.push(`D${b.id} ${nd('a')} ${nd('c')} DMOD_${b.id}`); break;
       case 'vsource': {
         if (P.mode === 'sine') lines.push(`V${b.id} ${nd('p')} ${nd('n')} SIN(${P.offset} ${P.amp} ${P.freq})`);
         else if (P.mode === 'pulse') lines.push(`V${b.id} ${nd('p')} ${nd('n')} PULSE(0 ${P.amp} 0 1n 1n ${P.duty / P.freq} ${1 / P.freq})`);
         else lines.push(`V${b.id} ${nd('p')} ${nd('n')} DC ${P.dc}`);
         break;
       }
-      case 'isource': lines.push(`I${b.id} ${nd('p')} ${nd('n')} DC ${P.i}`); break;
-      case 'nmos': lines.push(`M${b.id} ${nd('d')} ${nd('g')} ${nd('s')} ${nd('s')} NMOD W=1u L=1u`); break;
-      case 'pmos': lines.push(`M${b.id} ${nd('s')} ${nd('g')} ${nd('d')} ${nd('d')} PMOD W=1u L=1u`); break;
+      case 'isource':
+        // SPICE semantics: positive current flows from n+ through the source
+        // to n- (it draws from the first node). Our solver's convention is
+        // "delivers i OUT of terminal p", so the deck swaps the node order to
+        // reproduce the same physical behavior in SPICE.
+        lines.push(`I${b.id} ${nd('n')} ${nd('p')} DC ${P.i}`);
+        break;
+      case 'nmos': lines.push(`M${b.id} ${nd('d')} ${nd('g')} ${nd('s')} ${nd('s')} NMOD_${b.id} W=1u L=1u`); break;
+      case 'pmos': lines.push(`M${b.id} ${nd('s')} ${nd('g')} ${nd('d')} ${nd('d')} PMOD_${b.id} W=1u L=1u`); break;
       case 'opamp': lines.push(`E${b.id} ${nd('vout')} 0 ${nd('vp')} ${nd('vn')} ${P.gain}`); break;
       case 'voltmeter': lines.push(`* voltmeter ${b.id} probes node ${nd('p')}`); break;
       case 'ammeter': lines.push(`V${b.id} ${nd('p')} ${nd('n')} DC 0 * ammeter (0V source trick)`); break;
       default: break;
     }
   }
-  lines.push('', '.model DMOD D(Is=1e-12 N=1)');
-  lines.push('.model NMOD NMOS(Level=1 Vto=2 Kp=0.02)');
-  lines.push('.model PMOD PMOS(Level=1 Vto=-2 Kp=0.02)');
+  // per-device model cards: user parameters (audit fix — no hard-coded VTO/KP)
+  lines.push('');
+  for (const b of diagram.blocks) {
+    const def = getComponent(b.type);
+    if (!def?.chip) continue;
+    const P = b.params;
+    switch (def.chip.kind) {
+      case 'diode': lines.push(`.model DMOD_${b.id} D(Is=${P.is ?? 1e-12} N=${P.n ?? 1})`); break;
+      case 'nmos': lines.push(`.model NMOD_${b.id} NMOS(Level=1 Vto=${P.vth ?? 2} Kp=${P.k ?? 0.02} Lambda=${P.lambda ?? 0.01})`); break;
+      case 'pmos': lines.push(`.model PMOD_${b.id} PMOS(Level=1 Vto=${P.vth ?? -2} Kp=${P.k ?? 0.02} Lambda=${P.lambda ?? 0.01})`); break;
+      default: break;
+    }
+  }
   const sim = getComponent(diagram.blocks[0]?.type) ? '' : '';
   if (analysis === 'tran') lines.push(`.tran ${dt} ${tstop}`);
   else if (analysis === 'ac') lines.push(`.ac dec 10 ${fstart} ${fstop}`);

@@ -13,6 +13,12 @@ platform never claims more than it can prove:
 - Every physical parameter carries a **tolerance** (e.g. resistors ±5%).
 - Every design run produces a **validation report**: checks with pass/warn/fail/unknown verdicts,
   statistical confidence, and an explicit list of *assumptions & unknowns*.
+- **Verdict discipline (post-audit):** the requested analysis must actually execute (a failed or
+  unsupported run can never contribute to a PASS); an electrically incomplete design (undriven
+  inputs, bus contention) can never PASS; **any uncalibrated assumption caps the verdict at WARN**
+  ("mathematically correct, physically unverified"); and reports separate four evidence stages —
+  **execution**, **mathematical correctness**, **cross-solver agreement**, and **independent
+  physical validation**, the last of which is always `none` until real measurements are supplied.
 - Monte Carlo support: sample parameters within their tolerances and observe output spread.
 - Nothing is ever marked "safe to build" without documented evidence. If a component has no
   validated model, the report says **unknown** — it does not quietly pass.

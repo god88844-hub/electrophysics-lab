@@ -79,7 +79,7 @@ export function withinTol(actual, expected, { abs = 0, rel = 0 } = {}) {
  *   'fail'    — outside tolerance
  *   'unknown' — no data / not covered by any validated model
  */
-export function makeCheck({ name, actual, expected, abs = 0, rel = 0, verdict = null, note = '', evidence = null }) {
+export function makeCheck({ name, actual, expected, abs = 0, rel = 0, verdict = null, note = '', evidence = null, stage = 'mathematical' }) {
   if (!verdict) verdict = withinTol(actual, expected, { abs, rel }) ? 'pass' : 'fail';
   const lim = Math.max(abs, Math.abs(expected) * rel);
   return {
@@ -87,6 +87,7 @@ export function makeCheck({ name, actual, expected, abs = 0, rel = 0, verdict = 
     actual, expected,
     tolerance: lim,
     note, evidence,
+    stage, // 'execution' | 'mathematical' | 'crossSolver' | 'physical'
   };
 }
 
@@ -125,9 +126,34 @@ export function collectAssumptions(diagram) {
 
 /**
  * Full design report: lab checks + coverage assumptions + provenance.
- * verdict: worst of the checks; assumptions always listed explicitly.
+ *
+ * Verdict rule (audit fix): the worst verdict of the checks, BUT an
+ * uncalibrated design can never receive an unconditional PASS — any
+ * documented assumption (missing provenance / tolerance evidence) caps the
+ * verdict at 'warn', which reads as "mathematically correct, physically
+ * unverified". A true physical-validation PASS requires independent
+ * experimental evidence, which the platform tracks separately (see stages).
  */
 export function assembleReport({ diagram, checks, title }) {
+  const assumptions = collectAssumptions(diagram);
+  let verdict = verdictFrom(checks);
+  if (assumptions.length > 0 && verdict === 'pass') verdict = 'warn';
+
+  // Evidence stages (audit): reports must distinguish what kind of evidence
+  // each verdict rests on. 'physical' stays 'none' until independent
+  // experimental measurements are supplied and compared within tolerance.
+  const byStage = { execution: [], mathematical: [], crossSolver: [] };
+  for (const c of checks) {
+    const stage = c.stage ?? 'mathematical';
+    if (byStage[stage]) byStage[stage].push(c);
+  }
+  const stages = {
+    execution: verdictFrom(byStage.execution),
+    mathematical: verdictFrom(byStage.mathematical),
+    crossSolver: verdictFrom(byStage.crossSolver),
+    physical: 'none',
+  };
+
   const provenance = [];
   for (const b of diagram.blocks) {
     const def = getComponent(b.type);
@@ -136,10 +162,15 @@ export function assembleReport({ diagram, checks, title }) {
   return {
     title: title || diagram.name,
     diagramName: diagram.name,
-    verdict: verdictFrom(checks),
+    verdict,
+    stages,
     checks,
-    assumptions: collectAssumptions(diagram),
+    assumptions,
     provenance,
+    physicalValidation: {
+      status: 'none',
+      note: 'No independent experimental measurements have been supplied or compared within tolerance. Mathematical correctness and cross-solver agreement are NOT physical validation.',
+    },
     generatedAt: new Date().toISOString(),
   };
 }

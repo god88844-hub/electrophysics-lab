@@ -414,6 +414,23 @@ export const Scope = {
     c.appendChild(el('div', {}, el('b', { text: `Design report: ${report.title || report.diagramName}` }), el('span', { text: '   ' }), verdictChip(report.verdict)));
     c.appendChild(el('div', { class: 'muted', text: `Generated ${new Date(report.generatedAt).toLocaleTimeString()} — verdicts follow George Box's rule: models are wrong; we state how wrong they may be.` }));
 
+    // evidence stages (audit): distinguish the kind of evidence behind the verdict
+    if (report.stages) {
+      const stageRows = [
+        ['Execution (the requested analysis ran)', report.stages.execution],
+        ['Mathematical correctness (checks vs references)', report.stages.mathematical],
+        ['Cross-solver agreement (independent implementations agree)', report.stages.crossSolver],
+        ['Independent physical validation (measurements)', report.stages.physical],
+      ];
+      const st = table(['Evidence stage', 'Status'], stageRows);
+      report.physicalValidation && st.rows[3].cells[1].appendChild(
+        el('span', { class: 'muted', text: ` — ${report.physicalValidation.note}` }));
+      c.appendChild(st);
+    }
+    if (report.assumptions.length && report.verdict === 'warn') {
+      c.appendChild(el('div', { class: 'warn', text: `⚠ Verdict capped at WARN: ${report.assumptions.length} uncalibrated assumption(s) — a design without tolerance evidence can never receive an unconditional PASS.` }));
+    }
+
     c.appendChild(el('h3', { text: 'Checks' }));
     if (!report.checks.length) c.appendChild(el('div', { class: 'muted', text: 'No checks (empty design).' }));
     const rows = report.checks.map((chk) => [
