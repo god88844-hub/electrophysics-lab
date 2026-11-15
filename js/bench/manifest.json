@@ -1,0 +1,31 @@
+{
+  "format": "invention-lab/acceptance-manifest/1",
+  "phase": 2,
+  "note": "Independent, version-controlled acceptance specification. This file is the AUTHORITY for what strict CI requires: the executed benchmark set must cover exactly these case IDs (no missing, no duplicates, no unknown extras), and every one must pass. It is deliberately NOT derived from the case-definition modules — deleting a benchmark definition does not shrink this manifest; strict validation will fail instead.",
+  "requiredCaseIds": [
+    "ngspice-divider",
+    "ngspice-isource-polarity",
+    "ngspice-rc-transient",
+    "ngspice-rc-ac",
+    "ngspice-ac-phase",
+    "ngspice-rl",
+    "ngspice-diode",
+    "ngspice-nmos",
+    "ngspice-pmos",
+    "ngspice-combined",
+    "quantum-basis-identity",
+    "quantum-hadamard-all",
+    "quantum-pauli-sequence",
+    "quantum-phase-gates",
+    "quantum-cnot-bell",
+    "quantum-swap-chain",
+    "quantum-rx-ry-rz",
+    "quantum-ghz-3",
+    "quantum-dj-balanced",
+    "quantum-qft-3",
+    "quantum-bell-sampling",
+    "qudit-qutrit-shift-fourier",
+    "qudit-ququart-sum",
+    "qudit-cross-check-qubits"
+  ]
+}

@@ -214,7 +214,7 @@ test('bench: bitReverse helper stays available for convention tooling', () => {
 });
 
 // ---------------- review round 3: acceptance-policy regressions -------------
-import { exitCodeFor, crossSolverEvidenceStatus, combineReports } from '../js/bench/harness.js';
+import { exitCodeFor, crossSolverEvidenceStatus, combineReports, strictAcceptance } from '../js/bench/harness.js';
 
 test('bench: explicit "pass" with no checks is rejected as inconclusive', async () => {
   const c = defineCase({
@@ -459,3 +459,74 @@ test('bench: CLI stale-commit report is excluded, not merged as current', async 
   const reportMd = fs.readFileSync(`${outDir}/REPORT.md`, 'utf8');
   assert.ok(reportMd.includes('foreign') || reportMd.includes('excluded'), 'exclusion must be visible in the report');
 }, { timeout: 120_000 });
+
+// ---------------- review round 6: independent acceptance manifest ------------
+import manifestJson from '../js/bench/manifest.json' with { type: 'json' };
+
+test('bench: manifest.json is an independent 24-case acceptance specification', () => {
+  assert.equal(manifestJson.format, 'invention-lab/acceptance-manifest/1');
+  assert.equal(manifestJson.phase, 2);
+  const ids = manifestJson.requiredCaseIds;
+  assert.equal(ids.length, 24);
+  assert.equal(new Set(ids).size, 24, 'no duplicate manifest ids');
+  assert.ok(ids.includes('ngspice-divider') && ids.includes('quantum-qft-3'));
+});
+
+test('bench: manifest matches the registered case definitions (drift alarm)', async () => {
+  // the manifest is the AUTHORITY for strict acceptance; this check only
+  // ALARMS on drift so an accidental deletion of a benchmark definition is
+  // also caught in unit CI (strict validation fails independently).
+  const { ngspiceCases } = await import('../js/bench/cases/ngspice-cases.js');
+  const { quantumCases } = await import('../js/bench/cases/quantum-cases.js');
+  const defIds = [...ngspiceCases().map((c) => c.id), ...quantumCases().map((c) => c.id)];
+  const ids = manifestJson.requiredCaseIds;
+  assert.equal(ids.length, defIds.length, 'manifest/definition count drifted — a benchmark definition was deleted or renamed; restore it (the manifest is the authority)');
+  for (const id of defIds) assert.ok(ids.includes(id), `case definition "${id}" is missing from the manifest`);
+  for (const id of ids) assert.ok(defIds.includes(id), `manifest id "${id}" has no case definition`);
+});
+
+test('bench: strictAcceptance detects missing, renamed, duplicate, and non-passing required cases', () => {
+  const manifest = ['a', 'b', 'c'];
+  const mkCase = (id, status = 'pass') => ({ id, status });
+  // all good
+  assert.equal(strictAcceptance([{ cases: [mkCase('a'), mkCase('b'), mkCase('c')] }], manifest).ok, true);
+  // missing (deleted benchmark): only a and b executed
+  const missing = strictAcceptance([{ cases: [mkCase('a'), mkCase('b')] }], manifest);
+  assert.equal(missing.ok, false);
+  assert.deepEqual(missing.missing, ['c']);
+  // renamed: executed 'z' instead of 'c' — unknown executed id AND missing 'c'
+  const renamed = strictAcceptance([{ cases: [mkCase('a'), mkCase('b'), mkCase('z')] }], manifest);
+  assert.equal(renamed.ok, false);
+  assert.deepEqual(renamed.unknown, ['z']);
+  assert.ok(renamed.missing.includes('c'));
+  // duplicate execution
+  const dupe = strictAcceptance([{ cases: [mkCase('a'), mkCase('a'), mkCase('b'), mkCase('c')] }], manifest);
+  assert.equal(dupe.ok, false);
+  assert.deepEqual(dupe.duplicates, ['a']);
+  // executed but failing
+  const failing = strictAcceptance([{ cases: [mkCase('a'), mkCase('b', 'fail'), mkCase('c')] }], manifest);
+  assert.equal(failing.ok, false);
+  assert.deepEqual(failing.notPassing, ['b']);
+});
+
+test('bench: deleting a benchmark from the executed suite fails strict validation (exit code)', () => {
+  // simulate: 24-case manifest, but the executed report only contains 23
+  const manifestIds = manifestJson.requiredCaseIds;
+  const cases23 = manifestIds.slice(1).map((id) => ({ id, status: 'pass' }));
+  const report = { summary: { total: 23, pass: 23, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 }, cases: cases23 };
+  // without the manifest: old behavior would pass (23/23)
+  assert.equal(exitCodeFor([report], { strict: true }), 0);
+  // with the independent manifest: FAIL — one required case is missing
+  assert.equal(exitCodeFor([report], { strict: true, manifestIds }), 1);
+  // full 24-case execution passes strict
+  const full = { summary: { total: 24, pass: 24, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 }, cases: manifestIds.map((id) => ({ id, status: 'pass' })) };
+  assert.equal(exitCodeFor([full], { strict: true, manifestIds }), 0);
+});
+
+test('bench: a renamed executed case fails strict validation (exit code)', () => {
+  const manifestIds = manifestJson.requiredCaseIds;
+  const cases = manifestIds.map((id) => ({ id, status: 'pass' }));
+  cases[cases.length - 1] = { id: 'quantum-renamed-gate', status: 'pass' }; // renamed
+  const report = { summary: { total: manifestIds.length, pass: manifestIds.length, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 }, cases };
+  assert.equal(exitCodeFor([report], { strict: true, manifestIds }), 1);
+});

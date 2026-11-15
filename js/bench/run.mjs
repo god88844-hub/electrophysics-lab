@@ -16,6 +16,10 @@ import { runSuite, renderMarkdown, exitCodeFor, crossSolverEvidenceStatus, combi
 import { resolveNgspice } from './ngspice-adapter.js';
 import { resolvePython, runQuantumRef, qiskitToIlOrder } from './quantum/quantum-adapter.js';
 import { ngspiceCases } from './cases/ngspice-cases.js';
+import { readFileSync } from 'node:fs';
+const manifest = JSON.parse(readFileSync(new URL('./manifest.json', import.meta.url), 'utf8'));
+const manifestIds = manifest.requiredCaseIds;
+console.log(`  manifest: ${manifestIds.length} required cases (independent spec: js/bench/manifest.json, phase ${manifest.phase})`);
 import { quantumCases } from './cases/quantum-cases.js';
 
 function arg(name) {
@@ -129,8 +133,11 @@ for (const st of staleExcluded) {
   console.log(`(stale report excluded from evidence counts: suite "${st.suite}" generated at a different commit — current is ${commitSHA.slice(0, 7)})`);
 }
 
-// Phase 2 required-case manifest: every case id from both suites.
-const requiredCaseIds = [...ngspiceCases().map((c) => c.id), ...quantumCases().map((c) => c.id)];
+// review round 5: the required manifest is the INDEPENDENT version-controlled
+// specification (js/bench/manifest.json), not a list derived from the case
+// definitions — deleting a benchmark definition now FAILS strict validation
+// instead of shrinking the requirement.
+const requiredCaseIds = manifestIds;
 
 // combined machine-readable evidence summary for the validation-stage system
 const evidence = {
@@ -144,6 +151,7 @@ const evidence = {
     crossSolver: {
       ...crossSolverEvidenceStatus(combinedReports, { requiredIds: requiredCaseIds }),
       declaredScope: suiteArg,
+      manifest: { source: 'js/bench/manifest.json', requiredCases: manifestIds.length, phase: manifest.phase },
       requiredCases: requiredCaseIds.length,
       note: 'Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).',
     },
@@ -186,4 +194,5 @@ console.log(`Evidence: cross-solver ${evidence.stages.crossSolver.status} (${evi
 process.exit(exitCodeFor(combinedReports, {
   strict: process.argv.includes('--strict'),
   requiredIds: requiredCaseIds,
+  manifestIds,
 }));

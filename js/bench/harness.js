@@ -213,7 +213,7 @@ export function renderMarkdown(report) {
  *               is at least one case — skipped, unsupported, inconclusive,
  *               model-mismatch, or missing suites all fail strict CI.
  */
-export function exitCodeFor(reports, { strict = false, requiredIds = null } = {}) {
+export function exitCodeFor(reports, { strict = false, requiredIds = null, manifestIds = null } = {}) {
   const fail = reports.reduce((a, r) => a + (r.summary.fail || 0), 0);
   const total = reports.reduce((a, r) => a + (r.summary.total || 0), 0);
   const pass = reports.reduce((a, r) => a + (r.summary.pass || 0), 0);
@@ -226,6 +226,10 @@ export function exitCodeFor(reports, { strict = false, requiredIds = null } = {}
     const executed = new Set(reports.flatMap((r) => (r.cases || []).map((c) => c.id)));
     const missing = requiredIds.filter((id) => !executed.has(id));
     if (missing.length > 0) return 1;
+  }
+  if (strict && manifestIds && manifestIds.length) {
+    const acc = strictAcceptance(reports, manifestIds);
+    if (!acc.ok) return 1;
   }
   return 0;
 }
@@ -244,6 +248,32 @@ export function combineReports(executedReports, previousReports, currentSHA) {
     else staleExcluded.push({ suite: prev.suite, generatedAt: prev.generatedAt, reason: `report was generated at commit ${prevSHA ?? 'unknown'}, not the current ${currentSHA} — excluded from evidence counts` });
   }
   return { merged, staleExcluded };
+}
+
+/**
+ * strictAcceptance (review round 5): exact-set acceptance against the
+ * version-controlled manifest. Detects MISSING, RENAMED (unknown executed
+ * ids), DUPLICATE, and NON-PASSING required cases — so deleting or renaming
+ * a benchmark definition can never silently shrink strict validation.
+ * @returns {{ ok: boolean, missing: string[], duplicates: string[], unknown: string[], notPassing: string[] }}
+ */
+export function strictAcceptance(reports, manifestIds) {
+  const executed = [];
+  const dupes = [];
+  for (const r of reports) {
+    for (const c of r.cases || []) {
+      if (executed.includes(c.id)) dupes.push(c.id);
+      executed.push(c.id);
+    }
+  }
+  const passed = new Set(reports.flatMap((r) => (r.cases || []).filter((c) => c.status === 'pass').map((c) => c.id)));
+  const missing = manifestIds.filter((id) => !executed.includes(id) || !passed.has(id));
+  const unknown = executed.filter((id) => !manifestIds.includes(id));
+  const notPassing = manifestIds.filter((id) => executed.includes(id) && !passed.has(id));
+  return {
+    ok: missing.length === 0 && dupes.length === 0 && unknown.length === 0,
+    missing, duplicates: dupes, unknown, notPassing,
+  };
 }
 
 /**

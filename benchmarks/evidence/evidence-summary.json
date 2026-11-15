@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-15T18:34:24.096Z",
-  "commitSHA": "18394c966b3066120438e744b040e549f1aea8f1",
+  "generatedAt": "2026-11-15T19:03:18.757Z",
+  "commitSHA": "c663b3bcb91a8088c766bd4e2579e5d8a06616f9",
   "engines": {
     "ngspice": {
       "version": "47",
@@ -28,6 +28,11 @@
       "missingIds": [],
       "note": "Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).",
       "declaredScope": "all",
+      "manifest": {
+        "source": "js/bench/manifest.json",
+        "requiredCases": 24,
+        "phase": 2
+      },
       "requiredCases": 24
     },
     "physicalValidation": {
