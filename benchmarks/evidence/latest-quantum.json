@@ -1,15 +1,16 @@
 {
-  "generatedAt": "2026-11-15T17:55:50.710Z",
+  "generatedAt": "2026-11-15T18:33:42.679Z",
   "suite": "quantum (Qiskit + independent NumPy qudit reference)",
   "environment": {
-    "commitSHA": "6c714e3290976edc7c88f4d962c7965d0f2d2a42",
+    "commitSHA": "308ba242671511f201aa9f15e9a6134f912e179d",
     "nodeVersion": "v25.9.0",
     "platform": "win32 x64"
   },
   "engines": {
     "ngspice": {
-      "version": "47",
-      "exe": "C:/Users/Simulation apps/computer simulation/tools/ngspice-47/Spice64/bin/ngspice_con.exe"
+      "version": null,
+      "exe": null,
+      "note": "NOT FOUND — ngspice suite will be SKIPPED, not passed"
     },
     "qiskit": {
       "version": "2.6.2",
@@ -35,7 +36,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:19.677Z",
+      "startedAt": "2026-11-15T18:33:25.153Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -80,7 +81,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:21.820Z"
+      "finishedAt": "2026-11-15T18:33:26.423Z"
     },
     {
       "id": "quantum-hadamard-all",
@@ -97,7 +98,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:21.820Z",
+      "startedAt": "2026-11-15T18:33:26.423Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -142,7 +143,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:23.873Z"
+      "finishedAt": "2026-11-15T18:33:27.931Z"
     },
     {
       "id": "quantum-pauli-sequence",
@@ -159,7 +160,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:23.873Z",
+      "startedAt": "2026-11-15T18:33:27.931Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -204,7 +205,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:25.945Z"
+      "finishedAt": "2026-11-15T18:33:29.774Z"
     },
     {
       "id": "quantum-phase-gates",
@@ -221,7 +222,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:25.945Z",
+      "startedAt": "2026-11-15T18:33:29.774Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -266,7 +267,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:27.787Z"
+      "finishedAt": "2026-11-15T18:33:32.023Z"
     },
     {
       "id": "quantum-cnot-bell",
@@ -283,7 +284,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:27.787Z",
+      "startedAt": "2026-11-15T18:33:32.023Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -328,7 +329,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:30.652Z"
+      "finishedAt": "2026-11-15T18:33:33.448Z"
     },
     {
       "id": "quantum-swap-chain",
@@ -345,7 +346,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:30.652Z",
+      "startedAt": "2026-11-15T18:33:33.448Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -390,7 +391,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:33.408Z"
+      "finishedAt": "2026-11-15T18:33:34.544Z"
     },
     {
       "id": "quantum-rx-ry-rz",
@@ -407,7 +408,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:33.408Z",
+      "startedAt": "2026-11-15T18:33:34.544Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -452,7 +453,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:35.741Z"
+      "finishedAt": "2026-11-15T18:33:35.507Z"
     },
     {
       "id": "quantum-ghz-3",
@@ -469,7 +470,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:35.741Z",
+      "startedAt": "2026-11-15T18:33:35.507Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -514,7 +515,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:40.391Z"
+      "finishedAt": "2026-11-15T18:33:36.505Z"
     },
     {
       "id": "quantum-dj-balanced",
@@ -531,7 +532,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:40.391Z",
+      "startedAt": "2026-11-15T18:33:36.505Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -576,7 +577,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:42.447Z"
+      "finishedAt": "2026-11-15T18:33:37.542Z"
     },
     {
       "id": "quantum-qft-3",
@@ -592,7 +593,7 @@
       "toleranceRationale": "max amplitude error < 1e-9 after global-phase normalization (double precision unitary products); controlled-phase construction must match between the engines exactly.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:42.447Z",
+      "startedAt": "2026-11-15T18:33:37.542Z",
       "checks": [
         {
           "name": "max |amplitude| error vs Qiskit (global phase normalized)",
@@ -633,7 +634,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:44.725Z"
+      "finishedAt": "2026-11-15T18:33:38.531Z"
     },
     {
       "id": "quantum-bell-sampling",
@@ -649,7 +650,7 @@
       "toleranceRationale": "exact probabilities: abs 1e-9 (same unitary). Sampled counts: |p_sampled - p_exact| <= 4*sqrt(p(1-p)/N) — a statistically justified two-sided bound.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:44.725Z",
+      "startedAt": "2026-11-15T18:33:38.531Z",
       "checks": [
         {
           "name": "exact probabilities (via state vectors, global phase normalized)",
@@ -742,7 +743,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:46.852Z"
+      "finishedAt": "2026-11-15T18:33:39.689Z"
     },
     {
       "id": "qudit-qutrit-shift-fourier",
@@ -759,7 +760,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:46.852Z",
+      "startedAt": "2026-11-15T18:33:39.689Z",
       "checks": [
         {
           "name": "max |amplitude| error vs numpy (after global phase)",
@@ -804,7 +805,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:47.338Z"
+      "finishedAt": "2026-11-15T18:33:40.143Z"
     },
     {
       "id": "qudit-ququart-sum",
@@ -821,7 +822,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:47.339Z",
+      "startedAt": "2026-11-15T18:33:40.143Z",
       "checks": [
         {
           "name": "max |amplitude| error vs numpy (after global phase)",
@@ -866,7 +867,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:47.862Z"
+      "finishedAt": "2026-11-15T18:33:40.539Z"
     },
     {
       "id": "qudit-cross-check-qubits",
@@ -883,7 +884,7 @@
       "toleranceRationale": "max |amplitude| error after global-phase normalization < 1e-9: all engines compute the same unitary product in double precision; anything larger indicates a convention or implementation defect.",
       "status": "pass",
       "classification": "pass",
-      "startedAt": "2026-11-15T17:55:47.862Z",
+      "startedAt": "2026-11-15T18:33:40.539Z",
       "checks": [
         {
           "name": "max |amplitude| error vs qiskit (after global phase)",
@@ -956,7 +957,7 @@
       ],
       "artifacts": null,
       "error": null,
-      "finishedAt": "2026-11-15T17:55:50.710Z"
+      "finishedAt": "2026-11-15T18:33:42.679Z"
     }
   ],
   "summary": {

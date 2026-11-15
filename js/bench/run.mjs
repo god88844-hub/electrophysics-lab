@@ -10,7 +10,7 @@
 // --strict (CI): exits non-zero unless EVERY case in every suite passed.
 
 import { execFileSync } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { runSuite, renderMarkdown, exitCodeFor, crossSolverEvidenceStatus, combineReports } from './harness.js';
 import { resolveNgspice } from './ngspice-adapter.js';
@@ -137,11 +137,12 @@ const evidence = {
   generatedAt: new Date().toISOString(),
   commitSHA,
   engines,
+  staleExcludedReports: staleExcluded,
   stages: {
     // review round 3: honest, graded cross-solver evidence — a single passing
     // case must never imply complete coverage.
     crossSolver: {
-      ...crossSolverEvidenceStatus(combinedReports),
+      ...crossSolverEvidenceStatus(combinedReports, { requiredIds: requiredCaseIds }),
       declaredScope: suiteArg,
       requiredCases: requiredCaseIds.length,
       note: 'Cross-solver agreement applies to the BENCHMARK SUITE cases only — it does not transfer to arbitrary user designs (see docs/BENCHMARKING.md §evidence).',
@@ -153,6 +154,8 @@ const evidence = {
 await writeFile(path.join(outDir, 'evidence-summary.json'), JSON.stringify(evidence, null, 2));
 
 // combined markdown
+const staleLines = (evidence.staleExcludedReports || []).map((st) =>
+  `- **Stale report excluded from evidence counts**: suite "${st.suite}" was generated at a different source commit (${st.reason}) — it is not current evidence.`);
 const md = [
   '# Invention Lab — independent benchmarking report',
   '',
@@ -160,6 +163,7 @@ const md = [
   '',
   `Engines: ${Object.entries(engines).map(([k, v]) => `${k}=${v?.version ?? 'unavailable'}`).join(' · ')}`,
   '',
+  ...(staleLines.length ? ['**Stale reports excluded from evidence counts** (different source commit — not current evidence):', ...staleLines, ''] : []),
   ...combinedReports.map((r) => renderMarkdown(r)),
   '',
   '## Evidence-stage summary',

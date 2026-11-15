@@ -26,14 +26,25 @@ export function defineCase({ id, suite, title, purpose, units = {}, modelNotes =
   return { id, suite, title, purpose, units, modelNotes, toleranceRationale, run };
 }
 
+// review round 5: accepted check verdicts are a CLOSED SET. Anything
+// unrecognized, malformed, or missing prevents PASS and produces a
+// diagnostic — an unknown verdict can never silently count as success.
+const CHECK_VERDICT_RANK = { pass: 0, warn: 1, unknown: 2, inconclusive: 3, fail: 4 };
+
 function worst(checks) {
+  let worstRank = 0;
   let verdict = 'pass';
+  const invalid = [];
   for (const c of checks) {
-    const v = c.verdict;
-    if (v === 'fail') return 'fail';
-    if (v === 'inconclusive') verdict = 'inconclusive';
+    const v = c?.verdict;
+    if (typeof v !== 'string' || !(v in CHECK_VERDICT_RANK)) {
+      invalid.push(String(v));
+      continue;
+    }
+    if (CHECK_VERDICT_RANK[v] > worstRank) { worstRank = CHECK_VERDICT_RANK[v]; verdict = v; }
   }
-  return verdict;
+  if (invalid.length > 0 && worstRank < 2) verdict = 'inconclusive'; // invalid verdicts prevent PASS
+  return { verdict, invalid };
 }
 
 /**
@@ -69,10 +80,13 @@ export async function runCase(caseDef, ctx) {
     // review round 4: the verdict is DERIVED from the checks. An explicit
     // 'pass' must never override a failing, inconclusive, or invalid check.
     if (result.status === 'pass' && (result.checks ?? []).length > 0) {
-      const w = worst(result.checks);
+      const { verdict: w, invalid } = worst(result.checks);
       if (w !== 'pass') {
-        result.status = w;
+        result.status = (w === 'warn' || w === 'unknown') ? 'inconclusive' : w;
         (result.notes ??= []).push('Explicit "pass" overridden: recorded checks contain a ' + w + ' verdict — checks win over claims.');
+      }
+      if (invalid.length > 0) {
+        (result.notes ??= []).push('Invalid check verdict(s) [' + invalid.join(', ') + '] detected — prevented PASS. Accepted verdicts: pass, warn, unknown, inconclusive, fail.');
       }
     }
     if (result.status) {
@@ -96,8 +110,11 @@ export async function runCase(caseDef, ctx) {
         record.status = 'inconclusive';
         record.notes.push('No checks produced — a benchmark without checks is not evidence of agreement.');
       } else {
-        const w = worst(record.checks);
-        record.status = w;
+        const { verdict: w, invalid } = worst(record.checks);
+        record.status = (w === 'warn' || w === 'unknown') ? 'inconclusive' : w;
+        if (invalid.length > 0) {
+          record.notes.push('Invalid check verdict(s) [' + invalid.join(', ') + '] detected — prevented PASS. Accepted verdicts: pass, warn, unknown, inconclusive, fail.');
+        }
         record.classification = w === 'fail' ? (result.classification ?? 'numerical-discrepancy') : w;
       }
     }
@@ -237,7 +254,7 @@ export function combineReports(executedReports, previousReports, currentSHA) {
  *   partial  — some passed; failures/skips/model mismatches remain
  *   complete — every executed case passed AND nothing was skipped/failed
  */
-export function crossSolverEvidenceStatus(reports) {
+export function crossSolverEvidenceStatus(reports, { requiredIds = null } = {}) {
   let total = 0, passed = 0, failed = 0, skipped = 0, unsupported = 0, inconclusive = 0, modelMismatch = 0;
   for (const r of reports) {
     const s = r.summary || {};
@@ -249,20 +266,30 @@ export function crossSolverEvidenceStatus(reports) {
     inconclusive += s.inconclusive || 0;
     modelMismatch += s['model-mismatch'] || 0;
   }
+  // review round 5: manifest awareness — a report must distinguish all
+  // executed cases passing from COMPLETE coverage of the required manifest.
+  let missingIds = [];
+  if (requiredIds && requiredIds.length) {
+    const executedPassed = new Set();
+    for (const r of reports) for (const c of r.cases || []) if (c.status === 'pass') executedPassed.add(c.id);
+    missingIds = requiredIds.filter((id) => !executedPassed.has(id));
+  }
   let status;
   const executed = total - skipped - unsupported; // cases that actually ran
   if (total === 0) status = 'missing';
   else if (executed === 0 && failed === 0 && inconclusive === 0 && modelMismatch === 0) status = 'missing'; // nothing actually executed
+  else if (missingIds.length > 0) status = 'partial'; // required manifest cases missing
   else if (passed === total) status = 'complete';
   else if (passed > 0) status = 'partial';
   else status = 'failed';
   return {
     status,
     total, passed, failed, skipped, unsupported, inconclusive, modelMismatch,
+    missingIds,
     note: status === 'complete'
       ? 'Every executed benchmark case passed. This is cross-solver agreement for the SUITE cases only — not physical validation, and not coverage of arbitrary user designs.'
       : status === 'partial'
-        ? `Incomplete coverage: ${passed}/${total} passed; ${failed} failed, ${skipped} skipped, ${unsupported} unsupported, ${inconclusive} inconclusive, ${modelMismatch} model-mismatch. Skipped cases are missing evidence, not passes.`
+        ? `Incomplete coverage: ${passed}/${total} passed; ${failed} failed, ${skipped} skipped, ${unsupported} unsupported, ${inconclusive} inconclusive, ${modelMismatch} model-mismatch.${missingIds.length ? ' Missing required case IDs: ' + missingIds.join(', ') + '.' : ''} Skipped cases are missing evidence, not passes.`
         : status === 'failed'
           ? `No benchmark case passed (${failed} failed). No cross-solver evidence is available.`
           : 'No benchmark cases were executed.',

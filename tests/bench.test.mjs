@@ -13,6 +13,8 @@ import {
 import { parseOp, parsePrints, parseWrdata, detectNgspiceFailure, runNgspice, resolveNgspice } from '../js/bench/ngspice-adapter.js';
 import { defineCase, runCase, runSuite, renderMarkdown } from '../js/bench/harness.js';
 import { qiskitToIlOrder, bitReverse } from '../js/bench/quantum/quantum-adapter.js';
+import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 
 // ---------------- comparison math ------------------------------------------
 test('bench: relative error has a documented near-zero floor', () => {
@@ -361,3 +363,99 @@ test('bench: ngspice nonzero exit is a failure even when stdout contains quit', 
   };
   assert.ok(detectNgspiceFailure(r), 'nonzero exit must be classified as failure');
 });
+
+// ---------------- review round 5: evidence-integrity regressions -------------
+// Written FIRST; demonstrated failing against commit 308ba24, then fixed.
+
+test('bench: runCase rejects unknown/invalid/missing check verdicts (no silent PASS)', async () => {
+  const mk = (checks) => defineCase({ id: 'v', suite: 's', title: 't', purpose: 'p', run: async () => ({ checks }) });
+  // 'unknown' must prevent pass
+  let rec = await runCase(mk([{ name: 'a', verdict: 'unknown' }]), {});
+  assert.equal(rec.status, 'inconclusive', 'unknown verdict must prevent PASS');
+  // malformed verdict must prevent pass, with a diagnostic
+  rec = await runCase(mk([{ name: 'a', verdict: 'invalid' }]), {});
+  assert.equal(rec.status, 'inconclusive');
+  assert.ok(rec.notes.some((n) => n.includes('invalid')), 'diagnostic must name the invalid verdict');
+  // missing verdict must prevent pass
+  rec = await runCase(mk([{ name: 'a' }]), {});
+  assert.equal(rec.status, 'inconclusive');
+  // even with an explicit claimed PASS
+  rec = await runCase(mk([{ name: 'a', verdict: 'unknown' }]), {});
+  assert.notEqual(rec.status, 'pass');
+});
+
+test('bench: explicit pass with a fail check still fails (round-4 regression, re-verified)', async () => {
+  const c = defineCase({ id: 'p', suite: 's', title: 't', purpose: 'p', run: async () => ({ status: 'pass', checks: [{ name: 'x', verdict: 'fail' }] }) });
+  const rec = await runCase(c, {});
+  assert.equal(rec.status, 'fail');
+});
+
+test('bench: crossSolverEvidenceStatus is manifest-aware (missing required IDs -> partial)', () => {
+  const quantumOnly = [{
+    suite: 'quantum',
+    summary: { total: 14, pass: 14, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 },
+    cases: [{ id: 'quantum-basis-identity', status: 'pass' }],
+  }];
+  const required = ['ngspice-divider', 'ngspice-rc-transient', 'quantum-basis-identity']; // subset manifest for the test
+  const st = crossSolverEvidenceStatus(quantumOnly, { requiredIds: required });
+  assert.equal(st.status, 'partial', '14/14 passing must be PARTIAL when required ngspice cases are missing');
+  assert.deepEqual(st.missingIds, ['ngspice-divider', 'ngspice-rc-transient']);
+  assert.ok(st.note.includes('ngspice-divider'), 'report must name the missing required IDs');
+  // full manifest covered -> complete
+  const full = [{ suite: 'all', summary: { total: 3, pass: 3, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 }, cases: required.map((id) => ({ id, status: 'pass' })) }];
+  const stFull = crossSolverEvidenceStatus(full, { requiredIds: required });
+  assert.equal(stFull.status, 'complete');
+  assert.equal(stFull.missingIds.length, 0);
+});
+
+test('bench: CLI single-suite run merges same-commit reports (readFile path, end-to-end)', async (t) => {
+  const { resolveNgspice } = await import('../js/bench/ngspice-adapter.js');
+  // honest resolution: env var, standard paths, then the local portable install
+  let ng = null;
+  try { ng = await resolveNgspice(); } catch {}
+  if (!ng) {
+    const local = fileURLToPath(new URL('../../tools/ngspice-47/Spice64/bin/ngspice_con.exe', import.meta.url));
+    try { ng = await resolveNgspice(local); } catch {}
+  }
+  if (!ng) { t.skip('ngspice not available — the CLI merge test requires it; run the external-validation workflow for full coverage'); return; }
+  const { mkdtemp } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const outDir = await mkdtemp(`${tmpdir()}/il-cli-test-`);
+  const { execFileSync } = await import('node:child_process');
+  const cli = fileURLToPath(new URL('../js/bench/run.mjs', import.meta.url));
+  // invocation 1: ngspice suite only
+  execFileSync(process.execPath, [cli, '--suite', 'ngspice', '--out', outDir, '--ngspice', ng.exe], { timeout: 120_000 });
+  const first = JSON.parse(fs.readFileSync(`${outDir}/evidence-summary.json`, 'utf8'));
+  assert.equal(first.stages.crossSolver.total, 10);
+  // invocation 2: quantum suite only — must MERGE the on-disk ngspice report
+  execFileSync(process.execPath, [cli, '--suite', 'quantum', '--out', outDir], { timeout: 120_000 });
+  const second = JSON.parse(fs.readFileSync(`${outDir}/evidence-summary.json`, 'utf8'));
+  assert.equal(second.stages.crossSolver.total, 24, 'combined summary must cover both suites (24 cases)');
+  const ids = new Set();
+  let dup = false;
+  for (const r of [JSON.parse(fs.readFileSync(`${outDir}/latest-ngspice.json`, 'utf8')), JSON.parse(fs.readFileSync(`${outDir}/latest-quantum.json`, 'utf8'))]) {
+    for (const c of r.cases) { if (ids.has(c.id)) dup = true; ids.add(c.id); }
+  }
+  assert.equal(dup, false, 'no duplicate case IDs in the combined suites');
+  assert.equal(second.stages.crossSolver.status, 'complete');
+}, { timeout: 200_000 });
+
+test('bench: CLI stale-commit report is excluded, not merged as current', async () => {
+  const { mkdtemp, writeFile: wf, readFile: rf } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const outDir = await mkdtemp(`${tmpdir()}/il-cli-stale-`);
+  const { execFileSync } = await import('node:child_process');
+  const cli = fileURLToPath(new URL('../js/bench/run.mjs', import.meta.url));
+  // plant a FAKE ngspice report from a foreign commit
+  await wf(`${outDir}/latest-ngspice.json`, JSON.stringify({
+    suite: 'ngspice (foreign)', generatedAt: 'T0', commitSHA: 'deadbeef',
+    environment: { commitSHA: 'deadbeef', nodeVersion: 'x', platform: 'test' },
+    engines: {}, cases: [], summary: { total: 10, pass: 10, fail: 0, skipped: 0, unsupported: 0, inconclusive: 0, 'model-mismatch': 0 },
+  }));
+  execFileSync(process.execPath, [cli, '--suite', 'quantum', '--out', outDir], { timeout: 120_000 });
+  const summary = JSON.parse(fs.readFileSync(`${outDir}/evidence-summary.json`, 'utf8'));
+  // the fake 10 "passing" foreign-commit cases must NOT be counted
+  assert.equal(summary.stages.crossSolver.total, 14, 'stale foreign-commit report must be excluded from counts');
+  const reportMd = fs.readFileSync(`${outDir}/REPORT.md`, 'utf8');
+  assert.ok(reportMd.includes('foreign') || reportMd.includes('excluded'), 'exclusion must be visible in the report');
+}, { timeout: 120_000 });
