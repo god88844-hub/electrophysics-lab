@@ -50,7 +50,10 @@ function runVal(overrides = {}) {
     declaredUse: 'verify divider ratio',
     dataset, quality,
     criteria: CRITERIA,
-    envelope: ENVELOPE_OK,
+    envelope: defineEnvelope({
+      ...ENVELOPE_OK,
+      evidence: { datasetId: dataset.id, datasetVersion: dataset.version, datasetSha256: dataset.source.datasetSha256, sampleIndices: [0, 1] },
+    }),
     quantities: [{ name: 'V_out', measurementUncertainty: 0.005 }],
     provenanceVerified: true, provenanceReceipt, validationPlan,
     ...overrides,
