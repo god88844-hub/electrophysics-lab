@@ -175,29 +175,71 @@ function assessPhysicalValidationEligibility({
     }
   }
 
-  // G7: if calibration parameters are used, a split manifest must verify
-  // holdout independence (no calibration/validation overlap). Also detect
-  // dataset checksum overlap (same data used for fitting and validation).
+  // G7: fit and holdout MUST be disjoint subsets of ONE bound source dataset.
+  // A matching dataset digest is correct for a group-based split; it does not
+  // imply leakage by itself. What matters is which observations were fitted.
   if (calibrationRef || calibrationRecord) {
-    if (calibrationRecord?.dataset?.checksum && dataset.source?.datasetSha256) {
-      if (calibrationRecord.dataset.checksum === dataset.source.datasetSha256) {
-        blockers.push('G7: DATA LEAKAGE — calibration and validation use the SAME dataset (matching checksums). Holdout independence violated.');
-      }
+    const fitting = calibrationRecord?.dataset;
+    if (!calibrationRecord || !fitting?.id || !fitting?.checksum ||
+        (calibrationRef && calibrationRecord.id !== calibrationRef)) {
+      blockers.push('G7: calibration record is missing, unbound, or does not match calibrationRef');
     }
-    if (!calibrationRecord || !calibrationRecord.dataset?.checksum || !calibrationRecord.dataset?.id || (calibrationRef && calibrationRecord.id !== calibrationRef)) blockers.push('G7: calibration record missing or not bound to its source dataset');
     if (!splitManifest) {
       blockers.push('G7: calibration parameters used but no split manifest — holdout independence cannot be verified');
     } else {
-      const v = verifySplit(splitManifest, dataset);
-      if (!v.ok) blockers.push(`G7: split manifest verification failed: ${v.errors.join('; ')}`);
-      // A positional split alone is not a cross-dataset independence certificate.
+      const verified = verifySplit(splitManifest, dataset);
+      if (!verified.ok) blockers.push(`G7: split manifest verification failed: ${verified.errors.join('; ')}`);
       if (!splitManifest.sourceDatasetId || !splitManifest.sourceDatasetSha256 ||
-          splitManifest.sourceDatasetId !== dataset.id || splitManifest.sourceDatasetSha256 !== dataset.source?.datasetSha256) {
-        blockers.push('G7: split manifest not bound to the validation dataset and source checksum');
+          splitManifest.sourceDatasetId !== dataset.id ||
+          splitManifest.sourceDatasetVersion !== dataset.version ||
+          splitManifest.sourceDatasetSha256 !== dataset.source?.datasetSha256) {
+        blockers.push('G7: split manifest not bound to the validated dataset ID/version/checksum');
       }
-      const used = calibrationRecord?.dataset?.sampleIndices;
-      const expected = splitManifest.partition?.calibration?.sampleIndices ?? [];
-      if (!Array.isArray(used) || used.length !== expected.length || used.some(i => !expected.includes(i))) blockers.push('G7: calibration record does not establish which fitting samples were used');
+      if (!splitManifest.groupField) blockers.push('G7: group-based split evidence is missing');
+      const expectedCal = splitManifest.partition?.calibration?.sampleIndices ?? [];
+      const expectedVal = splitManifest.partition?.validation?.sampleIndices ?? [];
+      if (!expectedCal.length || !expectedVal.length) blockers.push('G7: calibration and validation partitions both require observations');
+      const used = fitting?.sampleIndices;
+      if (!Array.isArray(used) || used.length !== expectedCal.length ||
+          new Set(used).size !== used.length || used.some(i => !expectedCal.includes(i))) {
+        blockers.push('G7: calibration record does not identify the exact fitting observations in the calibration partition');
+      }
+      if (expectedVal.some(i => expectedCal.includes(i))) blockers.push('G7: DATA LEAKAGE — fitted sample also appears in validation partition');
+      if (Array.isArray(used) && expectedVal.some(i => used.includes(i))) blockers.push('G7: DATA LEAKAGE — validation observation was used for fitting');
+      // An optimizer can only attest to the vector supplied to it. Verify its
+      // digest against the independent source observation IDs and quantity.
+      const quantity = fitting?.quantity;
+      if (!quantity || !Array.isArray(used) || !used.every(i =>
+          Number.isInteger(i) && i >= 0 && i < dataset.samples.length &&
+          typeof dataset.samples[i]?.[quantity] === 'number' && Number.isFinite(dataset.samples[i][quantity]))) {
+        blockers.push('G7: fitted measurement quantity/observations cannot be reconciled to the source dataset');
+      } else {
+        const expectedDigest = sha256(JSON.stringify(used.map(i => dataset.samples[i][quantity])));
+        if (!calibrationRecord?.measurementSha256 || expectedDigest !== calibrationRecord.measurementSha256) {
+          blockers.push('G7: actual fitted measurement vector does not match calibration observations');
+        }
+      }
+    }
+    if (fitting?.id !== dataset.id || fitting?.checksum !== dataset.source?.datasetSha256 ||
+        fitting?.version !== dataset.version) {
+      blockers.push('G7: calibration input provenance differs from the holdout source dataset');
+    }
+    if (!calibrationRecord?.converged || calibrationRecord?.identifiability?.identifiable !== true) {
+      blockers.push('G7: calibration did not demonstrate convergence and identifiable parameters');
+    }
+    if (!calibrationRecord?.modelId || calibrationRecord.modelId !== model?.id) {
+      blockers.push('G7: calibrated model identity does not match the validated model');
+    }
+    const names = calibrationRecord?.params?.names;
+    const values = calibrationRecord?.params?.values;
+    if (!Array.isArray(names) || !Array.isArray(values) || names.length !== values.length ||
+        names.some((name, i) => typeof params?.[name] !== 'number' || !Object.is(params[name], values[i]))) {
+      blockers.push('G7: validated parameter values differ from frozen fitted parameter estimates');
+    }
+    const splitAt = Date.parse(splitManifest?.createdAt);
+    const fittedAt = Date.parse(calibrationRecord?.generatedAt);
+    if (!Number.isFinite(splitAt) || !Number.isFinite(fittedAt) || splitAt > fittedAt) {
+      blockers.push('G7: split manifest was not recorded before the calibration run');
     }
   }
 
@@ -255,9 +297,20 @@ export function runExperimentalValidation({
     problems.push(`dataset origin is "${dataset.origin}" — this comparison is a SOFTWARE DEMONSTRATION and cannot produce physical-validation evidence`);
   }
 
-  // ---- comparisons (unchanged) --------------------------------------------
+  // Validation of fitted parameters uses ONLY the held-out indices, never
+  // the calibration subset. An invalid split remains blocked by G7.
+  const usingCalibration = Boolean(calibrationRef || calibrationRecord);
+  const declaredHoldout = usingCalibration && Array.isArray(splitManifest?.partition?.validation?.sampleIndices)
+    ? splitManifest.partition.validation.sampleIndices : null;
+  const indices = declaredHoldout
+    ? declaredHoldout.filter(i => Number.isInteger(i) && i >= 0 && i < dataset.samples.length)
+    : dataset.samples.map((_, i) => i);
+  const selectedSamples = indices.map(i => dataset.samples[i]);
+
+  // ---- comparisons -------------------------------------------------------
   const comparisons = [];
-  for (const sample of dataset.samples) {
+  for (const i of indices) {
+    const sample = dataset.samples[i];
     const point = { ...sample, ...(sample.values ?? {}) };
     const predicted = model.predict({ ...params, ...point });
     for (const q of quantities) {
@@ -266,12 +319,12 @@ export function runExperimentalValidation({
       const pred = predicted[name];
       const measUnc = q.measurementUncertainty ?? dataset.uncertainty?.[name] ?? null;
       if (typeof measured !== 'number' || typeof pred !== 'number' || !Number.isFinite(measured) || !Number.isFinite(pred)) {
-        comparisons.push({ sampleIndex: dataset.samples.indexOf(sample), quantity: name, status: 'missing-data', measured, predicted });
+        comparisons.push({ sampleIndex: i, quantity: name, status: 'missing-data', measured, predicted });
         continue;
       }
       const m = Number(measured), p = Number(pred);
       comparisons.push({
-        sampleIndex: dataset.samples.indexOf(sample),
+        sampleIndex: i,
         quantity: name,
         status: 'compared',
         measured: m, predicted: p,
@@ -313,7 +366,7 @@ export function runExperimentalValidation({
   // ---- centralized physical-validation eligibility (review round 1) --------
   const eligibility = assessPhysicalValidationEligibility({
     dataset, quality, criteria, criteriaMet, criteriaResults, comparisons,
-    envelope, quantities, samples: dataset.samples,
+    envelope, quantities, samples: selectedSamples,
     calibrationRef, calibrationRecord, splitManifest,
     provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
   });
@@ -331,7 +384,7 @@ export function runExperimentalValidation({
     format: 'invention-lab/validation-result/1',
     generatedAt: new Date().toISOString(),
     model: { id: model.id, version: model.version ?? null },
-    params,
+    params: structuredClone(params),
     paramProvenance: { source: calibrationRef ? `calibration record ${calibrationRef}` : 'nominal values', calibrationRef },
     declaredUse,
     dataset: {
@@ -342,9 +395,9 @@ export function runExperimentalValidation({
       rawFileChecksum: dataset.source?.rawFileSha256 ?? null,
       sampleCount: dataset.samples.length,
     },
-    criteria, criteriaResults, criteriaMet,
+    criteria: structuredClone(criteria), criteriaResults, criteriaMet,
     comparisons,
-    statistics: { bias, rmse, maxAbsError, comparedCount: compared.length, missingCount: comparisons.length - compared.length },
+    statistics: { bias, rmse, maxAbsError, comparedCount: compared.length, missingCount: comparisons.length - compared.length, sampleIndices: indices },
     problems,
     stage,
     physicalValidation: {
