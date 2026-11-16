@@ -29,8 +29,20 @@ function colorFor(type, lab) {
 function portsFor(block) {
   const ports = portsOf(block);
   return {
-    incoming: ports.filter(p => p.dir === 'in'),
+    incoming: ports.filter(p => p.dir === 'in' || p.dir === 'bidi'),
     outgoing: ports.filter(p => p.dir === 'out' || p.dir === 'bidi'),
+  };
+}
+/** Deterministic 3D socket position; does not modify the electrical netlist. */
+export function portPoint3D(box, portId, direction) {
+  const arr=direction==='out'?box.ports.outgoing:box.ports.incoming;
+  const i=arr.findIndex(p=>p.id===portId);
+  if(i<0)return null;
+  const offset=(i+1)/(arr.length+1)-0.5;
+  return {
+    x:box.x+(direction==='out'?box.width/2:-box.width/2),
+    y:box.height*0.7,
+    z:box.z+offset*box.depth,
   };
 }
 export function sceneFromDiagram(diagram) {
@@ -52,22 +64,14 @@ export function sceneFromDiagram(diagram) {
     blocks.push(entry);
     byId.set(block.id, entry);
   }
-  const portPoint = (box, portId, direction) => {
-    const arr = direction === 'out' ? box.ports.outgoing : box.ports.incoming;
-    const i = Math.max(0, arr.findIndex(p => p.id === portId));
-    const depthOffset = (i + 1) / (arr.length + 1) - 0.5;
-    return {
-      x: box.x + (direction === 'out' ? box.width / 2 : -box.width / 2),
-      y: box.height * 0.7,
-      z: box.z + depthOffset * box.depth,
-    };
-  };
+  const portPoint = portPoint3D;
   const wires = [];
   for (const wire of diagram.wires) {
     const from = byId.get(wire.from?.block), to = byId.get(wire.to?.block);
     if (!from || !to) continue;
     const a = portPoint(from, wire.from.port, 'out');
     const b = portPoint(to, wire.to.port, 'in');
+    if (!a || !b) continue;
     const midway = (a.x + b.x) / 2;
     wires.push({
       id: wire.id,
