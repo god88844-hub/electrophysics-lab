@@ -585,7 +585,7 @@ export class App {
     const p = this.$centerPanel;
     p.replaceChildren();
     const h = document.createElement('h2');
-    h.textContent = 'RISC-V RV32I — 32-bit integer architecture';
+    h.textContent = 'RISC-V RV32I / RV32IM — 32-bit integer architecture';
     p.appendChild(h);
     const warning = document.createElement('p');
     warning.className = 'muted';
@@ -595,8 +595,27 @@ export class App {
     grid.className = 'grid2';
     const left = document.createElement('div'), right = document.createElement('div');
     grid.append(left, right); p.appendChild(grid);
+    const isaField = document.createElement('label');
+    isaField.className='field';
+    isaField.textContent = 'Architecture profile (M extension is opt-in)';
+    const isaSelect=document.createElement('select');
+    isaSelect.setAttribute('aria-label','RISC-V ISA profile');
+    for(const [value,label] of [
+      ['rv32i','RV32I base (no multiply/divide)'],
+      ['rv32im','RV32IM (RV32I + M multiply/divide)'],
+    ]){
+      const option=document.createElement('option');
+      option.value=value; option.textContent=label;isaSelect.append(option);
+    }
+    isaSelect.value=diagram.meta.isa??'rv32i';
+    isaSelect.addEventListener('change',()=>{
+      diagram.meta.isa=isaSelect.value;
+      this._diagramChanged(true);
+    });
+    isaField.append(isaSelect);
+    left.append(isaField);
     const sourceLabel = document.createElement('label');
-    sourceLabel.textContent = '32-bit little-endian RV32I instruction words (one 8-hex-digit word per line)';
+    sourceLabel.textContent = '32-bit little-endian encoded instruction words (one 8-hex-digit word per line)';
     const editor = document.createElement('textarea');
     editor.className = 'code-editor'; editor.value = String(diagram.meta.source || '');
     editor.setAttribute('aria-label','RV32I machine-code editor');
@@ -622,11 +641,11 @@ export class App {
       label.appendChild(input);left.appendChild(label);
     }
     const run=document.createElement('button');
-    run.className='primary';run.type='button';run.textContent='▶ Decode and execute RV32I';
+    run.className='primary';run.type='button';run.textContent='▶ Decode and execute selected RISC-V ISA';
     run.addEventListener('click',()=>this.run());
     left.appendChild(run);
     const note=document.createElement('p');note.className='muted';
-    note.textContent='The built-in example computes 5 + 7 → register x3 = 12, then stops at EBREAK. EBREAK is a trap, not an OS exit. User-entered expected values are NOT independent verification references.';
+    note.textContent='The default example computes 5 + 7 → register x3 = 12 and reaches EBREAK. Select RV32IM to enable MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM and REMU. ISA certification, cycle timing, real silicon and manufacturing yield are NOT established by this emulator or an EBREAK.';
     left.appendChild(note);
     right.appendChild(Object.assign(document.createElement('div'),{textContent:'Instruction words and architectural state:'}));
     const listing=document.createElement('pre');listing.className='mono';
