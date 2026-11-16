@@ -8,7 +8,7 @@ import { Palette } from './palette.js';
 import { Inspector } from './inspector.js';
 import { Scope } from './scope.js';
 import { Scene3DView } from '../scene/viewer.js';
-import { summarizeDesignEvidence } from '../evidence/feasibility.js';
+import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/feasibility.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
 
@@ -559,6 +559,92 @@ export class App {
     note.className = 'muted'; note.textContent = data.rationale +
       ' A conditional Monte Carlo rate can only be reported with explicit parameter distributions, an uncertainty model, and stated acceptance criteria.';
     body.append(heading, caption, stats, note);
+    this._renderScenarioDemo(body);
+  }
+
+  // Demonstration is intentionally independent of the current circuit graph.
+  // It is a probability experiment under user-declared toy assumptions, not a
+  // manufacturing yield or physical validation claim for the selected design.
+  _renderScenarioDemo(body) {
+    const section = document.createElement('section');
+    section.className = 'scenario-demo';
+    const title = document.createElement('h4');
+    title.textContent = 'Educational experiment — resistor-divider tolerance';
+    const explain = document.createElement('p');
+    explain.className = 'muted';
+    explain.textContent = 'Model-only example, NOT the current design. Independent Gaussian parameter variation is an explicit assumption. No fabrication yield, aging, thermal effects or measured calibration is included.';
+    section.append(title, explain);
+    const fields = [
+      ['vin', 'Input voltage (V)', 5],
+      ['r1', 'Upper resistance R1 (Ω)', 1000],
+      ['r2', 'Lower resistance R2 (Ω)', 1000],
+      ['rsd', 'Resistor uncertainty, 1σ (%)', 5],
+      ['vsd', 'Source uncertainty, 1σ (%)', 1],
+      ['min', 'Required Vout minimum (V)', 2.3],
+      ['max', 'Required Vout maximum (V)', 2.7],
+    ];
+    const grid = document.createElement('div');
+    grid.className = 'scenario-fields';
+    const inputs = {};
+    for (const [key, label, defaultValue] of fields) {
+      const wrap = document.createElement('label');
+      wrap.textContent = label;
+      const input = document.createElement('input');
+      input.type = 'number'; input.step = 'any';
+      input.value = String(defaultValue); input.dataset.scenario = key;
+      input.setAttribute('aria-label', label);
+      wrap.appendChild(input);
+      inputs[key] = input; grid.appendChild(wrap);
+    }
+    const run = document.createElement('button');
+    run.type = 'button'; run.className = 'primary';
+    run.textContent = 'Calculate modeled scenario pass %';
+    const result = document.createElement('p');
+    result.setAttribute('role', 'status');
+    result.className = 'scenario-result';
+    result.textContent = 'Adjust assumptions and calculate. Real-world build probability remains not estimated.';
+    run.addEventListener('click', () => {
+      try {
+        const v = Object.fromEntries(Object.entries(inputs).map(([k, input]) => {
+          if (!input.value.trim()) throw Error(k + ' must not be empty');
+          return [k, Number(input.value)];
+        }));
+        if (Object.values(v).some(n => !Number.isFinite(n)) ||
+            v.vin <= 0 || v.r1 <= 0 || v.r2 <= 0 || v.rsd < 0 || v.vsd < 0 ||
+            v.min < 0 || v.max <= v.min) throw Error('Voltages, resistances and uncertainty must be physically meaningful; target maximum must exceed minimum.');
+        const trial = estimateScenarioPassRate({
+          designId: 'educational-divider-scenario',
+          intendedUse: 'Ideal resistor-divider output within the specified voltage window',
+          parameters: [
+            {name:'Vin',mean:v.vin,sd:v.vin*v.vsd/100},
+            {name:'R1',mean:v.r1,sd:v.r1*v.rsd/100},
+            {name:'R2',mean:v.r2,sd:v.r2*v.rsd/100},
+          ],
+          independenceAsserted: true, seed: 27, samples: 5000,
+          assumptions: [
+            'Independent Gaussian component and supply variation, with the entered percentages interpreted as one standard deviation.',
+            'Ideal Ohmic resistors and unloaded output; no thermal, parasitic, process-yield or component-failure model.',
+          ],
+          model: p => {
+            if (p.R1 <= 0 || p.R2 <= 0 || p.Vin < 0) throw Error('Nonphysical sampled component value');
+            return { Vout:p.Vin*p.R2/(p.R1+p.R2) };
+          },
+          constraints: [{metric:'Vout',min:v.min,max:v.max}],
+        });
+        if (trial.status !== 'model-only') {
+          result.textContent = 'Inconclusive: ' + trial.modelErrors + ' invalid model evaluation(s). Real-world build success not estimated.';
+          return;
+        }
+        const [lo,hi] = trial.samplingInterval95Percent;
+        result.textContent = 'MODEL-ONLY pass rate: ' + trial.modeledPassRatePercent.toFixed(1) +
+          '% (95% Monte Carlo sampling interval ' + lo.toFixed(1) + '–' + hi.toFixed(1) +
+          '%). Real-world build success: NOT ESTIMATED. This is not physical validation.';
+      } catch (e) {
+        result.textContent = 'Cannot estimate: ' + e.message;
+      }
+    });
+    section.append(grid, run, result);
+    body.appendChild(section);
   }
 
   _setVerdict(v) {
