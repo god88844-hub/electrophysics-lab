@@ -173,7 +173,14 @@ test('composites: duplicate outer interface aliases cannot secretly reference on
 });
 test('composites: hierarchy paths must not collide with user-authored separators',()=>{
   const {composite,library}=makeComposite(),modified=structuredClone(composite);
-  modified.children[0].id='path/other-child';
+  const old=modified.children[0].id,newId='path/other-child';
+  modified.children[0].id=newId;
+  for(const edge of modified.wires){
+    if(edge.from.childId===old)edge.from.childId=newId;
+    if(edge.to.childId===old)edge.to.childId=newId;
+  }
+  for(const port of modified.interfaces)if(port.childId===old)port.childId=newId;
+  for(const parameter of modified.parameters)if(parameter.target.childId===old)parameter.target.childId=newId;
   const verdict=validateCompositeTemplate(modified,library);
   assert.equal(verdict.ok,false);
   assert.match(verdict.errors.join(' '),/path|ID|separator|child/i);
