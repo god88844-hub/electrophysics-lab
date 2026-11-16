@@ -7,15 +7,19 @@ import { CanvasEditor } from './canvas.js';
 import { Palette } from './palette.js';
 import { Inspector } from './inspector.js';
 import { Scope } from './scope.js';
+import { Scene3DView } from '../scene/viewer.js';
+import { summarizeDesignEvidence } from '../evidence/feasibility.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
 
 const CANVAS_LABS = new Set(['logic', 'chip', 'quantum', 'optics']);
+const SCENE_LABS = new Set(['logic', 'chip', 'quantum']);
 
 export class App {
   constructor(root) {
     this.root = root;
     this.state = { labId: null };
+    this.viewMode = '2d';
     this.diagrams = {};       // labId -> Diagram
     this.history = {};        // labId -> { stack: [], idx }
     this.editor = null;
@@ -56,6 +60,7 @@ export class App {
             <div id="output-tabs" role="tablist">
               <button data-tab="scope" class="active">Scope</button>
               <button data-tab="report">Report</button>
+              <button data-tab="evidence">Build Evidence</button>
               <button data-tab="console">Console</button>
             </div>
             <div id="output-body"></div>
@@ -103,10 +108,28 @@ export class App {
       },
     });
     this.editor.labAccent = (labId) => getLab(labId)?.accent || '#5aa2e8';
+    this.scene3d = new Scene3DView(this.$editorArea, {
+      onSelect: (id) => {
+        this.editor.selection = id ? { kind: 'block', id } : null;
+        this.editor.requestRender();
+        this._refreshInspector();
+      },
+      onMove: (id, x, y) => {
+        const block = this.diagrams[this.state.labId]?.block(id);
+        if (!block) return;
+        if (block.x === x && block.y === y) return;
+        block.x = x; block.y = y;
+        this._diagramChanged();
+        this.editor.requestRender();
+      },
+      onError: (msg) => this.log('3D view: ' + msg, 'warn'),
+    });
+
     this.palette = new Palette(this.$palette, {
       onAdd: (typeId, pos) => {
         const r = this.$editorArea.getBoundingClientRect();
-        const w = this.editor.toWorld(r.width / 2, r.height / 2);
+        const w = this.viewMode === '3d' ? this.scene3d.centerDesign() :
+          this.editor.toWorld(r.width / 2, r.height / 2);
         this.editor.addBlock(typeId, pos?.x ?? w.x, pos?.y ?? w.y);
         this.log(`Added ${typeId}`);
       },
@@ -124,7 +147,9 @@ export class App {
       const typeId = e.dataTransfer.getData('text/x-ilab-type');
       if (!typeId) return;
       const r = this.$editorArea.getBoundingClientRect();
-      const w = this.editor.toWorld(e.clientX - r.left, e.clientY - r.top);
+      const w = this.viewMode === '3d' && SCENE_LABS.has(this.state.labId)
+        ? this.scene3d.designAt(e.clientX, e.clientY)
+        : this.editor.toWorld(e.clientX - r.left, e.clientY - r.top);
       this.editor.addBlock(typeId, w.x, w.y);
       this.log(`Added ${typeId}`);
     });
@@ -143,8 +168,16 @@ export class App {
     const fit = document.createElement('button');
     fit.className = 'small'; fit.textContent = 'Fit';
     fit.title = 'Fit view to design (F)';
-    fit.addEventListener('click', () => this.editor.fit());
+    fit.addEventListener('click', () => this.viewMode === '3d' ? this.scene3d.fit() : this.editor.fit());
     this.$editorToolbar.appendChild(fit);
+    this.$sceneButton = document.createElement('button');
+    this.$sceneButton.className = 'small';
+    this.$sceneButton.type = 'button';
+    this.$sceneButton.title = 'Switch between editable 2D wiring and real-time WebGL 3D component workspace';
+    this.$sceneButton.textContent = '3D View';
+    this.$sceneButton.setAttribute('aria-pressed', 'false');
+    this.$sceneButton.addEventListener('click', () => this.set3D(this.viewMode !== '3d'));
+    this.$editorToolbar.appendChild(this.$sceneButton);
 
     // output tabs
     this.root.querySelectorAll('#output-tabs button').forEach((btn) => {
@@ -202,8 +235,8 @@ export class App {
     this.palette.container.style.display = CANVAS_LABS.has(labId) ? '' : 'none';
     this.$editorToolbar.style.display = CANVAS_LABS.has(labId) ? '' : 'none';
     this.$centerPanel.style.display = CANVAS_LABS.has(labId) ? 'none' : '';
-    this.$editorArea.querySelector('.lab-canvas')?.style.setProperty('display', CANVAS_LABS.has(labId) ? '' : 'none');
-    document.getElementById('canvas-hint').style.display = CANVAS_LABS.has(labId) ? '' : 'none';
+    this.$editorArea.querySelector('.lab-canvas')?.style.setProperty('display', CANVAS_LABS.has(labId) && this.viewMode !== '3d' ? '' : 'none');
+    document.getElementById('canvas-hint').style.display = CANVAS_LABS.has(labId) && this.viewMode !== '3d' ? '' : 'none';
 
     if (labId === 'crosslab') {
       this._showCrosslabPanel();
@@ -219,6 +252,7 @@ export class App {
     const diagram = this.diagrams[labId];
     if (CANVAS_LABS.has(labId)) {
       this.editor.mount(diagram);
+      if (SCENE_LABS.has(labId)) this.scene3d.mount(diagram);
       this.palette.show(labId, allComponents());
     } else if (labId === 'cpu') {
       this._showCpuPanel(diagram);
@@ -227,8 +261,22 @@ export class App {
       this._showAiPanel(diagram);
       this.palette.show('none', allComponents());
     }
+    this.set3D(this.viewMode === '3d' && SCENE_LABS.has(labId));
     this._refreshInspector();
     this.requestRenderReport();
+  }
+
+  set3D(enabled) {
+    const canShow = enabled && SCENE_LABS.has(this.state.labId) && this.scene3d.available;
+    this.viewMode = canShow ? '3d' : '2d';
+    this.scene3d.activate(canShow);
+    this.editor.canvas.style.display = canShow ? 'none' : '';
+    this.$sceneButton.style.display = SCENE_LABS.has(this.state.labId) ? '' : 'none';
+    this.$sceneButton.setAttribute('aria-pressed', String(canShow));
+    this.$sceneButton.textContent = canShow ? '2D Wiring' : '3D View';
+    this.$editorArea.querySelector('#canvas-hint').style.display = canShow ? 'none' : '';
+    if (!canShow) this.editor.requestRender();
+    return canShow;
   }
 
   _restoreOrNew(labId, lab) {
@@ -258,6 +306,7 @@ export class App {
     try { localStorage.setItem(`ilab.diagram.${labId}`, JSON.stringify(diagram.toJSON())); } catch { /* quota */ }
     localStorage.setItem('ilab.lab', labId);
     if (isMeta) this._refreshInspector(true);
+    this.scene3d.sync();
     this.requestRenderReport();
   }
 
@@ -278,6 +327,7 @@ export class App {
     this.diagrams[this.state.labId] = d;
     try { localStorage.setItem(`ilab.diagram.${this.state.labId}`, JSON.stringify(d.toJSON())); } catch { /* quota */ }
     if (CANVAS_LABS.has(this.state.labId)) this.editor.mount(d);
+    if (SCENE_LABS.has(this.state.labId)) this.scene3d.mount(d);
     if (this.state.labId === 'cpu') this._showCpuPanel(d);
     this._refreshInspector();
     this.editor.requestRender();
@@ -431,6 +481,7 @@ export class App {
       this.inspector.showMessage('This lab runs fixed workloads — see the center panel.');
     }
     this.editor.requestRender();
+    this.scene3d.sync();
   }
 
   // ------------------------------------------------------------------- run --
@@ -474,6 +525,39 @@ export class App {
     this.lastReport = report;
     if (this._activeOutputTab === 'report') this.scope.renderReport(report);
     this._setVerdict(report.verdict);
+    if (this._activeOutputTab === 'evidence') this._renderEvidence();
+  }
+
+  _renderEvidence() {
+    const diagram = this.diagrams[this.state.labId];
+    if (!diagram) return;
+    const report = this.lastReport;
+    const data = summarizeDesignEvidence({ diagram, report });
+    const body = this.$outputBody;
+    body.replaceChildren();
+    const heading = document.createElement('h3');
+    heading.textContent = 'Real-world build evidence — ' + diagram.name;
+    const caption = document.createElement('p');
+    caption.className = 'muted';
+    caption.textContent = 'Design-specific simulation checks are not a measured build-success probability.';
+    const stats = document.createElement('div');
+    stats.className = 'evidence-stats';
+    for (const [name, value] of [
+      ['Design checks passed', data.checks.pass],
+      ['Warnings / failures', data.checks.warn + ' / ' + data.checks.fail],
+      ['Real-world build success', 'Not estimated'],
+      ['Physical validation', 'No verified measurements for this design'],
+    ]) {
+      const cell = document.createElement('div');
+      const title = document.createElement('span');
+      title.className = 'muted'; title.textContent = name;
+      const val = document.createElement('strong'); val.textContent = String(value);
+      cell.append(title, val); stats.appendChild(cell);
+    }
+    const note = document.createElement('p');
+    note.className = 'muted'; note.textContent = data.rationale +
+      ' A conditional Monte Carlo rate can only be reported with explicit parameter distributions, an uncertainty model, and stated acceptance criteria.';
+    body.append(heading, caption, stats, note);
   }
 
   _setVerdict(v) {
@@ -492,6 +576,8 @@ export class App {
       this.scope.renderResult(this.state.labId, this.lastResult, this.diagrams[this.state.labId]);
     } else if (tab === 'report') {
       this.scope.renderReport(this.lastReport);
+    } else if (tab === 'evidence') {
+      this._renderEvidence();
     } else if (tab === 'console') {
       this.scope.container.innerHTML = '';
       const pre = document.createElement('div');
@@ -516,6 +602,7 @@ export class App {
     this.diagrams[this.state.labId] = this._freshDiagram(this.state.labId, lab);
     this.history[this.state.labId] = { stack: [], idx: -1 };
     if (CANVAS_LABS.has(this.state.labId)) this.editor.mount(this.diagrams[this.state.labId]);
+    if (SCENE_LABS.has(this.state.labId)) this.scene3d.mount(this.diagrams[this.state.labId]);
     if (this.state.labId === 'cpu') this._showCpuPanel(this.diagrams[this.state.labId]);
     if (this.state.labId === 'ai') this._showAiPanel(this.diagrams[this.state.labId]);
     this._refreshInspector();
@@ -633,7 +720,21 @@ ${report.checks.map((c) => `<tr><td>${escape(c.name)}</td><td class="${c.verdict
       this.editor.deleteSelection();
       return;
     }
-    if (e.key === 'f' || e.key === 'F') { this.editor.fit(); return; }
+    if (this.viewMode === '3d' && !mod && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) &&
+        !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+      const id = this.scene3d.selectedId;
+      const block = id && this.diagrams[this.state.labId]?.block(id);
+      if (block) {
+        e.preventDefault();
+        block.x += e.key === 'ArrowLeft' ? -20 : e.key === 'ArrowRight' ? 20 : 0;
+        block.y += e.key === 'ArrowUp' ? -20 : e.key === 'ArrowDown' ? 20 : 0;
+        this._diagramChanged(); this.editor.requestRender();
+        return;
+      }
+    }
+    if (e.key === 'f' || e.key === 'F') {
+      this.viewMode === '3d' ? this.scene3d.fit() : this.editor.fit(); return;
+    }
     if (e.key === '?') { this.showHelp(); return; }
     if (e.key === 'Escape') { document.getElementById('overlay')?.remove(); }
   }
