@@ -158,8 +158,26 @@ try{
   assert(app.$outputBody.textContent.includes('Not estimated'),'RV32IM UI fabricated physical hardware confidence');
   app.switchLab('logic');
 
+  // Phase 9 — real in-browser execution of the bounded float32 ONNX graph IR.
+  // The external Python/ONNX Runtime reference is a separate CI job.
+  app.switchLab('ai');
+  const onnxSelector=app.$centerPanel.querySelector('[aria-label="ONNX operator graph example"]');
+  const onnxButton=app.$centerPanel.querySelector('[data-action="run-onnx-subset"]');
+  assert(onnxSelector&&onnxSelector.options.length===5,'five ONNX graph options missing from accelerator lab');
+  assert(onnxButton,'ONNX graph execution button missing');
+  const inference=await app.runOnnxExample('matmul-relu');
+  assert(inference.kind==='onnx-subset'&&inference.executedNodes===2,'ONNX CPU graph did not execute');
+  assert(JSON.stringify(inference.outputs.Y.values)===JSON.stringify([13,0,0,18]),
+    'MatMul+Relu browser output differs from hand-verified tensor reference');
+  assert(app.$outputBody.textContent.includes('MODEL-ONLY'),
+    'ONNX app misleadingly implied that real ONNX Runtime executes in-browser');
+  assert(app.$outputBody.textContent.includes('Not estimated'),
+    'ONNX graph produced a fabricated physical success probability');
+  assert(inference.physicalValidation==='none','ONNX browser inference cannot claim physical validation');
+  app.switchLab('logic');
+
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — 3D nested modules, RV32I default rejects MUL, RV32IM opt-in executes MUL, and physical confidence remains unestimated';
+  output.textContent='PASS — nested 3D modules, RV32IM, real browser ONNX f32 graph inference and explicit model-only physical-evidence limits';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
