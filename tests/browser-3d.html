@@ -235,8 +235,23 @@ try{
     'Classification accuracy was misrepresented as physically validated chip yield');
   app.switchLab('logic');
 
+  // Phase 13: an independently verified example ALU is never claimed as
+  // physical evidence for the user's unverified chip/circuit design.
+  app.switchLab('chip');
+  app.switchOutputTab('evidence');
+  const chipEvidence=app.$outputBody.textContent;
+  assert(app.$outputBody.querySelectorAll('.physical-readiness-ladder li').length===10,
+    'Design-specific physical evidence ladder must enumerate every gate');
+  assert(chipEvidence.includes('UNKNOWN') &&
+         chipEvidence.includes('NOT ESTIMATED') &&
+         chipEvidence.includes('DRC/LVS/PVT'),
+    'Chip evidence panel falsely promoted simulation or example CI to silicon signoff');
+  assert(chipEvidence.includes('NOT evidence that this diagram passes'),
+    'Example ALU mapping was misattributed to the currently edited design');
+  app.switchLab('logic');
+
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — nested 3D modules, RV32IM, ONNX f32/int8, real CC BY 4.0 Iris 29/30 holdout model with honest physical-evidence limits';
+  output.textContent='PASS — 3D hardware editor, RTL/ONNX models and chip-specific 10-stage UNKNOWN physical evidence ladder';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
