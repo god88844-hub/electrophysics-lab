@@ -22,13 +22,21 @@ export const ENVELOPE_CLASSES = [
  *   requiredAccuracy: documented accuracy target for the intended decision
  *   intendedDecision: what the validated model will be used for
  */
-export function defineEnvelope({ id, ranges = {}, sets = {}, testedPoints = [], requiredAccuracy = null, intendedDecision = null, assumptions = [] }) {
+export function defineEnvelope({ id, ranges = {}, sets = {}, testedPoints = [], requiredAccuracy = null, intendedDecision = null, assumptions = [], evidence = null }) {
   return Object.freeze({
     format: 'invention-lab/validation-envelope/1',
     id,
     ranges: Object.freeze({ ...ranges }),
     sets: Object.freeze({ ...sets }),
     testedPoints: Object.freeze(testedPoints.map((p) => Object.freeze({ ...p }))),
+    // A dataset-bound mapping from each tested point to its actual observation.
+    // Metadata is not itself independent acquisition authentication.
+    evidence: evidence ? Object.freeze({
+      datasetId: evidence.datasetId ?? null,
+      datasetVersion: evidence.datasetVersion ?? null,
+      datasetSha256: evidence.datasetSha256 ?? null,
+      sampleIndices: Object.freeze([...(evidence.sampleIndices ?? [])]),
+    }) : null,
     requiredAccuracy,
     intendedDecision,
     assumptions: Object.freeze([...assumptions]),
@@ -45,6 +53,8 @@ export function withTestedPoints(envelope, newPoints) {
     requiredAccuracy: envelope.requiredAccuracy,
     intendedDecision: envelope.intendedDecision,
     assumptions: envelope.assumptions,
+    // Newly appended points have no verified sample mapping; drop old binding.
+    evidence: null,
   });
 }
 
@@ -87,6 +97,9 @@ function distance(a, b, keys) {
  * considered to coincide with a tested point.
  */
 export function classifyRequest(envelope, request, { matchTolerance = 0.02 } = {}) {
+  if (!envelope || (!Object.keys(envelope.ranges ?? {}).length && !Object.keys(envelope.sets ?? {}).length)) {
+    return { classification: 'unsupported', detail: 'envelope contains no defined operating quantities', nearestTestedPoint: null };
+  }
   if (!envelope.testedPoints || envelope.testedPoints.length === 0) {
     return { classification: 'insufficient-evidence', detail: 'the envelope declares ranges but contains no tested points — no demonstrated evidence exists', nearestTestedPoint: null };
   }
@@ -98,8 +111,13 @@ export function classifyRequest(envelope, request, { matchTolerance = 0.02 } = {
   const qtyKeys = Object.keys(envelope.ranges);
   let nearest = null, nearestDist = Infinity;
   for (const tp of envelope.testedPoints) {
+    // Categorical operating conditions must match the same tested category.
+    if (Object.keys(envelope.sets ?? {}).some(k => tp[k] !== request[k])) continue;
     const d = distance(request, tp, qtyKeys);
     if (d < nearestDist) { nearestDist = d; nearest = tp; }
+  }
+  if (nearestDist === Infinity) {
+    return { classification: 'insufficient-evidence', detail: 'no tested point matches the requested categorical operating conditions', nearestTestedPoint: null };
   }
   if (nearestDist <= matchTolerance) {
     return { classification: 'within-demonstrated-envelope', detail: `request coincides with tested point (relative distance ${nearestDist.toExponential(2)})`, nearestTestedPoint: nearest };
