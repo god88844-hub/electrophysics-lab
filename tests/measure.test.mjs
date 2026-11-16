@@ -893,3 +893,39 @@ test('phase3-regression: same dataset identifier with modified sample values inv
   assert.throws(() => parseDataset(JSON.stringify(tampered)), /checksum mismatch/i);
   assert.equal(verifySplit(args.splitManifest, args.dataset).ok, true);
 });
+
+
+test('phase3-regression: report distinguishes missing comparisons and a model disagreement', () => {
+  const missing = runVal({ quantities: [{ name: 'V_out' }, { name: 'not-measured' }] });
+  assert.equal(missing.comparisonOutcome.kind, 'insufficient-comparisons');
+  assert.equal(missing.comparisonOutcome.numericalAgreement, 'unassessed');
+  const disagreement = runVal({ params: { R1: 1000, R2: 3000 } });
+  assert.equal(disagreement.comparisonOutcome.kind, 'model-disagreement');
+  assert.equal(disagreement.comparisonOutcome.numericalAgreement, 'criteria-failed');
+  assert.equal(disagreement.physicalValidation.status, 'none');
+});
+
+test('phase3-regression: validation result stores immutable provenance and plan digest', () => {
+  const result = runVal({});
+  const refs = result.evidenceReferences;
+  assert.equal(typeof refs.validationPlan.checksum, 'string');
+  assert.equal(refs.validationPlan.checksum.length, 64);
+  assert.equal(refs.rawSourceReceipt.rawFileSha256.length, 64);
+  assert.equal(refs.rawSourceReceipt.datasetSha256, result.dataset.checksum);
+  assert.ok(Object.isFrozen(refs.validationPlan));
+  assert.ok(Object.isFrozen(result.physicalValidation.scope.operatingDefinition.testedPoints));
+  assert.ok(Object.isFrozen(result.physicalValidation.scope.operatingDefinition.ranges.V_in));
+  assert.equal(result.physicalValidation.status, 'none');
+});
+
+test('phase3-regression: envelope arrays cannot mutate after creation', () => {
+  const input = [0, 12];
+  const env = defineEnvelope({
+    id: 'frozen', ranges: { V_in: input }, sets: { mode: ['DC', 'AC'] },
+    testedPoints: [{ V_in: 5, mode: 'DC' }],
+  });
+  assert.ok(Object.isFrozen(env.ranges.V_in));
+  assert.ok(Object.isFrozen(env.sets.mode));
+  assert.throws(() => { env.ranges.V_in[0] = -1; }, TypeError);
+  assert.throws(() => { env.sets.mode.push('invented'); }, TypeError);
+});
