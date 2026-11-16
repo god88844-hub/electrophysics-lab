@@ -36,12 +36,51 @@ export function registerValidationPlan({ modelId, datasetId, envelopeId, declare
 
 
 /**
+ * Confirm tested operating points are linked to the exact observations in the
+ * versioned validation dataset. This proves traceable sample association, not
+ * that a claimed instrument reading is independently authentic.
+ */
+function envelopeEvidenceFailures(dataset, envelope) {
+  const failures = [];
+  const keys = [...Object.keys(envelope?.ranges ?? {}), ...Object.keys(envelope?.sets ?? {})];
+  if (!keys.length) failures.push('envelope defines no operating quantities or categorical conditions');
+  const evidence = envelope?.evidence;
+  if (!evidence || evidence.datasetId !== dataset.id ||
+      evidence.datasetVersion !== dataset.version ||
+      evidence.datasetSha256 !== dataset.source?.datasetSha256) {
+    failures.push('tested-point provenance binding missing or mismatched dataset ID/version/checksum');
+    return failures;
+  }
+  const points = envelope.testedPoints ?? [];
+  const indices = evidence.sampleIndices;
+  if (!Array.isArray(indices) || indices.length !== points.length ||
+      new Set(indices).size !== indices.length) {
+    failures.push('tested-point provenance indices must be unique and map one-to-one to tested points');
+    return failures;
+  }
+  for (let j = 0; j < points.length; j++) {
+    const i = indices[j];
+    if (!Number.isInteger(i) || i < 0 || i >= dataset.samples.length) {
+      failures.push(`tested-point provenance index ${i} is outside the dataset`);
+      continue;
+    }
+    const observed = { ...dataset.samples[i], ...(dataset.samples[i].values ?? {}) };
+    for (const key of keys) {
+      if (!Object.is(points[j]?.[key], observed[key])) {
+        failures.push(`tested-point provenance mismatch at index ${i}: operating quantity "${key}" does not match the recorded observation`);
+      }
+    }
+  }
+  return failures;
+}
+
+/**
  * Centralized physical-validation eligibility assessment.
  * Returns { allowed, blockers, scope }.
  * A single blocker prevents the validated status.
  */
 function assessPhysicalValidationEligibility({
-  dataset, quality, criteria, criteriaMet, criteriaResults,
+  dataset, quality, criteria, criteriaMet, criteriaResults, comparisons,
   envelope, quantities, samples,
   calibrationRef, calibrationRecord, splitManifest,
   provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
@@ -73,6 +112,30 @@ function assessPhysicalValidationEligibility({
     blockers.push('G4: registered scope-matching validation plan is absent or mismatched');
   }
 
+  const supportedCriteria = new Set(['maxAbsError', 'maxRelativeError', 'maxBias', 'requireUncertaintyOverlap']);
+  for (const [key, value] of Object.entries(criteria)) {
+    if (!supportedCriteria.has(key)) blockers.push(`G4: unsupported acceptance criterion "${key}"`);
+    else if (key === 'requireUncertaintyOverlap' ? typeof value !== 'boolean' :
+      typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      blockers.push(`G4: invalid acceptance criterion "${key}" (must be finite, nonnegative numeric limit or boolean)`);
+    }
+  }
+
+  // G8: every requested measurement/quantity must have a valid comparison and
+  // usable uncertainty metadata. A correct-looking subset cannot qualify.
+  const expectedCount = samples.length * quantities.length;
+  if (!samples.length || !quantities.length || comparisons.length !== expectedCount ||
+      comparisons.some(c => c.status !== 'compared')) {
+    blockers.push(`G8: incomplete measurement comparisons; expected ${expectedCount}, available ${comparisons.filter(c => c.status === 'compared').length}, missing-data ${comparisons.filter(c => c.status !== 'compared').length}`);
+  }
+  for (const c of comparisons) {
+    if (c.status === 'compared' &&
+        (typeof c.measurementUncertainty !== 'number' ||
+         !Number.isFinite(c.measurementUncertainty) || c.measurementUncertainty < 0)) {
+      blockers.push(`G8: invalid or missing measurement uncertainty for sample ${c.sampleIndex} quantity "${c.quantity}"`);
+    }
+  }
+
   // G4: prespecified criteria must be met
   if (!criteriaMet) {
     const unmet = (criteriaResults || []).filter((c) => !c.met).map((c) => c.criterion);
@@ -86,18 +149,18 @@ function assessPhysicalValidationEligibility({
   } else if (!envelope.testedPoints || envelope.testedPoints.length === 0) {
     blockers.push('G5: envelope has no tested points — insufficient evidence for any validation claim');
   } else {
+    for (const failure of envelopeEvidenceFailures(dataset, envelope)) {
+      blockers.push(`G5: ${failure}`);
+    }
     // classify each sample's operating conditions
     const sampleEnvelopes = [];
     for (const sample of samples) {
-      const request = {};
-      for (const qty of Object.keys(envelope.ranges)) {
-        request[qty] = sample[qty];
-      }
+      const request = { ...sample, ...(sample.values ?? {}) };
       const cls = classifyRequest(envelope, request);
       sampleEnvelopes.push(cls);
     }
     const outside = sampleEnvelopes.filter((c) => c.classification === 'outside-demonstrated-envelope');
-    const insufficient = sampleEnvelopes.filter((c) => c.classification === 'insufficient-evidence');
+    const insufficient = sampleEnvelopes.filter((c) => c.classification === 'insufficient-evidence' || c.classification === 'unsupported');
     const interpolating = sampleEnvelopes.filter((c) => c.classification === 'interpolation-with-limited-evidence');
 
     if (outside.length > 0) {
@@ -142,6 +205,7 @@ function assessPhysicalValidationEligibility({
     dataset: dataset.id,
     quantities: quantities.map((q) => q.name ?? q),
     envelope: envelope?.id ?? null,
+    testedPointProvenance: envelope?.evidence ?? null,
   };
   return { allowed: blockers.length === 0, blockers, scope };
 }
@@ -201,7 +265,7 @@ export function runExperimentalValidation({
       const measured = point[name];
       const pred = predicted[name];
       const measUnc = q.measurementUncertainty ?? dataset.uncertainty?.[name] ?? null;
-      if (measured == null || pred == null || !Number.isFinite(Number(measured)) || !Number.isFinite(Number(pred))) {
+      if (typeof measured !== 'number' || typeof pred !== 'number' || !Number.isFinite(measured) || !Number.isFinite(pred)) {
         comparisons.push({ sampleIndex: dataset.samples.indexOf(sample), quantity: name, status: 'missing-data', measured, predicted });
         continue;
       }
@@ -237,8 +301,9 @@ export function runExperimentalValidation({
   }
   if (criteria.requireUncertaintyOverlap) {
     const withUnc = compared.filter((c) => c.measurementUncertainty != null);
-    const allOverlap = withUnc.length > 0 && withUnc.every((c) => c.withinMeasurementUncertainty);
-    criteriaResults.push({ criterion: 'predictions within measurement uncertainty', met: withUnc.length > 0 && allOverlap, actual: withUnc.length > 0 ? 'verified' : 'NO measurement uncertainty declared — overlap cannot be verified' });
+    const allOverlap = compared.length > 0 && withUnc.length === compared.length && withUnc.every((c) =>
+      typeof c.measurementUncertainty === 'number' && Number.isFinite(c.measurementUncertainty) && c.measurementUncertainty >= 0 && c.withinMeasurementUncertainty);
+    criteriaResults.push({ criterion: 'predictions within measurement uncertainty', met: allOverlap, actual: allOverlap ? 'verified' : 'measurement uncertainty unavailable, invalid, or insufficient for at least one comparison' });
   }
   if (criteria.maxBias !== undefined) {
     criteriaResults.push({ criterion: `|bias| <= ${criteria.maxBias}`, met: bias !== null && Math.abs(bias) <= criteria.maxBias, actual: bias });
@@ -247,7 +312,7 @@ export function runExperimentalValidation({
 
   // ---- centralized physical-validation eligibility (review round 1) --------
   const eligibility = assessPhysicalValidationEligibility({
-    dataset, quality, criteria, criteriaMet, criteriaResults,
+    dataset, quality, criteria, criteriaMet, criteriaResults, comparisons,
     envelope, quantities, samples: dataset.samples,
     calibrationRef, calibrationRecord, splitManifest,
     provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
