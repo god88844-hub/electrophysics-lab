@@ -87,7 +87,7 @@ test('Phase 9 gate: numerical error and spoofed error summary never pass',()=>{
 });
 test('Phase 9 gate: mismatched output data shape and nonfinite numbers must fail',()=>{
   for(const mutate of [
-    o=>o.shape=[2,3],o=>o.jsValues[0]=NaN,o=>o.onnxValues[0]=Infinity,
+    o=>o.shape=[3,3],o=>o.jsValues[0]=NaN,o=>o.onnxValues[0]=Infinity,
     o=>o.jsValues.pop(),o=>o.maxRelativeError=1e-3,
   ]){
     const r=record();mutate(r.cases[2].outputs[0]);assert.equal(evaluate(r).ok,false);
