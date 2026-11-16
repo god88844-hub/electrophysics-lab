@@ -23,6 +23,7 @@ import { assemble, disassemble } from '../labs/cpu/assembler.js';
 import { runOnnxSubset } from '../labs/ai/onnx-subset.js';
 import { runOnnxQuantizedCase } from '../labs/ai/onnx-quantized.js';
 import { runPhase11Case } from '../labs/ai/onnx-per-axis-conv.js';
+import { runIrisModelBenchmark } from '../labs/ai/iris-benchmark.js';
 
 const CANVAS_LABS = new Set(['logic', 'chip', 'quantum', 'optics']);
 const SCENE_LABS = new Set(['logic', 'chip', 'quantum']);
@@ -807,6 +808,26 @@ export class App {
     convSection.append(runConv);
     left.append(convSection);
 
+    const modelSection=document.createElement('section');
+    modelSection.className='field';
+    const modelHeading=document.createElement('h3');
+    modelHeading.textContent='Real licensed dataset / model-level holdout (Phase 12)';
+    modelSection.append(modelHeading);
+    const modelDescription=document.createElement('p');
+    modelDescription.className='muted';
+    modelDescription.textContent='UCI Iris (CC BY 4.0): 150 labeled real samples, 120 train-only, 30 unseen holdout. A fixed six-hidden-neuron MLP predicts three flower species. Model-only; not a GPU/TPU or silicon benchmark.';
+    modelSection.append(modelDescription);
+    const runModel=document.createElement('button');
+    runModel.type='button';runModel.className='primary';
+    runModel.setAttribute('data-action','run-iris-holdout');
+    runModel.textContent='▶ Run 30-sample Iris model benchmark';
+    runModel.addEventListener('click',()=>this.runIrisHoldoutBenchmark().catch(error=>{
+      this.log('Iris model holdout failed: '+error.message,'err');
+      this._setVerdict('fail');
+    }));
+    modelSection.append(runModel);
+    left.append(modelSection);
+
     right.innerHTML = `
       <div>What this runs:</div>
       <ul class="muted">
@@ -874,6 +895,20 @@ export class App {
     this.switchOutputTab('scope');
     this._setVerdict('warn');
     this.log('MODEL-ONLY Phase 11 '+caseId+' computed. Independent ONNX Runtime validation belongs to CI.');
+    return result;
+  }
+
+  async runIrisHoldoutBenchmark(){
+    if(this.state.labId!=='ai')throw Error('Iris MLP model benchmark requires the AI Accelerator Lab');
+    const response=await fetch(new URL('../../benchmarks/phase12/iris-mlp.json',import.meta.url));
+    if(!response.ok)throw Error('Licensed Iris model fixture unavailable: HTTP '+response.status);
+    const fixture=await response.json();
+    const result=runIrisModelBenchmark(fixture);
+    this.lastResult=result;
+    this.switchOutputTab('scope');
+    this._setVerdict('warn');
+    this.log('MODEL-ONLY UCI Iris holdout: '+result.correct+'/'+result.samples+
+      ' classification predictions correct; independent sklearn/ORT engines run separately in CI, not the browser.');
     return result;
   }
 
