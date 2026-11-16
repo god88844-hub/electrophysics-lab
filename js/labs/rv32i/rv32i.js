@@ -172,6 +172,7 @@ export class RV32I {
         case 0x33: {
           hasResult = true;
           if (f3 === 0 && f7 === 0x20) { name = 'SUB'; result = a - b; break; }
+          if (f3 === 5 && f7 === 0x20) { name = 'SRA'; result = a >> (b & 31); break; }
           if (f7 !== 0) illegal('non-RV32I register arithmetic encoding');
           switch (f3) {
             case 0: name = 'ADD'; result = a + b; break;
