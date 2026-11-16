@@ -2,6 +2,7 @@
 // on the SAME flattened Diagram. No independent or unvalidated black-box solver.
 import { Diagram, uid } from '../core/diagram.js';
 import { getComponent } from '../core/registry.js';
+import { portOf } from '../core/block.js';
 import { validateModuleTemplate, registerAssembly, serializeModuleLibrary,
   parseModuleLibrary, MODULE_FORMAT } from './modules.js';
 
@@ -13,6 +14,7 @@ const copied=x=>structuredClone(x);
 const isObj=x=>x!==null && typeof x==='object' && !Array.isArray(x);
 const owns=(obj,key)=>Object.prototype.hasOwnProperty.call(obj,key);
 const isId=x=>typeof x==='string'&&x.trim().length>0&&x.length<=128&&
+  !/[\\/\\u0000-\\u001f]/.test(x)&&
   !['__proto__','prototype','constructor'].includes(x);
 const position=x=>typeof x==='number'&&Number.isFinite(x)&&Math.abs(x)<=1e6;
 function fail(message){throw Error('Composite module: '+message);}
@@ -81,6 +83,7 @@ function validateCompositeStructure(template,byId,stack=[]){
   if(!Array.isArray(template.interfaces)||template.interfaces.length>MAX_PORTS)fail('invalid composite exposed interface count');
   if(!Array.isArray(template.parameters)||template.parameters.length>MAX_PARAMS)fail('invalid composite parameter count');
   const children=new Map(), interfaces=new Map(), params=new Map();
+  const boundTargets=new Set();
   for(const child of template.children){
     if(!isObj(child)||!isId(child.id)||children.has(child.id)||!isId(child.templateId)||
       !position(child.x)||!position(child.y))fail('invalid, duplicate or misplaced child module');
@@ -101,6 +104,11 @@ function validateCompositeStructure(template,byId,stack=[]){
     if(!c)fail('parameter target child does not exist');
     const selector=p.target;
     const schema=checkNumericSelector(c.ref,selector);
+    const targetKey=JSON.stringify(c.ref.format===MODULE_FORMAT
+      ? [selector.childId,selector.blockId,selector.paramKey]
+      : [selector.childId,selector.parameter]);
+    if(boundTargets.has(targetKey))fail('duplicate parameter binding to child parameter');
+    boundTargets.add(targetKey);
     numericParamCheck(p.default,schema,'parameter '+p.name);
     if(p.min!==undefined &&(!Number.isFinite(p.min)||schema.min!==undefined&&p.min<schema.min))fail('parameter minimum out of child bounds');
     if(p.max!==undefined &&(!Number.isFinite(p.max)||schema.max!==undefined&&p.max>schema.max))fail('parameter maximum out of child bounds');
@@ -108,19 +116,25 @@ function validateCompositeStructure(template,byId,stack=[]){
     if(p.min!==undefined&&p.default<p.min||p.max!==undefined&&p.default>p.max)fail('parameter default outside declared bounds');
     params.set(p.name,p);
   }
-  const unique=new Set();
+  const unique=new Set(),edgeKeys=new Set();
   for(const wire of template.wires){
     if(!isObj(wire)||!isId(wire.id)||unique.has(wire.id)||!isObj(wire.from)||!isObj(wire.to))fail('invalid/duplicate cross-module wire');
     unique.add(wire.id);
+    const edgeKey=JSON.stringify([wire.from.childId,wire.from.port,wire.to.childId,wire.to.port]);
+    if(edgeKeys.has(edgeKey))fail('duplicate cross-module connection');
+    edgeKeys.add(edgeKey);
     const a=children.get(wire.from.childId)?.ports.get(wire.from.port);
     const b=children.get(wire.to.childId)?.ports.get(wire.to.port);
     if(!signatureOk(a,b))fail('incompatible or unknown cross-module interface connection');
     if(wire.from.childId===wire.to.childId&&wire.from.port===wire.to.port)fail('self-connected module interface');
   }
-  const nameSet=new Set();
+  const nameSet=new Set(),exposedTargets=new Set();
   for(const p of template.interfaces){
     if(!isObj(p)||!isId(p.name)||nameSet.has(p.name))fail('invalid/duplicate external interface');
     nameSet.add(p.name);
+    const aliasTarget=JSON.stringify([p.childId,p.port]);
+    if(exposedTargets.has(aliasTarget))fail('duplicate external interface alias');
+    exposedTargets.add(aliasTarget);
     const inner=children.get(p.childId)?.ports.get(p.port);
     if(!inner||p.dir!==inner.dir||p.type!==inner.type)fail('external interface signature mismatch');
     interfaces.set(p.name,p);
@@ -154,6 +168,9 @@ function blueprintLeaf(template,overrides={}){
   const v=validateModuleTemplate(template);
   if(!v.ok)fail('invalid leaf template '+template.id+': '+v.errors.join('; '));
   const blocks=template.blocks.map(b=>({...copied(b),id:b.id}));
+  for(const block of blocks){
+    if(!isId(block.id))fail('invalid leaf block ID: hierarchy separator or control character is forbidden');
+  }
   const blockMap=new Map(blocks.map(b=>[b.id,b]));
   for(const [key,value] of Object.entries(overrides)){
     const split=key.lastIndexOf('.');
@@ -305,26 +322,40 @@ export function parseHierarchicalLibrary(raw){
   return copied(obj.templates);
 }
 function groupPorts(group,template,diagram){
+  let mappings;
   if(isObj(group.interfaceBindings)){
     const names=new Set((template.interfaces||[]).map(p=>p.name));
     const bindings=Object.entries(group.interfaceBindings);
     if(bindings.length!==names.size||bindings.some(([name,p])=>
-      !names.has(name)||!group.blockIds.includes(p.blockId)||!diagram.block(p.blockId))) {
+      !names.has(name)||!group.blockIds.includes(p?.blockId)||!diagram.block(p.blockId))) {
       fail('stored assembly interface mapping is stale');
     }
-    return new Map(bindings);
+    mappings=new Map(bindings);
+  }else{
+    if(template.format!==MODULE_FORMAT)fail('nested group has no persisted interface mapping');
+    const original=template.blocks.map(b=>b.id),ids=group.blockIds;
+    let matched;
+    if(original.every(id=>ids.includes(id)))matched=new Map(original.map(id=>[id,id]));
+    else if(original.length===ids.length &&
+      original.every((id,i)=>diagram.block(ids[i])?.type===template.blocks[i].type))
+      matched=new Map(original.map((id,i)=>[id,ids[i]]));
+    else fail('legacy assembly membership cannot be reconciled to template');
+    mappings=new Map(template.interfaces.map(p=>[p.name,{
+      blockId:matched.get(p.blockId),portId:p.portId,dir:p.dir,type:p.type,
+    }]));
   }
-  if(template.format!==MODULE_FORMAT)fail('nested group has no persisted interface mapping');
-  const orig=template.blocks.map(b=>b.id);
-  const ids=group.blockIds;
-  let mapped;
-  if(orig.every(id=>ids.includes(id)))mapped=new Map(orig.map(id=>[id,id]));
-  else if(orig.length===ids.length && orig.every((id,i)=>diagram.block(ids[i])?.type===template.blocks[i].type))
-    mapped=new Map(orig.map((id,i)=>[id,ids[i]]));
-  else fail('legacy assembly membership cannot be reconciled to template');
-  return new Map(template.interfaces.map(p=>[p.name,{
-    blockId:mapped.get(p.blockId),portId:p.portId,dir:p.dir,type:p.type,
-  }]));
+  // A caller may edit project JSON. Never trust stored interface metadata
+  // without checking its signature against the actual registered block port.
+  for(const exposed of template.interfaces){
+    const mapped=mappings.get(exposed.name);
+    const block=diagram.block(mapped?.blockId);
+    const actual=block && portOf(block,mapped?.portId);
+    if(!mapped||!actual||mapped.dir!==exposed.dir||
+      mapped.type!==exposed.type||actual.dir!==exposed.dir||actual.type!==exposed.type){
+      fail('stored assembly interface signature or real port mismatch: '+exposed.name);
+    }
+  }
+  return mappings;
 }
 /**
  * Capture existing named assemblies into a true composite blueprint.
