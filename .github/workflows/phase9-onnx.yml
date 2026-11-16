@@ -54,4 +54,5 @@ jobs:
           path: |
             benchmarks/evidence/phase9-onnx.json
             benchmarks/evidence/phase9-summary.json
+            benchmarks/evidence/phase9-models/*.onnx
           if-no-files-found: error
