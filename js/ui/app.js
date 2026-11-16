@@ -21,6 +21,7 @@ import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/f
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
 import { runOnnxSubset } from '../labs/ai/onnx-subset.js';
+import { runOnnxQuantizedCase } from '../labs/ai/onnx-quantized.js';
 
 const CANVAS_LABS = new Set(['logic', 'chip', 'quantum', 'optics']);
 const SCENE_LABS = new Set(['logic', 'chip', 'quantum']);
@@ -738,6 +739,40 @@ export class App {
     onnxSection.append(runOnnx);
     left.append(onnxSection);
 
+    const quantSection=document.createElement('section');
+    quantSection.className='field';
+    const quantHeading=document.createElement('h3');
+    quantHeading.textContent='ONNX int8 / uint8 quantization (Phase 10)';
+    quantSection.append(quantHeading);
+    const quantNote=document.createElement('p');
+    quantNote.className='muted';
+    quantNote.textContent='Per-tensor 2D QLinearMatMul and QuantizeLinear → DequantizeLinear. These are software arithmetic models, NOT real GPU/TPU execution or physical accuracy.';
+    quantSection.append(quantNote);
+    const quantSelector=document.createElement('select');
+    quantSelector.setAttribute('aria-label','Quantized ONNX reference example');
+    for(const [id,label] of [
+      ['qlinear-int8-symmetric','Int8 symmetric QLinearMatMul'],
+      ['qlinear-uint8-offset','Uint8 nonzero zero-point QLinearMatMul'],
+      ['qlinear-int8-saturation','Int8 clipped QLinearMatMul'],
+      ['qlinear-uint8-saturation','Uint8 clipped QLinearMatMul'],
+      ['qdq-int8-ties-even','Signed Quantize → Dequantize (ties-to-even)'],
+      ['qdq-uint8-offset-saturation','Uint8 Quantize → Dequantize (offset/saturation)']
+    ]){
+      const option=document.createElement('option');option.value=id;option.textContent=label;
+      quantSelector.append(option);
+    }
+    quantSection.append(quantSelector);
+    const runQuant=document.createElement('button');
+    runQuant.type='button';runQuant.className='primary';
+    runQuant.setAttribute('data-action','run-quantized-onnx');
+    runQuant.textContent='▶ Run quantized ONNX subset';
+    runQuant.addEventListener('click',()=>this.runOnnxQuantizedExample(quantSelector.value).catch(error=>{
+      this.log('ONNX quantization failed: '+error.message,'err');
+      this._setVerdict('fail');
+    }));
+    quantSection.append(runQuant);
+    left.append(quantSection);
+
     right.innerHTML = `
       <div>What this runs:</div>
       <ul class="muted">
@@ -767,6 +802,26 @@ export class App {
     this._setVerdict('warn');
     this.log('Model-only ONNX opset-13 graph '+caseId+' computed with '+result.executedNodes+
       ' f32 tensor nodes; independent verification belongs to Phase 9 CI.');
+    return result;
+  }
+
+  async runOnnxQuantizedExample(caseId='qlinear-int8-symmetric'){
+    if(this.state.labId!=='ai')throw Error('ONNX quantized samples require the AI Accelerator Lab');
+    const url=new URL('../../benchmarks/phase10/quantized-cases.json',import.meta.url);
+    const response=await fetch(url);
+    if(!response.ok)throw Error('Quantized sample library missing: HTTP '+response.status);
+    const document=await response.json();
+    if(document?.format!=='invention-lab/phase10-quantized-fixtures/1'||
+       document?.opset!==13||document?.perTensorScalesOnly!==true||
+       !Array.isArray(document.cases)||document.cases.length!==6)
+       throw Error('Invalid or incomplete quantized ONNX fixture library');
+    const graph=document.cases.find(x=>x.id===caseId);
+    if(!graph)throw Error('Unknown quantized ONNX example '+caseId);
+    const result=runOnnxQuantizedCase(graph);
+    this.lastResult=result;
+    this.switchOutputTab('scope');
+    this._setVerdict('warn');
+    this.log('MODEL-ONLY quantized inference '+caseId+' completed. Real ONNX Runtime runs separately in Phase 10 CI.');
     return result;
   }
 
