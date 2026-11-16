@@ -34,6 +34,15 @@ export function sha256(text) {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
+/** Recursively freeze nested source metadata, measured values, and evidence. */
+function freezeDeep(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const part of Object.values(value)) freezeDeep(part);
+    Object.freeze(value);
+  }
+  return value;
+}
+
 /**
  * Create a measurement dataset object.
  * meta: all Phase 3 §2 metadata fields. Unknown/absent fields must be
@@ -104,7 +113,7 @@ export function createDataset(meta, samples, { rawSource = null } = {}) {
     samples: freezeSamples(samples ?? []),
     transformations: meta.transformations ?? [], // provenance chain of derived datasets
   };
-  return Object.freeze(d);
+  return freezeDeep(d);
 }
 
 function freezeSamples(samples) {
@@ -128,7 +137,7 @@ export function parseDataset(text) {
   // The actual serialized-file checksum is returned separately. A caller must
   // compare it with an independently stored expected checksum when available;
   // a self-referential checksum inside the file is not an authenticity proof.
-  return Object.freeze({ ...d, textSha256 });
+  return freezeDeep({ ...d, textSha256 });
 }
 
 /**
@@ -168,6 +177,7 @@ export function verifySourceReceipt(dataset, rawText, { acquisitionRecordId } = 
     datasetId: dataset.id,
     datasetSha256: dataset.source.datasetSha256,
     rawFileSha256: dataset.source.rawFileSha256,
+    sampleSha256: sha256(JSON.stringify(dataset.samples)),
     acquisitionRecordId: acquisitionRecordId.trim(),
   });
   verifiedSourceReceipts.add(receipt);
@@ -181,7 +191,8 @@ export function sourceReceiptMatches(dataset, receipt) {
     verifiedSourceReceipts.has(receipt) &&
     receipt.datasetId === dataset?.id &&
     receipt.datasetSha256 === dataset?.source?.datasetSha256 &&
-    receipt.rawFileSha256 === dataset?.source?.rawFileSha256
+    receipt.rawFileSha256 === dataset?.source?.rawFileSha256 &&
+    receipt.sampleSha256 === sha256(JSON.stringify(dataset?.samples))
   );
 }
 
