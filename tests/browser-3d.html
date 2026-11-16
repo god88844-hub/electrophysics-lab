@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Invention Lab WebGL browser smoke</title>
+<link rel="stylesheet" href="../css/style.css"></head>
+<body>
+<div id="app"></div>
+<pre id="smoke-result" data-smoke-result="pending">PENDING</pre>
+<script type="module">
+import '../js/main.js';
+import { sceneFromDiagram, portPoint3D } from '../js/scene/layout.js';
+const output=document.querySelector('#smoke-result');
+const assert=(condition,message)=>{if(!condition)throw Error(message);};
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+try{
+  await pause(180);
+  const app=window.inventionLab?.app;
+  assert(app,'application failed to boot');
+  app.switchLab('logic');
+  const d=app.diagrams.logic;
+  const before=d.blocks.length;
+  const a=app.editor.addBlock('logic.IN',0,0);
+  const b=app.editor.addBlock('logic.NOT',240,0);
+  assert(d.blocks.length===before+2,'adding canonical logic blocks failed');
+  assert(app.set3D(true)===true,'WebGL view failed to activate');
+  await pause(150);
+  assert(app.scene3d.available,'WebGL unavailable');
+  const gl=app.scene3d.gl;
+  app.scene3d.render();
+  assert(gl.getError()===gl.NO_ERROR,'WebGL draw produced a GL error');
+  const scene=sceneFromDiagram(d);
+  const out=portPoint3D(scene.blocks.find(x=>x.id===a.id),'out','out');
+  const input=portPoint3D(scene.blocks.find(x=>x.id===b.id),'a','in');
+  assert(out && input,'3D ports missing');
+  const viewer=app.scene3d;
+  const clickPort=point=>{
+    const pos=viewer.project(point);
+    assert(pos,'port projected behind camera');
+    const rect=viewer.canvas.getBoundingClientRect();
+    const event=new PointerEvent('pointerdown',{bubbles:true,cancelable:true,
+      pointerId:1,clientX:rect.left+pos.x,clientY:rect.top+pos.y});
+    viewer.canvas.dispatchEvent(event);
+  };
+  const count=d.wires.length;
+  clickPort(out);
+  assert(viewer.wireSource?.blockId===a.id,'3D output socket was not selected');
+  clickPort(input);
+  assert(d.wires.length===count+1,'3D click-to-wire did not update real Diagram');
+  assert(d.wires.at(-1).from.block===a.id && d.wires.at(-1).to.block===b.id,
+    '3D connection endpoints did not match canonical ports');
+  app.set3D(false);
+  assert(viewer.root.style.display==='none','3D overlay not hidden in 2D mode');
+  assert(app.editor.canvas.style.display!=='none','2D editor was not restored');
+  app.switchLab('chip');
+  assert(app.set3D(true),'Chip Lab could not use shared 3D view');
+  app.switchLab('quantum');
+  assert(app.set3D(true),'Quantum Lab could not use shared 3D view');
+  app.switchLab('crosslab');
+  assert(viewer.root.style.display==='none','3D overlay not hidden in Cross-Lab');
+  app.switchLab('logic');
+  app.switchOutputTab('evidence');
+  assert(app.$outputBody.textContent.includes('Not estimated'),'build probability must be explicitly unavailable');
+  output.dataset.smokeResult='pass';
+  output.textContent='PASS — WebGL, canonical component editing and typed 3D port wiring, lab switching, evidence panel';
+}catch(err){
+  output.dataset.smokeResult='fail';
+  output.textContent='FAIL — '+String(err.stack||err.message||err);
+}
+</script></body></html>
