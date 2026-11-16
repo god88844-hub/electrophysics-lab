@@ -929,3 +929,21 @@ test('phase3-regression: envelope arrays cannot mutate after creation', () => {
   assert.throws(() => { env.ranges.V_in[0] = -1; }, TypeError);
   assert.throws(() => { env.sets.mode.push('invented'); }, TypeError);
 });
+
+
+test('phase3-regression: frozen dataset does not freeze caller-owned mutable input objects', () => {
+  const meta = {
+    id: 'caller-purity', origin: 'real-measurement', experiment: { id: 'e' },
+    configuration: { parameters: { gain: 2 } }, quantities: [{ name: 'V', unit: 'V' }],
+  };
+  const rows = [{ t: 0, values: { V: 1 } }];
+  const d = createDataset(meta, rows, { rawSource: 'mock' });
+  assert.ok(Object.isFrozen(d.configuration.parameters));
+  assert.ok(Object.isFrozen(d.samples[0].values));
+  assert.equal(Object.isFrozen(meta.configuration.parameters), false, 'dataset creation must not freeze application-owned design objects');
+  assert.equal(Object.isFrozen(rows[0].values), false, 'dataset creation must not freeze original source observations');
+  meta.configuration.parameters.gain = 9;
+  rows[0].values.V = 9;
+  assert.equal(d.configuration.parameters.gain, 2);
+  assert.equal(d.samples[0].values.V, 1);
+});
