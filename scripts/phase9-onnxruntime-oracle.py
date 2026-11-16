@@ -58,6 +58,11 @@ def _model(case):
         attrs = node.get("attrs") or {}
         if set(attrs) - ATTRS[op]:
             raise ValueError("unsupported op attributes")
+        # ONNX attribute protobuf types are strict: Gemm alpha/beta are
+        # FLOAT even when the version-controlled JSON value is integer 1.
+        # Never silently reinterpret transA/transB as floating point.
+        attrs = {k: (float(v) if op == "Gemm" and k in ("alpha", "beta") else v)
+                 for k, v in attrs.items()}
         nodes.append(helper.make_node(op, node["inputs"], [node["output"]],
                                       name=node["id"], **attrs))
     outputs = [
