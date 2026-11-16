@@ -146,6 +146,46 @@ export function verifyChecksum(dataset, rawText) {
   return true;
 }
 
+// Verification receipts are issued only by the actual raw-byte verification
+// function in this process. A caller-supplied boolean or JSON-shaped object
+// cannot impersonate a verified receipt.
+const verifiedSourceReceipts = new WeakSet();
+
+/**
+ * Verify ORIGINAL instrument-export bytes and issue a dataset-bound receipt.
+ * This proves source-file integrity, NOT that a purported physical experiment
+ * actually occurred. Acquisition evidence must still be independently reviewed.
+ */
+export function verifySourceReceipt(dataset, rawText, { acquisitionRecordId } = {}) {
+  verifyChecksum(dataset, rawText);
+  if (!dataset?.source?.datasetSha256 || !dataset?.id) {
+    throw new Error('cannot issue source receipt without a dataset ID and dataset checksum');
+  }
+  if (typeof acquisitionRecordId !== 'string' || !acquisitionRecordId.trim()) {
+    throw new Error('acquisitionRecordId required: raw-file integrity alone does not establish measurement provenance');
+  }
+  const receipt = Object.freeze({
+    format: 'invention-lab/source-verification/1',
+    datasetId: dataset.id,
+    datasetSha256: dataset.source.datasetSha256,
+    rawFileSha256: dataset.source.rawFileSha256,
+    acquisitionRecordId: acquisitionRecordId.trim(),
+  });
+  verifiedSourceReceipts.add(receipt);
+  return receipt;
+}
+
+/** A caller's `provenanceVerified: true` is intentionally NOT sufficient. */
+export function sourceReceiptMatches(dataset, receipt) {
+  return Boolean(
+    receipt && typeof receipt === 'object' &&
+    verifiedSourceReceipts.has(receipt) &&
+    receipt.datasetId === dataset?.id &&
+    receipt.datasetSha256 === dataset?.source?.datasetSha256 &&
+    receipt.rawFileSha256 === dataset?.source?.rawFileSha256
+  );
+}
+
 /**
  * Derive a new dataset from an existing one. The transformation is recorded
  * in the provenance chain; the parent dataset is never modified.
