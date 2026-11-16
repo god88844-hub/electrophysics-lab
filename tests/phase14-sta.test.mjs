@@ -6,16 +6,17 @@ import {parsePhase14TimingLog,evaluatePhase14Timing,FORMAT} from '../js/evidence
 const H='a'.repeat(64);
 const exampleLog=()=>[
   'OpenSTA experimental fixture - not real evidence',
-  'PHASE14_PORT_COUNTS 18 10',
   'PHASE14_TIMING_PATHS_BEGIN',
-  'Startpoint: a[0] (input port clocked by vclk)',
-  'Endpoint: y[0] (output port clocked by vclk)',
-  'Path Group: vclk',
-  'Path Type: max',
-  '   4.40 data arrival time',
-  '   slack (MET) 14.60',
+  ...['carry','zero',...Array.from({length:8},(_,i)=>'y['+i+']')].flatMap((port,i)=>[
+    'Startpoint: a[0] (input port clocked by vclk)',
+    'Endpoint: '+port+' (output port clocked by vclk)',
+    'Path Group: vclk',
+    'Path Type: max',
+    '   4.40 data arrival time',
+    '          14.60 slack (MET)'
+  ]),
   'PHASE14_TIMING_PATHS_END'
-].join('\n')+'\n';
+].join('\\n')+'\\n';
 function fixture(){
  const timing=parsePhase14TimingLog(exampleLog());
  return {format:FORMAT,example:'alu8',libraryCorner:'tt_025C_1v80',
@@ -47,9 +48,9 @@ test('Missing, unlinked, unconstrained, malformed or forged STA logs rejected',(
   x=>x.replace('PHASE14_TIMING_PATHS_END',''),
   x=>x.replace('Startpoint:', 'Starting:'),
   x=>x.replace('Endpoint:', 'Ending:'),
-  x=>x.replace('slack (MET) 14.60','slack INF'),
-  x=>x.replace('slack (MET) 14.60','slack (MET) NaN'),
-  x=>x.replace('18 10','18 9'),
+  x=>x.replace('14.60 slack (MET)','slack INF'),
+  x=>x.replace('14.60 slack (MET)','NaN slack (MET)'),
+  x=>x.replace('Endpoint: carry','Endpoint: bogus'),
   x=>x.replace('Path Type: max','Warning: missing cell'),
   x=>x.replace('Path Group: vclk','no paths found'),
   x=>x+'PHASE14_TIMING_PATHS_BEGIN',
@@ -82,7 +83,7 @@ test('No prior computational PASS can silently promote physical STA to fabricati
  }
 });
 test('A timing violation must fail without being mistaken for silicon measurement',()=>{
- const log=exampleLog().replace('slack (MET) 14.60','slack (VIOLATED) -2.25');
+ const log=exampleLog().replace('14.60 slack (MET)','-2.25 slack (VIOLATED)');
  const measured=parsePhase14TimingLog(log);
  assert.equal(measured.result,'violated');
  const x=fixture();x.timing=measured;
