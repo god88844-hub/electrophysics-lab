@@ -174,10 +174,29 @@ try{
   assert(app.$outputBody.textContent.includes('Not estimated'),
     'ONNX graph produced a fabricated physical success probability');
   assert(inference.physicalValidation==='none','ONNX browser inference cannot claim physical validation');
+
+  // Phase 10: genuine in-browser JS 8-bit ONNX arithmetic, with external
+  // ONNX Runtime available ONLY in the separate Phase 10 CI.
+  const quantSelector=app.$centerPanel.querySelector('[aria-label="Quantized ONNX reference example"]');
+  const quantButton=app.$centerPanel.querySelector('[data-action="run-quantized-onnx"]');
+  assert(quantSelector?.options.length===6,'Phase 10 quantization examples absent');
+  assert(quantButton,'Quantized ONNX run button absent');
+  const signed=await app.runOnnxQuantizedExample('qlinear-int8-symmetric');
+  assert(signed.output.dtype==='int8','Signed QLinearMatMul output dtype corrupted');
+  assert(JSON.stringify(signed.output.values)===JSON.stringify([-6,4,10,-17]),
+    'Signed 8-bit matrix multiply failed browser execution');
+  const unsigned=await app.runOnnxQuantizedExample('qdq-uint8-offset-saturation');
+  assert(unsigned.quantized?.dtype==='uint8','Unsigned Q/DQ quantization absent');
+  assert(unsigned.output.values[0]===-32 && unsigned.output.values[5]===31.75,
+    'Saturation and asymmetric zero points diverged from frozen example');
+  assert(app.$outputBody.textContent.includes('MODEL-ONLY') &&
+         app.$outputBody.textContent.includes('Not estimated'),
+    'Quantized ONNX UI fabricated independent or physical validation');
+  assert(unsigned.realWorldBuildSuccessPercent===null,'Quantized ONNX produced false build yield');
   app.switchLab('logic');
 
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — nested 3D modules, RV32IM, real browser ONNX f32 graph inference and explicit model-only physical-evidence limits';
+  output.textContent='PASS — 3D nested modules, RV32IM, ONNX float32 and int8/uint8 quantized browser inference with no invented physical validation';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
