@@ -332,6 +332,10 @@ export const Scope = {
   },
 
   render_ai(c, res) {
+    if(res?.kind==='onnx-subset'){
+      this.render_onnx_subset(c,res);
+      return;
+    }
     const m = res.matmul;
     c.appendChild(el('div', { text: `Matmul ${m.dims.join('×')} in ${m.precision}: max |C−C_f64| = ${m.err.toExponential(3)}` }));
     c.appendChild(el('div', { text: 'C (computed):' }));
@@ -350,6 +354,23 @@ export const Scope = {
       res.mlp.targets.map((t, i) => [`[${[[0, 0], [0, 1], [1, 0], [1, 1]][i]}]`, t, res.mlp.predictions[i].toFixed(3)]),
       { numCols: [2] },
     ));
+  },
+
+  render_onnx_subset(c,res){
+    c.appendChild(el('div',{text:'ONNX subset — '+res.caseId+' (opset '+res.operatorSet+', '+res.dtype+')'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'MODEL-ONLY result: ONNX Runtime is NOT executing in the browser. Independent ONNX Runtime CPU comparisons are performed separately in CI. No GPU/TPU timing or physical validation.'}));
+    c.appendChild(el('div',{text:'Graph execution trace:'}));
+    c.appendChild(table(['Node','Operator','Output','Shape'],
+      res.trace.map(t=>[t.node,t.op,t.output,t.shape.join('×')])));
+    for(const [name,t] of Object.entries(res.outputs)){
+      c.appendChild(el('div',{text:'Output '+name+' · '+t.shape.join('×')+' tensor'}));
+      const [rows,cols]=t.shape;
+      c.appendChild(table(Array.from({length:cols},(_,i)=>'C'+i),
+        Array.from({length:rows},(_,i)=>t.values.slice(i*cols,(i+1)*cols).map(x=>Number(x.toPrecision(7))))));
+    }
+    c.appendChild(el('div',{class:'muted',text:
+      'Real-world build success: Not estimated. Supported only: 2D float32 MatMul/Gemm/Add/Relu/Sigmoid/Softmax.'}));
   },
 
   render_quantum(c, res) {
