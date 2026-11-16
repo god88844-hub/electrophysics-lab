@@ -1,0 +1,29 @@
+{
+  "format": "invention-lab/phase8-rv32m-acceptance/1",
+  "isa": "RV32IM (RV32I 2.1 + M 2.0)",
+  "source": "benchmarks/phase8/rv32m-operations.S",
+  "scope": "12 architectural result words compiled with GNU binutils, executed independently under QEMU and compared to JS RV32IM; NOT ACT certification, hardware performance, silicon measurements or fabrication yield",
+  "requiredCases": [
+    {"id":"mul-low","operation":"MUL","expectedUnsigned":77},
+    {"id":"mulh-signed","operation":"MULH","expectedUnsigned":0},
+    {"id":"mulhsu-mixed","operation":"MULHSU","expectedUnsigned":2147483648},
+    {"id":"mulhu-unsigned","operation":"MULHU","expectedUnsigned":2147483647},
+    {"id":"div-signed-overflow","operation":"DIV","expectedUnsigned":2147483648},
+    {"id":"divu-unsigned","operation":"DIVU","expectedUnsigned":0},
+    {"id":"rem-signed-overflow","operation":"REM","expectedUnsigned":0},
+    {"id":"remu-unsigned","operation":"REMU","expectedUnsigned":2147483648},
+    {"id":"div-zero","operation":"DIV","expectedUnsigned":4294967295},
+    {"id":"divu-zero","operation":"DIVU","expectedUnsigned":4294967295},
+    {"id":"rem-zero","operation":"REM","expectedUnsigned":2147483648},
+    {"id":"remu-zero","operation":"REMU","expectedUnsigned":2147483648}
+  ],
+  "acceptance": {
+    "allCasesRequired": true,
+    "duplicateCaseIdsForbidden": true,
+    "allNumericResultsExactlyEqual": true,
+    "externalEngineMustRun": true,
+    "zeroSkips": true,
+    "physicalValidation": "none",
+    "realWorldBuildSuccessPercent": null
+  }
+}
