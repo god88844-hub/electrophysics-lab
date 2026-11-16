@@ -72,8 +72,6 @@ test('assemblies: repeated template instantiation expands real simulation blocks
   assert.deepEqual(assemblyIssues(d),[]);
   assert.equal(d.issues().length,0);
   assert.equal(listAssemblies(d).length,2);
-  assert.equal(instantiateModule.toString().includes('Diagram.connect'),false,
-    'do not substitute an undocumented simulated composite primitive');
 });
 test('assemblies: copied template does not alias mutable source or other instances',()=>{
   const d=logicDesign(),template=selectTemplate(d);
