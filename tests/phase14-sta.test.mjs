@@ -16,7 +16,7 @@ const exampleLog=()=>[
     '          14.60 slack (MET)'
   ]),
   'PHASE14_TIMING_PATHS_END'
-].join('\\n')+'\\n';
+].join('\n')+'\n';
 function fixture(){
  const timing=parsePhase14TimingLog(exampleLog());
  return {format:FORMAT,example:'alu8',libraryCorner:'tt_025C_1v80',
