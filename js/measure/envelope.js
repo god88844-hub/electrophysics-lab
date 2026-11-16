@@ -26,8 +26,10 @@ export function defineEnvelope({ id, ranges = {}, sets = {}, testedPoints = [], 
   return Object.freeze({
     format: 'invention-lab/validation-envelope/1',
     id,
-    ranges: Object.freeze({ ...ranges }),
-    sets: Object.freeze({ ...sets }),
+    ranges: Object.freeze(Object.fromEntries(Object.entries(ranges).map(([k, bounds]) =>
+      [k, Object.freeze([...bounds])]))),
+    sets: Object.freeze(Object.fromEntries(Object.entries(sets).map(([k, values]) =>
+      [k, Object.freeze([...values])]))),
     testedPoints: Object.freeze(testedPoints.map((p) => Object.freeze({ ...p }))),
     // A dataset-bound mapping from each tested point to its actual observation.
     // Metadata is not itself independent acquisition authentication.
