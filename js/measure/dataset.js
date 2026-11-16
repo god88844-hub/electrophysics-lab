@@ -132,14 +132,18 @@ export function createDataset(meta, samples, { rawSource = null } = {}) {
     samples: freezeSamples(samples ?? []),
     transformations: meta.transformations ?? [], // provenance chain of derived datasets
   };
+  // Clone the entire payload before freezing; callers may still need to edit
+  // their original configuration objects or raw observations. Do not mutate or
+  // freeze application-owned objects through shared nested references.
+  const snapshot = structuredClone(d);
   // The original instrument-export digest must be supplied independently;
   // rawSource, when provided, is not interchangeable with the dataset digest.
-  const digest = datasetContentSha256(d);
+  const digest = datasetContentSha256(snapshot);
   if (meta.source?.datasetSha256 && meta.source.datasetSha256 !== digest) {
     throw new Error('dataset content checksum mismatch: recorded datasetSha256 does not match the normalized dataset');
   }
-  d.source.datasetSha256 = digest;
-  return freezeDeep(d);
+  snapshot.source.datasetSha256 = digest;
+  return freezeDeep(snapshot);
 }
 
 function freezeSamples(samples) {
