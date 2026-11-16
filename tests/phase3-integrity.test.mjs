@@ -5,12 +5,12 @@ import assert from 'node:assert/strict';
 
 import '../js/labs/chip/components.js';
 import {
-  createDataset, parseDataset, sha256, verifyChecksum, physicalValidationAllowed,
+  createDataset, parseDataset, sha256, verifyChecksum, verifySourceReceipt, physicalValidationAllowed,
 } from '../js/measure/dataset.js';
 import { qualityReport } from '../js/measure/quality.js';
 import { runCalibration } from '../js/measure/calibration.js';
 import { defineEnvelope } from '../js/measure/envelope.js';
-import { runExperimentalValidation } from '../js/measure/validation.js';
+import { runExperimentalValidation, registerValidationPlan } from '../js/measure/validation.js';
 import { partitionByField } from '../js/measure/split.js';
 import { syntheticRCDataset, syntheticDividerDataset } from '../js/measure/experiments.js';
 
@@ -19,6 +19,7 @@ import { syntheticRCDataset, syntheticDividerDataset } from '../js/measure/exper
 function acceptedRealDataset() {
   const d = createDataset({
     id: 'real-accepted', origin: 'real-measurement',
+    source: { file: 'simulated-instrument.txt', rawFileSha256: sha256('real-accepted-raw') },
     experiment: { id: 'exp-1', date: '2026-01-15' },
     instruments: [{ manufacturer: 'Fluke', model: '179', serialNumber: 'SN-1', resolution: 0.001, uncertainty: 0.005, calibration: { certificateRef: 'CAL-001', status: 'valid', validUntil: '2026-12-01' } }],
     quantities: [{ name: 'V_in', unit: 'V' }, { name: 'V_out', unit: 'V' }],
@@ -41,6 +42,8 @@ const ENVELOPE_OK = defineEnvelope({
 
 function runVal(overrides = {}) {
   const { dataset, quality } = acceptedRealDataset();
+  const validationPlan = registerValidationPlan({ modelId: 'divider-vout', datasetId: dataset.id, envelopeId: ENVELOPE_OK.id, declaredUse: 'verify divider ratio', criteria: CRITERIA });
+  const provenanceReceipt = verifySourceReceipt(dataset, 'real-accepted-raw', { acquisitionRecordId: 'UNVERIFIED-TEST-FIXTURE' });
   return runExperimentalValidation({
     model: { id: 'divider-vout', predict: (p) => ({ V_out: (p.V_in * p.R2) / (p.R1 + p.R2) }) },
     params: { R1: 1000, R2: 1000 },
@@ -49,7 +52,7 @@ function runVal(overrides = {}) {
     criteria: CRITERIA,
     envelope: ENVELOPE_OK,
     quantities: [{ name: 'V_out', measurementUncertainty: 0.005 }],
-    provenanceVerified: true,
+    provenanceVerified: true, provenanceReceipt, validationPlan,
     ...overrides,
   });
 }
@@ -77,10 +80,11 @@ test('F1: envelope tested points far from measurement conditions → none', () =
   assert.ok(result.physicalValidation.note.includes('envelope') || result.physicalValidation.note.includes('interpolation') || result.physicalValidation.note.includes('demonstrated'));
 });
 
-test('F1: correct envelope with matching tested points → validated', () => {
+test('F1: correct envelope supports eligibility candidate, not physical validation of a mock measurement', () => {
   const result = runVal({});
-  assert.equal(result.stage, 'physicalValidation');
-  assert.equal(result.physicalValidation.status, 'validated');
+  assert.equal(result.stage, 'softwareDemonstration');
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.equal(result.physicalValidation.programmaticEligibility, 'candidate-for-independent-review');
   assert.ok(result.physicalValidation.scope, 'scope must record dataset + quantities + envelope');
 });
 
@@ -155,9 +159,10 @@ test('F3: calibration on group A + validation on group A → leakage detected', 
     'using the same dataset for calibration and validation must block physical validation');
 });
 
-test('F3: nominal parameters work without a split manifest', () => {
+test('F3: nominal parameters need no calibration split but cannot attest physical experiments', () => {
   const result = runVal({});
-  assert.equal(result.stage, 'physicalValidation');
+  assert.equal(result.stage, 'softwareDemonstration');
+  assert.equal(result.physicalValidation.programmaticEligibility, 'candidate-for-independent-review');
   assert.equal(result.paramProvenance.source, 'nominal values');
 });
 
@@ -179,15 +184,16 @@ test('F4: synthetic relabelled to real-measurement is blocked without verified p
     'unverified provenance must block physical validation even when origin claims real-measurement');
 });
 
-test('F4: verified provenance + real origin + accepted quality → validated', () => {
+test('F4: verified hash plus self-labelled real origin is NOT independently reviewed physical validation', () => {
   const result = runVal({ provenanceVerified: true });
-  assert.equal(result.physicalValidation.status, 'validated');
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.equal(result.physicalValidation.programmaticEligibility, 'candidate-for-independent-review');
 });
 
-test('F4: provenance NOT verified → physicalValidation none', () => {
-  const result = runVal({ provenanceVerified: false });
+test('F4: a provenanceVerified boolean is not a verification receipt', () => {
+  const result = runVal({ provenanceVerified: true, provenanceReceipt: null });
   assert.equal(result.physicalValidation.status, 'none');
-  assert.ok(result.physicalValidation.note.includes('provenance') || result.physicalValidation.note.includes('verified'));
+  assert.ok(result.physicalValidation.note.includes('receipt'));
 });
 
 test('F4: dataset source separates rawFileSha256 from datasetSha256', () => {
