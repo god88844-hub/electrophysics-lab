@@ -15,6 +15,7 @@
 //  - everything is deterministic under recorded seeds.
 
 import { mulberry32 } from './uq.js';
+import { sha256 } from './dataset.js';
 
 /** symmetric eigen-decomposition (Jacobi rotations) of a real symmetric matrix */
 export function symmetricEigen(A, { maxSweeps = 100, tol = 1e-12 } = {}) {
@@ -196,7 +197,8 @@ export function solveLinear(A, b) {
  *   multistart: number of additional starts (seeded, sampled within bounds)
  *   confidenceLevel: 0.95 (normal-approximation intervals — documented)
  */
-export function runCalibration({ id, modelFn, measurements, p0, lower, upper, weights = null, parameterNames, multistart = 0, seed = 7, confidenceLevel = 0.95, dataset = null, convergenceTolerance = 1e-12, maxIterations = 200 }) {
+export function runCalibration({ id, modelFn, measurements, p0, lower, upper, weights = null, parameterNames, multistart = 0, seed = 7, confidenceLevel = 0.95, dataset = null, modelId = null, convergenceTolerance = 1e-12, maxIterations = 200 }) {
+  if (!Array.isArray(measurements) || measurements.length === 0 || measurements.some(v => typeof v !== 'number' || !Number.isFinite(v))) throw new Error('runCalibration: measurements must be a nonempty array of finite numbers');
   if (!parameterNames || parameterNames.length !== p0.length) {
     throw new Error('runCalibration: parameterNames must match the parameter vector length');
   }
@@ -304,7 +306,9 @@ export function runCalibration({ id, modelFn, measurements, p0, lower, upper, we
     confidenceLevel,
     intervalMethod: 'normal approximation (z = 1.96); exact Student-t quantiles are future work — recorded as a limitation',
     residualAnalysis,
-    dataset,
+    measurementSha256: sha256(JSON.stringify(measurements)),
+    dataset: dataset ? structuredClone(dataset) : null,
+    modelId,
     modelVersion: null, // caller fills if applicable
     generatedAt: new Date().toISOString(),
   };
