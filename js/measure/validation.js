@@ -29,7 +29,13 @@ const registeredPlans = new WeakSet();
 /** A scope-bound in-process plan; independent evidence of advance approval still requires external review. */
 export function registerValidationPlan({ modelId, datasetId, envelopeId, declaredUse, criteria, approvalRecord = null }) {
   if (!modelId || !datasetId || !envelopeId || !declaredUse || !criteria || typeof criteria !== 'object') throw new Error('validation plan requires model, dataset, envelope, use and criteria');
-  const plan = Object.freeze({ format: 'invention-lab/validation-plan/1', modelId, datasetId, envelopeId, declaredUse, criteria: deepFreeze(structuredClone(criteria)), approvalRecord });
+  const fields = {
+    format: 'invention-lab/validation-plan/1', modelId, datasetId, envelopeId,
+    declaredUse, criteria: structuredClone(criteria),
+    approvalRecord: approvalRecord == null ? null : structuredClone(approvalRecord),
+    recordedAt: new Date().toISOString(),
+  };
+  const plan = deepFreeze({ ...fields, checksum: sha256(JSON.stringify(fields)) });
   registeredPlans.add(plan);
   return plan;
 }
@@ -108,7 +114,8 @@ function assessPhysicalValidationEligibility({
   // approval before looking at results; external prespecification review remains required.
   if (!validationPlan || !registeredPlans.has(validationPlan) || validationPlan.modelId !== model?.id ||
       validationPlan.datasetId !== dataset.id || validationPlan.envelopeId !== envelope?.id ||
-      validationPlan.declaredUse !== declaredUse || JSON.stringify(validationPlan.criteria) !== JSON.stringify(criteria)) {
+      validationPlan.declaredUse !== declaredUse || JSON.stringify(validationPlan.criteria) !== JSON.stringify(criteria) ||
+      (() => { const { checksum, ...record } = validationPlan ?? {}; return sha256(JSON.stringify(record)) !== checksum; })()) {
     blockers.push('G4: registered scope-matching validation plan is absent or mismatched');
   }
 
@@ -248,6 +255,7 @@ function assessPhysicalValidationEligibility({
     quantities: quantities.map((q) => q.name ?? q),
     envelope: envelope?.id ?? null,
     testedPointProvenance: envelope?.evidence ?? null,
+    operatingDefinition: envelope ? structuredClone({ ranges: envelope.ranges, sets: envelope.sets, testedPoints: envelope.testedPoints }) : null,
   };
   return { allowed: blockers.length === 0, blockers, scope };
 }
@@ -380,6 +388,19 @@ export function runExperimentalValidation({
     ? 'Programmatic eligibility satisfied, but independent acquisition and holdout review remain unverified: NOT physical validation.'
     : eligibility.blockers.join(' | ');
 
+  const independentQC = qualityReport(dataset, { requireCalibration: true });
+  // Distinguish a genuine comparison failure from a missing/invalid dataset.
+  const incomplete = comparisons.length === 0 || comparisons.some(c => c.status !== 'compared');
+  const numericalAgreement = incomplete ? 'unassessed' : criteriaMet ? 'criteria-met' : 'criteria-failed';
+  const outcome = dataset.origin !== 'real-measurement' ? 'software-only-evidence'
+    : independentQC.verdict !== 'accepted' ? 'invalid-or-incomplete-measurement-data'
+    : incomplete ? 'insufficient-comparisons'
+    : !criteriaMet ? 'model-disagreement'
+    : eligibility.allowed ? 'candidate-for-independent-review' : 'evidence-gates-unmet';
+
+  const trustedReceipt = sourceReceiptMatches(dataset, provenanceReceipt) ? provenanceReceipt : null;
+  const trustedPlan = validationPlan && registeredPlans.has(validationPlan) ? validationPlan : null;
+
   const result = {
     format: 'invention-lab/validation-result/1',
     generatedAt: new Date().toISOString(),
@@ -396,9 +417,20 @@ export function runExperimentalValidation({
       sampleCount: dataset.samples.length,
     },
     criteria: structuredClone(criteria), criteriaResults, criteriaMet,
+    comparisonOutcome: { kind: outcome, numericalAgreement },
     comparisons,
     statistics: { bias, rmse, maxAbsError, comparedCount: compared.length, missingCount: comparisons.length - compared.length, sampleIndices: indices },
     problems,
+    evidenceReferences: {
+      rawSourceReceipt: trustedReceipt ? structuredClone(trustedReceipt) : null,
+      validationPlan: trustedPlan ? structuredClone({ format: trustedPlan.format, checksum: trustedPlan.checksum, recordedAt: trustedPlan.recordedAt, approvalRecord: trustedPlan.approvalRecord }) : null,
+      calibration: calibrationRecord ? {
+        id: calibrationRecord.id, modelId: calibrationRecord.modelId ?? null,
+        fittingDataset: calibrationRecord.dataset ?? null,
+        measurementSha256: calibrationRecord.measurementSha256 ?? null,
+      } : null,
+      holdoutSplit: splitManifest ? { id: splitManifest.id, checksum: splitManifest.checksum, sourceDatasetSha256: splitManifest.sourceDatasetSha256 ?? null } : null,
+    },
     stage,
     physicalValidation: {
       status: pvStatus,
