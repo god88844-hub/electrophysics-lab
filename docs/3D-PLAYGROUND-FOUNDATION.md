@@ -66,7 +66,12 @@ scenario-rate prototype. It requires:
 6. A prediction function supplied by a domain model.
 
 It computes the **conditional fraction of sampled input scenarios satisfying
-the specified constraints**, plus a 95% *Monte Carlo sampling* interval. It
+the specified constraints**, plus a 95% *Monte Carlo sampling* interval.
+Estimates use the versioned `invention-lab/scenario-evidence/1` schema and
+preserve frozen parameter distributions, covariance, constraints, assumptions,
+random seed, sample count and error count so an input-scenario result can be
+reproduced. Caller-provided model functions are not themselves verified or
+certified by this format. It
 intentionally returns `realWorldBuildSuccessPercent: null` and
 `physicalValidation: 'none'` regardless of the computed scenario rate.
 Failed model evaluations produce **inconclusive**, not fake 0% success.
@@ -93,6 +98,14 @@ Universal **simulation = physical validation** is not a claim the software
 can establish.
 
 ## Reproducing the software tests
+
+Run `npm test` for unit regressions, and `node scripts/browser-smoke.mjs`
+on Linux with Chromium/Google Chrome installed to exercise the actual WebGL
+viewer, component selection, typed 3D wiring, lab switching and evidence tab.
+The dedicated `Browser 3D smoke` GitHub Actions workflow runs this browser
+test automatically on pull requests.
+
+
 
 ```sh
 npm test
