@@ -36,9 +36,11 @@ export function sha256(text) {
 
 /** Recursively freeze nested source metadata, measured values, and evidence. */
 function freezeDeep(value) {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+  if (value && typeof value === 'object') {
+    // An outer object may already be frozen while holding mutable children.
+    // Always traverse children before deciding whether to freeze the parent.
     for (const part of Object.values(value)) freezeDeep(part);
-    Object.freeze(value);
+    if (!Object.isFrozen(value)) Object.freeze(value);
   }
   return value;
 }
