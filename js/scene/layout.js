@@ -45,12 +45,14 @@ export function portPoint3D(box, portId, direction) {
     z:box.z+offset*box.depth,
   };
 }
-export function sceneFromDiagram(diagram) {
+export function sceneFromDiagram(diagram, { visibleBlockIds = null } = {}) {
   if (!diagram || !Array.isArray(diagram.blocks) || !Array.isArray(diagram.wires)) {
     throw new Error('3D scene requires a diagram with blocks and wires');
   }
   const blocks = [], byId = new Map();
+  const allowed = visibleBlockIds === null ? null : new Set(visibleBlockIds);
   for (const block of diagram.blocks) {
+    if (allowed && !allowed.has(block.id)) continue;
     if (!Number.isFinite(block.x) || !Number.isFinite(block.y)) continue;
     const def = getComponent(block.type);
     const { x, z } = designToWorld(block.x, block.y);
@@ -79,6 +81,23 @@ export function sceneFromDiagram(diagram) {
       points: [a, { x: midway, y: 0.08, z: a.z }, { x: midway, y: 0.08, z: b.z }, b],
     });
   }
+  const assemblies = [];
+  for (const group of diagram.meta?.assemblies || []) {
+    if (!Array.isArray(group.blockIds)) continue;
+    const members = group.blockIds.map(id => byId.get(id)).filter(Boolean);
+    if (!members.length) continue;
+    const margin = 0.45;
+    const left = Math.min(...members.map(b => b.x - b.width / 2)) - margin;
+    const right = Math.max(...members.map(b => b.x + b.width / 2)) + margin;
+    const top = Math.min(...members.map(b => b.z - b.depth / 2)) - margin;
+    const bottom = Math.max(...members.map(b => b.z + b.depth / 2)) + margin;
+    assemblies.push({
+      id: group.id, name: group.name, blockIds: group.blockIds.filter(id => byId.has(id)),
+      x: (left + right) / 2, z: (top + bottom) / 2,
+      width: right - left, depth: bottom - top,
+      incomplete: members.length !== group.blockIds.length,
+    });
+  }
   const coordinates = blocks.flatMap(b => [[b.x - b.width / 2, b.z - b.depth / 2],
     [b.x + b.width / 2, b.z + b.depth / 2]]);
   const minX = coordinates.length ? Math.min(...coordinates.map(v => v[0])) : -5;
@@ -86,7 +105,7 @@ export function sceneFromDiagram(diagram) {
   const minZ = coordinates.length ? Math.min(...coordinates.map(v => v[1])) : -5;
   const maxZ = coordinates.length ? Math.max(...coordinates.map(v => v[1])) : 5;
   return {
-    blocks, wires,
+    blocks, wires, assemblies,
     center: { x: (minX + maxX) / 2, y: 0, z: (minZ + maxZ) / 2 },
     span: Math.max(4, maxX - minX, maxZ - minZ),
     source: { id: diagram.id, lab: diagram.lab, blockCount: blocks.length, wireCount: wires.length },
