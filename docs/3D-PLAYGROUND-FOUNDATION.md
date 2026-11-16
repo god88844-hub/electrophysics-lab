@@ -23,7 +23,11 @@ completed semiconductor manufacturing CAD system or physically dimensioned
   a selected component; arrow keys nudge selected components on the 2D design
   grid.
 - Use the existing palette to add an element at the 3D view focus or drop it
-  at a 3D ground-plane position. Switch to 2D to connect ports precisely.
+  at a 3D ground-plane position.
+- Click a 3D output socket and then a compatible input socket to wire
+  components through the same typed Diagram.connect() rules. Analog bidirectional
+  terminals can be either source or destination. The 2D wiring editor remains
+  available for precise topological inspection.
 - Read the same canonical `Diagram` document in both views. Placement and
   selection are not duplicated; `Save`, `Load`, `Undo`, `Redo`, the current
   simulation engines and validation reports continue to use that diagram.
@@ -42,8 +46,12 @@ interconnect and quantum device layers, with distinct appropriate solvers.
 ## Evidence-first percentages
 
 The new **Build Evidence** tab reports the current design's local checks and
-shows **Real-world build success: Not estimated**. The platform currently has
-no per-design authenticated physical validation or manufacturing-yield data
+shows **Real-world build success: Not estimated**. An interactive
+**educational resistor-divider tolerance** experiment lets users choose
+source voltage, resistors, Gaussian one-sigma uncertainties and an output
+voltage range; the resulting percentage is clearly labelled MODEL-ONLY and
+is not tied to the active diagram. The platform currently has no
+per-design authenticated physical validation or manufacturing-yield data
 from which a defensible real-world build probability could be inferred.
 
 `js/evidence/feasibility.js` implements an independently tested Monte Carlo
@@ -101,7 +109,7 @@ independence assumptions and failure-to-inconclusive conversion.
 
 ## Follow-on stages (not implemented yet)
 
-- Component ports and direct 3D wiring with precise design-rule checks.
+- Refined port visuals, snapping, routed wire paths and full design-rule checks.
 - Hierarchical chip/CPU/GPU/TPU design assemblies, interconnect and modules.
 - Device/standard-cell geometry with manufacturing technology libraries.
 - Domain-specific uncertainty propagation and circuit/logic/quantum risk
