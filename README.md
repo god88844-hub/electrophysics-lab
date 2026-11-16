@@ -125,6 +125,27 @@ A public PDK link does **not** prove our circuit passed actual DRC/LVS, and
 numerical agreement does **not** establish a physically validated build
 probability.
 
+## RV32M processor extension and independent architectural evidence (Phase 8)
+
+The **RISC-V RV32I / RV32IM** lab now offers an explicit opt-in RV32IM
+profile. It implements all eight ratified RISC-V M-extension multiply,
+divide and remainder operations, including signed/unsigned high-half
+multiplication, divisor-zero behavior and overflow edge cases. Plain
+RV32I still rejects M instructions.
+
+A separate [Phase 8 QEMU differential workflow](.github/workflows/phase8-rv32m.yml)
+assembles the [fixed RV32M program](benchmarks/phase8/rv32m-operations.S)
+with GNU tools, executes the actual binary in QEMU and compares **all 48
+output bytes / 12 frozen reference words** against Invention Lab's
+functional emulator. Strict source, commit, case-count and tool-provenance
+gates reject missing or fabricated evidence. Earlier Phase 7 QEMU/NumPy
+and all Ngspice/Qiskit benchmarks continue independently.
+
+This establishes scoped *software execution agreement*, **not** ISA
+certification, cycle-accurate chip timing, physically validated silicon
+or a manufacturing-success probability. See
+[Phase 8 validation and data dependencies](docs/PHASE8-RV32M-VALIDATION.md).
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
