@@ -124,10 +124,16 @@ test('Phase 13 reordered, extra or falsely passing hardware stage fails',()=>{
   assert.equal(gate(r).ok,false);
  }
 });
-test('Phase 13 user-facing summary reports only computational steps and missing physical proof',()=>{
+test('Phase 13 untrusted report cannot self-certify any independently verified hardware proof',()=>{
  const view=describePhysicalReadiness(fixture());
- assert.deepEqual(view.verifiedComputationalStages,PHYSICAL_STAGES.slice(0,3));
+ assert.deepEqual(view.reportedComputationalStages,PHYSICAL_STAGES.slice(0,3));
+ assert.deepEqual(view.verifiedComputationalStages,[]);
  assert.equal(view.missingPhysicalStages.length,7);
  assert.equal(view.physicalQualified,false);
  assert.equal(view.realWorldBuildSuccessPercent,null);
+ const forged=fixture();
+ forged.stages[8].status='pass';
+ const displayed=describePhysicalReadiness(forged);
+ assert.equal(displayed.physicalQualified,false);
+ assert.deepEqual(displayed.verifiedComputationalStages,[]);
 });
