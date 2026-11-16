@@ -239,6 +239,7 @@ export class App {
     document.getElementById('canvas-hint').style.display = CANVAS_LABS.has(labId) && this.viewMode !== '3d' ? '' : 'none';
 
     if (labId === 'crosslab') {
+      this.set3D(false);
       this._showCrosslabPanel();
       this.palette.show('none', allComponents());
       this.inspector.showMessage('Cross-lab demos run pipelines across labs. Load them from the Examples menu.');
@@ -270,11 +271,11 @@ export class App {
     const canShow = enabled && SCENE_LABS.has(this.state.labId) && this.scene3d.available;
     this.viewMode = canShow ? '3d' : '2d';
     this.scene3d.activate(canShow);
-    this.editor.canvas.style.display = canShow ? 'none' : '';
+    this.editor.canvas.style.display = canShow || !CANVAS_LABS.has(this.state.labId) ? 'none' : '';
     this.$sceneButton.style.display = SCENE_LABS.has(this.state.labId) ? '' : 'none';
     this.$sceneButton.setAttribute('aria-pressed', String(canShow));
     this.$sceneButton.textContent = canShow ? '2D Wiring' : '3D View';
-    this.$editorArea.querySelector('#canvas-hint').style.display = canShow ? 'none' : '';
+    this.$editorArea.querySelector('#canvas-hint').style.display = canShow || !CANVAS_LABS.has(this.state.labId) ? 'none' : '';
     if (!canShow) this.editor.requestRender();
     return canShow;
   }
