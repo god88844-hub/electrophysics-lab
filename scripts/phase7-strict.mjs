@@ -2,6 +2,7 @@
 // Never infer PASS from an absent artifact or a subset of benchmark cases.
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { evaluatePhase7 } from '../js/phase7/acceptance.js';
 
@@ -14,6 +15,17 @@ try {
     read('benchmarks/evidence/phase7-numpy.json'),
   ]);
   const status=evaluatePhase7(manifest,{qemu,numpy},process.env.GITHUB_SHA||null);
+  const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+  const [rv32Source,tensorFixture]=await Promise.all([
+    readFile(path.join(root,'benchmarks/phase7/rv32i-sum.S')),
+    readFile(path.join(root,'benchmarks/phase7/tensor-cases.json')),
+  ]);
+  if(hash(rv32Source)!==qemu?.source?.sha256)status.errors.push('QEMU source artifact checksum drift');
+  if(hash(tensorFixture)!==numpy?.fixtureSha256)status.errors.push('NumPy fixture artifact checksum drift');
+  if(!qemu?.toolVersions?.assembler||!qemu?.toolVersions?.linker||!qemu?.toolVersions?.emulator)
+    status.errors.push('QEMU tool versions not recorded');
+  if(!numpy?.version)status.errors.push('NumPy version not recorded');
+  status.ok=status.ok&&status.errors.length===0;
   const summary={
     format:'invention-lab/phase7-evidence-summary/1',
     sourceCommit:process.env.GITHUB_SHA||null,
