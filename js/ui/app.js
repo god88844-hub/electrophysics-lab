@@ -22,6 +22,7 @@ import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
 import { runOnnxSubset } from '../labs/ai/onnx-subset.js';
 import { runOnnxQuantizedCase } from '../labs/ai/onnx-quantized.js';
+import { runPhase11Case } from '../labs/ai/onnx-per-axis-conv.js';
 
 const CANVAS_LABS = new Set(['logic', 'chip', 'quantum', 'optics']);
 const SCENE_LABS = new Set(['logic', 'chip', 'quantum']);
@@ -773,6 +774,39 @@ export class App {
     quantSection.append(runQuant);
     left.append(quantSection);
 
+    const convSection=document.createElement('section');
+    convSection.className='field';
+    const convHeading=document.createElement('h3');
+    convHeading.textContent='Quantized convolution / per-axis QDQ (Phase 11)';
+    convSection.append(convHeading);
+    const convNote=document.createElement('p');convNote.className='muted';
+    convNote.textContent='Small fixed NCHW QLinearConv and 2D per-axis QuantizeLinear / DequantizeLinear. Browser runs a model; independently verified ONNX Runtime CPU executes only in CI.';
+    convSection.append(convNote);
+    const convSelector=document.createElement('select');
+    convSelector.setAttribute('aria-label','Phase 11 ONNX convolution and per-axis example');
+    for(const [id,label] of [
+      ['qconv-uint8-valid','Uint8 valid 2D quantized convolution'],
+      ['qconv-int8-pad-stride','Int8 padded and strided convolution'],
+      ['qconv-mixed-per-channel','Mixed uint8/int8 per-channel weights and bias'],
+      ['qconv-int8-saturation','Saturating int8 convolution'],
+      ['per-axis-int8-axis1','Per-axis signed QDQ (axis=1)'],
+      ['per-axis-uint8-negative-axis','Per-axis uint8 QDQ (negative axis)'],
+    ]){
+      const option=document.createElement('option');option.value=id;option.textContent=label;
+      convSelector.append(option);
+    }
+    convSection.append(convSelector);
+    const runConv=document.createElement('button');
+    runConv.type='button';runConv.className='primary';
+    runConv.setAttribute('data-action','run-phase11-onnx');
+    runConv.textContent='▶ Run convolution / per-axis example';
+    runConv.addEventListener('click',()=>this.runPhase11Example(convSelector.value).catch(error=>{
+      this.log('Phase 11 ONNX arithmetic failed: '+error.message,'err');
+      this._setVerdict('fail');
+    }));
+    convSection.append(runConv);
+    left.append(convSection);
+
     right.innerHTML = `
       <div>What this runs:</div>
       <ul class="muted">
@@ -822,6 +856,24 @@ export class App {
     this.switchOutputTab('scope');
     this._setVerdict('warn');
     this.log('MODEL-ONLY quantized inference '+caseId+' completed. Real ONNX Runtime runs separately in Phase 10 CI.');
+    return result;
+  }
+
+  async runPhase11Example(caseId='qconv-uint8-valid'){
+    if(this.state.labId!=='ai')throw Error('Phase 11 ONNX graph examples require the AI Accelerator Lab');
+    const response=await fetch(new URL('../../benchmarks/phase11/cases.json',import.meta.url));
+    if(!response.ok)throw Error('Phase 11 ONNX fixture missing: HTTP '+response.status);
+    const data=await response.json();
+    if(data?.format!=='invention-lab/phase11-fixtures/1'||
+       data?.opset!==13||!Array.isArray(data.cases)||data.cases.length!==6)
+      throw Error('Invalid Phase 11 frozen operator example collection');
+    const c=data.cases.find(x=>x.id===caseId);
+    if(!c)throw Error('Unknown Phase 11 operator example '+caseId);
+    const result=runPhase11Case(c);
+    this.lastResult=result;
+    this.switchOutputTab('scope');
+    this._setVerdict('warn');
+    this.log('MODEL-ONLY Phase 11 '+caseId+' computed. Independent ONNX Runtime validation belongs to CI.');
     return result;
   }
 
