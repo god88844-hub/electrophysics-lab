@@ -4,7 +4,7 @@ import '../js/labs/logic/components.js';
 import '../js/labs/chip/components.js';
 import '../js/labs/quantum/components.js';
 import { Diagram } from '../js/core/diagram.js';
-import { sceneFromDiagram, designToWorld, worldToDesign } from '../js/scene/layout.js';
+import { sceneFromDiagram, designToWorld, worldToDesign, portPoint3D } from '../js/scene/layout.js';
 import { Scene3DView } from '../js/scene/viewer.js';
 import { App } from '../js/ui/app.js';
 import { estimateScenarioPassRate, summarizeDesignEvidence } from '../js/evidence/feasibility.js';
@@ -124,4 +124,24 @@ test('evidence: no undocumented assumptions, invalid tolerances or fake sample c
 test('scene: browser viewer and app shell modules load without WebGL in Node tests', () => {
   assert.equal(typeof Scene3DView, 'function');
   assert.equal(typeof App, 'function');
+});
+
+test('scene: bidirectional chip terminals have valid 3D source and sink sockets',()=>{
+  const d=new Diagram({lab:'chip'});
+  const a=d.addBlock('chip.RES',{x:0,y:0,id:'r1'});
+  const b=d.addBlock('chip.RES',{x:200,y:0,id:'r2'});
+  const before=sceneFromDiagram(d);
+  assert.equal(before.blocks[0].ports.incoming.length,2);
+  assert.equal(before.blocks[0].ports.outgoing.length,2);
+  const origin=portPoint3D(before.blocks[0],'p','out');
+  const target=portPoint3D(before.blocks[1],'n','in');
+  assert.ok(origin.x<target.x);
+  assert.equal(portPoint3D(before.blocks[0],'fake','in'),null);
+  const w=d.connect(a.id,'p',b.id,'n');
+  assert.ok(w);
+  const after=sceneFromDiagram(d);
+  assert.equal(after.wires.length,1);
+  assert.deepEqual(after.wires[0].from,origin);
+  assert.deepEqual(after.wires[0].to,target);
+  assert.equal(d.wires.length,1,'3D adapter must not create a second shadow netlist');
 });
