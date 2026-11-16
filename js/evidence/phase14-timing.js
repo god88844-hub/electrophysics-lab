@@ -17,8 +17,7 @@ export function parsePhase14TimingLog(log){
  const report=between[0];
  const start=[...report.matchAll(/^Startpoint:\s*(.+)$/gm)];
  const finish=[...report.matchAll(/^Endpoint:\s*(.+)$/gm)];
- const numeric='[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?';
- const slack=[...report.matchAll(new RegExp('^\\\\s*(?:('+numeric+')\\\\s+slack\\\\s+\\\\((?:MET|VIOLATED)\\\\)|slack\\\\s+\\\\((?:MET|VIOLATED)\\\\)\\\\s*('+numeric+'))\\\\s*
+ const slack=[...report.matchAll(/^\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)\s+slack\s+\((?:MET|VIOLATED)\)\s*$/gm)];
  if(start.length===0||start.length!==finish.length||start.length!==slack.length)
    throw Error('No complete constrained input-to-output path with finite slack');
  if(start.length>1000)throw Error('Implausible STA report count');
