@@ -133,3 +133,20 @@ test('RV32I: address and execution input budget checks never pass invalid inputs
   assert.throws(()=>runRV32I(new Uint32Array([halt]),{maxSteps:0}),/budget/);
   assert.throws(()=>new RV32I({program:new Uint8Array(100),memoryBytes:64}),/exceeds RAM/);
 });
+
+test('RV32I: stored 32-bit words preserve unsigned values in evidence trace',()=>{
+  const state=run([0x04000093,0xfffff137,0x0020a223,0x0040a183]);
+  assert.equal(state.ok,true);
+  assert.equal(state.regs[3],0xfffff000);
+  assert.equal(state.writes.length,1);
+  assert.equal(state.writes[0].value,0xfffff000,
+    'trace must not silently reinterpret an unsigned 32-bit value as negative');
+});
+test('RV32I: misaligned store does not partially mutate memory',()=>{
+  const cpu=new RV32I({program:new Uint32Array([0x04100093,0x0ff00113,0x00209123,halt])});
+  const before=Array.from(cpu.mem.slice(64,72));
+  const state=cpu.run();
+  assert.equal(state.ok,false);
+  assert.equal(state.stopReason,'misaligned-access');
+  assert.deepEqual(Array.from(cpu.mem.slice(64,72)),before);
+});
