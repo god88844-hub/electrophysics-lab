@@ -18,6 +18,7 @@ import {
   serializeHierarchicalLibrary,parseHierarchicalLibrary,
 } from '../assembly/composites.js';
 import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/feasibility.js';
+import { PHYSICAL_STAGES } from '../evidence/physical-readiness.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
 import { runOnnxSubset } from '../labs/ai/onnx-subset.js';
@@ -1032,7 +1033,32 @@ export class App {
     note.className = 'muted'; note.textContent = data.rationale +
       ' A conditional Monte Carlo rate can only be reported with explicit parameter distributions, an uncertainty model, and stated acceptance criteria.';
     body.append(heading, caption, stats, note);
+    this._renderDesignPhysicalLadder(body);
     this._renderScenarioDemo(body);
+  }
+
+  // The reference ALU's external CI evidence belongs to that example ONLY.
+  // None of these physical stages has been executed for the active diagram.
+  _renderDesignPhysicalLadder(body){
+    const section=document.createElement('section');
+    section.className='physical-readiness-ladder';
+    const title=document.createElement('h4');
+    title.textContent='Design-specific hardware evidence ladder';
+    const note=document.createElement('p');
+    note.className='muted';
+    note.textContent='Every stage is UNKNOWN for this current design unless independently executed and linked to its exact model/source. Phase 13 has a separate real SKY130 ALU technology-mapping CI example; it is NOT evidence that this diagram passes those stages.';
+    const list=document.createElement('ul');
+    list.setAttribute('aria-label','Current design physical evidence stages');
+    for(const id of PHYSICAL_STAGES){
+      const entry=document.createElement('li');
+      entry.textContent=id+' — UNKNOWN (not run for this design)';
+      list.appendChild(entry);
+    }
+    const verdict=document.createElement('p');
+    verdict.className='muted';
+    verdict.textContent='PHYSICAL SIGNOFF: UNKNOWN. DRC/LVS/PVT, measured calibration, and prototype tests are not verified. Real-world build success: NOT ESTIMATED.';
+    section.append(title,note,list,verdict);
+    body.appendChild(section);
   }
 
   // Demonstration is intentionally independent of the current circuit graph.
