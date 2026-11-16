@@ -101,10 +101,13 @@ export function estimateScenarioPassRate({
     }catch{errors++;}
   }
   const rate=passes/samples,interval=wilson(passes,samples);
+  // A failed model invocation is not a physically failed build and must not
+  // be silently counted as a failure to manufacture.
+  const complete=errors===0;
   return Object.freeze({
-    status:'model-only',designId,intendedUse,seed,samples,passes,modelErrors:errors,
-    modeledPassRatePercent:100*rate,
-    samplingInterval95Percent:[100*interval.lower,100*interval.upper],
+    status:complete?'model-only':'inconclusive',designId,intendedUse,seed,samples,passes,modelErrors:errors,
+    modeledPassRatePercent:complete?100*rate:null,
+    samplingInterval95Percent:complete?[100*interval.lower,100*interval.upper]:null,
     realWorldBuildSuccessPercent:null,
     physicalValidation:'none',
     assumptions:[...assumptions],
