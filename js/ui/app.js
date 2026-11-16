@@ -126,6 +126,19 @@ export class App {
         this._diagramChanged();
         this.editor.requestRender();
       },
+      onConnect: (fromId, fromPort, toId, toPort) => {
+        try {
+          const d = this.diagrams[this.state.labId];
+          const wire = d.connect(fromId, fromPort, toId, toPort);
+          if (wire) {
+            this._diagramChanged();
+            this.editor.requestRender();
+            this.log('3D wire: ' + fromId + '.' + fromPort + ' → ' + toId + '.' + toPort);
+          }
+        } catch (error) {
+          this.log('3D connection rejected: ' + error.message, 'warn');
+        }
+      },
       onError: (msg) => this.log('3D view: ' + msg, 'warn'),
     });
 
