@@ -34,6 +34,22 @@ export function sha256(text) {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
+/**
+ * SHA-256 of the NORMALIZED dataset's content, not of the instrument file.
+ * The datasetSha256 field is excluded to avoid a self-referential digest.
+ * Nonfinite numbers are distinguished from JSON null (they fail QC anyway).
+ * This detects accidental edits, not a malicious actor able to rewrite both
+ * the content and its checksum; authentic acquisition needs separate evidence.
+ */
+export function datasetContentSha256(dataset) {
+  const content = { ...dataset, source: { ...dataset.source, datasetSha256: null } };
+  delete content.textSha256;
+  return sha256(JSON.stringify(content, (_, value) =>
+    typeof value === 'number' && !Number.isFinite(value)
+      ? { nonFiniteNumber: String(value) }
+      : value));
+}
+
 /** Recursively freeze nested source metadata, measured values, and evidence. */
 function freezeDeep(value) {
   if (value && typeof value === 'object') {
@@ -60,7 +76,8 @@ export function createDataset(meta, samples, { rawSource = null } = {}) {
     source: {
       file: meta.source?.file ?? null,
       rawFileSha256: meta.source?.rawFileSha256 ?? null,
-      datasetSha256: rawSource !== null ? sha256(rawSource) : (meta.source?.datasetSha256 ?? null),
+      datasetSha256: null,
+      parentDatasetSha256: meta.source?.parentDatasetSha256 ?? null,
       retrievedFrom: meta.source?.retrievedFrom ?? null,
       derivedFrom: meta.source?.derivedFrom ?? null,
       selfChecksum: meta.source?.selfChecksum ?? null,
@@ -115,6 +132,13 @@ export function createDataset(meta, samples, { rawSource = null } = {}) {
     samples: freezeSamples(samples ?? []),
     transformations: meta.transformations ?? [], // provenance chain of derived datasets
   };
+  // The original instrument-export digest must be supplied independently;
+  // rawSource, when provided, is not interchangeable with the dataset digest.
+  const digest = datasetContentSha256(d);
+  if (meta.source?.datasetSha256 && meta.source.datasetSha256 !== digest) {
+    throw new Error('dataset content checksum mismatch: recorded datasetSha256 does not match the normalized dataset');
+  }
+  d.source.datasetSha256 = digest;
   return freezeDeep(d);
 }
 
@@ -122,7 +146,7 @@ function freezeSamples(samples) {
   return Object.freeze(samples.map((s) => Object.freeze({ ...s })));
 }
 
-/** Parse raw text as a dataset (JSON) and verify its checksum against itself. */
+/** Parse JSON, verify its recorded dataset-content digest, and preserve the separate raw-file hash. */
 export function parseDataset(text) {
   let obj;
   try { obj = JSON.parse(text); } catch (e) {
@@ -134,6 +158,9 @@ export function parseDataset(text) {
   // Preserve the separate ORIGINAL raw-file checksum and the source-dataset
   // artifact checksum. Parsing a serialized dataset must not silently replace
   // either with the hash of this JSON representation.
+  if (!obj.source?.datasetSha256) {
+    throw new Error('dataset content checksum missing: imported datasets require a recorded datasetSha256');
+  }
   const d = createDataset(obj, obj.samples ?? []);
   const textSha256 = sha256(text);
   // The actual serialized-file checksum is returned separately. A caller must
@@ -210,7 +237,7 @@ export function deriveDataset(parent, transformation, newSamples, newMeta = {}) 
     id: newMeta.id ?? `${parent.id}-derived`,
     version: (parent.version ?? 1) + 1,
     origin: parent.origin, // derived data INHERITS the parent's origin class
-    source: { ...parent.source, derivedFrom: parent.id, transformation },
+    source: { ...parent.source, datasetSha256: null, parentDatasetSha256: parent.source.datasetSha256, derivedFrom: parent.id, transformation },
     transformations: [...(parent.transformations ?? []), { transformation, parentChecksum: parent.source.datasetSha256 }],
   }, newSamples);
   return derived;
