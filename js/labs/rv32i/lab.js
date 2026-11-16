@@ -7,10 +7,11 @@ import { parseRV32Words, runRV32I } from './rv32i.js';
 
 export const rv32iLab = {
   id:'rv32i',
-  label:'RISC-V RV32I',
-  blurb:'Learn and experiment with unprivileged RV32I 2.1 instruction execution, memory, registers, branches and architectural traps.',
+  label:'RISC-V RV32I / RV32IM',
+  blurb:'Explore RV32I 2.1, or enable optional M 2.0 multiply/divide. Functional instruction execution only, with no ISA certification or silicon evidence.',
   accent:'#68badb',
   metaSchema:[
+    {key:'isa',label:'Unprivileged ISA profile',type:'select',options:['rv32i','rv32im'],default:'rv32i'},
     {key:'source',label:'RV32I machine words (one 8-digit hex instruction per line)',type:'textarea',
       default:'00500093\n00700113\n002081b3\n00100073'},
     {key:'expectedRegister',label:'Expected register (x0 to x31)',type:'number',default:3,noTolRequired:true},
@@ -21,7 +22,7 @@ export const rv32iLab = {
     const meta=diagram?.meta||{};
     try {
       const words=parseRV32Words(meta.source||'');
-      const cpu=runRV32I(words,{maxSteps:meta.maxSteps??20000,maxTrace:128});
+      const cpu=runRV32I(words,{isa:meta.isa??'rv32i',maxSteps:meta.maxSteps??20000,maxTrace:128});
       return {
         ok:cpu.ok, words:[...words],cpu,
         problems:cpu.ok?[]:[cpu.trap?.detail||'Execution stopped without reaching a breakpoint'],
@@ -34,7 +35,7 @@ export const rv32iLab = {
   validate(diagram){
     const result=this.run(diagram),meta=diagram.meta||{}, checks=[];
     checks.push({
-      name:'RV32I hexadecimal machine-code parse and bounded execution',
+      name:'RV32I/RV32IM machine-code parse and bounded execution',
       verdict:result.cpu?'pass':'fail',stage:'execution',
       actual:result.cpu?.retired??null,expected:null,tolerance:null,
       note:result.problems.join('; ')||String(result.words.length)+' instruction words decoded',
