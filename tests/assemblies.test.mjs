@@ -7,6 +7,7 @@ import {Diagram} from '../js/core/diagram.js';
 import {sceneFromDiagram} from '../js/scene/layout.js';
 import {AssemblyShelf} from '../js/ui/module-shelf.js';
 import {App} from '../js/ui/app.js';
+import {logicLab} from '../js/labs/logic/lab.js';
 import {
   MODULE_FORMAT,LIBRARY_FORMAT,ASSEMBLY_FORMAT,
   captureModuleTemplate,instantiateModule,registerAssembly,ungroupAssembly,
@@ -191,4 +192,17 @@ test('assemblies: imported module parameters must match registered component par
   const changedName=structuredClone(template);
   changedName.blocks.find(b=>b.id==='probe').params.name=42;
   assert.equal(validateModuleTemplate(changedName).ok,false);
+});
+
+test('assemblies: grouping does not change actual binary or ternary simulation results',()=>{
+  for(const radix of [2,3,4]){
+    const d=logicDesign();
+    d.meta.radix=radix;
+    const before=logicLab.run(d);
+    registerAssembly(d,{name:'Annotated logic',blockIds:['input','invert','probe']});
+    const after=logicLab.run(d);
+    assert.deepEqual(after,before,'assembly metadata must not change the existing radix '+radix+' solver result');
+    ungroupAssembly(d,d.meta.assemblies[0].id);
+    assert.deepEqual(logicLab.run(d),before);
+  }
 });
