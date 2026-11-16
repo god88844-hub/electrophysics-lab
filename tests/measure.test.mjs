@@ -514,7 +514,10 @@ function runVal(overrides = {}) {
     declaredUse: 'verify divider ratio',
     dataset, quality,
     criteria: ACCEPT_CRITERIA,
-    envelope: ENVELOPE_WITH_POINTS,
+    envelope: defineEnvelope({
+      ...ENVELOPE_WITH_POINTS,
+      evidence: { datasetId: dataset.id, datasetVersion: dataset.version, datasetSha256: dataset.source.datasetSha256, sampleIndices: [0, 1] },
+    }),
     quantities: [{ name: 'V_out', measurementUncertainty: 0.005 }],
     provenanceVerified: true, provenanceReceipt: receipt, validationPlan: plan,
     ...overrides,
@@ -798,7 +801,7 @@ test('phase3-regression: invalid uncertainty cannot create positive eligibility'
 });
 
 test('phase3-regression: arbitrary tested points are not independent envelope provenance', () => {
-  const result = runVal({});
+  const result = runVal({ envelope: ENVELOPE_WITH_POINTS });
   assert.ok(result.physicalValidation.blockers.some(b => /tested-point provenance|envelope evidence|binding/i.test(b)),
     'the caller currently supplies points without a dataset-bound acquisition evidence record');
 });
