@@ -8,6 +8,11 @@ import { Palette } from './palette.js';
 import { Inspector } from './inspector.js';
 import { Scope } from './scope.js';
 import { Scene3DView } from '../scene/viewer.js';
+import { AssemblyShelf } from './module-shelf.js';
+import {
+  captureModuleTemplate, instantiateModule, registerAssembly, ungroupAssembly,
+  listAssemblies, serializeModuleLibrary, parseModuleLibrary,
+} from '../assembly/modules.js';
 import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/feasibility.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
@@ -20,6 +25,7 @@ export class App {
     this.root = root;
     this.state = { labId: null };
     this.viewMode = '2d';
+    this.moduleLibrary = [];
     this.diagrams = {};       // labId -> Diagram
     this.history = {};        // labId -> { stack: [], idx }
     this.editor = null;
@@ -195,6 +201,27 @@ export class App {
     this.$sceneButton.setAttribute('aria-pressed', 'false');
     this.$sceneButton.addEventListener('click', () => this.set3D(this.viewMode !== '3d'));
     this.$editorToolbar.appendChild(this.$sceneButton);
+    this.$assembliesButton = document.createElement('button');
+    this.$assembliesButton.className = 'small';
+    this.$assembliesButton.type = 'button';
+    this.$assembliesButton.textContent = 'Assemblies';
+    this.$assembliesButton.title = 'Capture, reuse and explore computing circuit assemblies';
+    this.$assembliesButton.setAttribute('aria-expanded','false');
+    this.$assembliesButton.addEventListener('click', () => {
+      const open = this.assemblyShelf.toggle();
+      this.$assembliesButton.setAttribute('aria-expanded', String(open));
+    });
+    this.$editorToolbar.appendChild(this.$assembliesButton);
+    this.assemblyShelf = new AssemblyShelf(this.$editorArea, {
+      onCreate: (args) => this.createAssembly(args),
+      onPlace: (id) => this.placeModule(id),
+      onFocus: (id) => this.focusAssembly(id),
+      onUngroup: (id) => this.ungroup(id),
+      onRemoveTemplate: (id) => this.removeModuleTemplate(id),
+      onImport: (raw) => this.importModuleLibrary(raw),
+      onExport: () => this.exportModuleLibrary(),
+      onError: (message) => this.log('Assembly: ' + message, 'err'),
+    });
 
     // output tabs
     this.root.querySelectorAll('#output-tabs button').forEach((btn) => {
@@ -237,6 +264,13 @@ export class App {
 
   // ------------------------------------------------------------- lifecycle --
   boot() {
+    try {
+      const stored = localStorage.getItem('ilab.moduleLibrary.v1');
+      this.moduleLibrary = stored ? parseModuleLibrary(stored) : [];
+    } catch (error) {
+      this.moduleLibrary = [];
+      this.log('Module library could not be loaded: ' + error.message, 'warn');
+    }
     const saved = localStorage.getItem('ilab.lab');
     const labIds = allLabs().map((l) => l.id);
     const first = labIds.includes(saved) ? saved : 'logic';
@@ -256,6 +290,8 @@ export class App {
     document.getElementById('canvas-hint').style.display = CANVAS_LABS.has(labId) && this.viewMode !== '3d' ? '' : 'none';
 
     if (labId === 'crosslab') {
+      this.assemblyShelf.toggle(false);
+      this.$assembliesButton.setAttribute('aria-expanded','false');
       this.set3D(false);
       this._showCrosslabPanel();
       this.palette.show('none', allComponents());
@@ -280,6 +316,10 @@ export class App {
       this.palette.show('none', allComponents());
     }
     this.set3D(this.viewMode === '3d' && SCENE_LABS.has(labId));
+    if (!SCENE_LABS.has(labId)) this.assemblyShelf.toggle(false);
+    this.$assembliesButton.style.display = SCENE_LABS.has(labId) ? '' : 'none';
+    this.$assembliesButton.setAttribute('aria-expanded',String(this.assemblyShelf.open));
+    this.assemblyShelf.setData(diagram,this.moduleLibrary,this.editor.selection?.id);
     this._refreshInspector();
     this.requestRenderReport();
   }
@@ -326,6 +366,7 @@ export class App {
     localStorage.setItem('ilab.lab', labId);
     if (isMeta) this._refreshInspector(true);
     this.scene3d.sync();
+    if (SCENE_LABS.has(labId)) this.assemblyShelf.setData(diagram,this.moduleLibrary,this.editor.selection?.id);
     this.requestRenderReport();
   }
 
@@ -346,11 +387,101 @@ export class App {
     this.diagrams[this.state.labId] = d;
     try { localStorage.setItem(`ilab.diagram.${this.state.labId}`, JSON.stringify(d.toJSON())); } catch { /* quota */ }
     if (CANVAS_LABS.has(this.state.labId)) this.editor.mount(d);
-    if (SCENE_LABS.has(this.state.labId)) this.scene3d.mount(d);
+    if (SCENE_LABS.has(this.state.labId)) {
+      this.scene3d.mount(d);
+      this.assemblyShelf.setData(d,this.moduleLibrary);
+    }
     if (this.state.labId === 'cpu') this._showCpuPanel(d);
     this._refreshInspector();
     this.editor.requestRender();
     this.log(`History: ${h.idx + 1}/${h.stack.length}`);
+  }
+
+  _persistModuleLibrary(next) {
+    const serialized = serializeModuleLibrary(next);
+    try { localStorage.setItem('ilab.moduleLibrary.v1',serialized); }
+    catch (error) { throw Error('Module library storage failed; export your library: ' + error.message); }
+    this.moduleLibrary = next;
+    this.assemblyShelf.setData(this.diagrams[this.state.labId],next,this.editor.selection?.id);
+  }
+
+  createAssembly({name,blockIds}) {
+    const diagram = this.diagrams[this.state.labId];
+    const template = captureModuleTemplate(diagram,{name,blockIds});
+    const next = [...this.moduleLibrary,template];
+    // Capacity/integrity check before touching the active design.
+    serializeModuleLibrary(next);
+    const record = registerAssembly(diagram,{
+      name,blockIds,templateId:template.id,
+    });
+    this._persistModuleLibrary(next);
+    this._diagramChanged(true);
+    this.log('Reusable module created: '+template.name+' · '+template.blocks.length+' components');
+    return {template,assembly:record};
+  }
+
+  placeModule(templateId) {
+    const template=this.moduleLibrary.find(t=>t.id===templateId);
+    if(!template)throw Error('Reusable module not found');
+    const diagram=this.diagrams[this.state.labId];
+    const center=this.viewMode==='3d'?this.scene3d.centerDesign():
+      this.editor.toWorld(this.editor.canvas.width/2,this.editor.canvas.height/2);
+    const at = {x:center.x+120,y:center.y+80};
+    const result=instantiateModule(diagram,template,{...at});
+    this._diagramChanged();
+    this.editor.requestRender();
+    this.log('Placed '+template.name+' as '+result.createdBlockIds.length+' real blocks / '+result.createdWireIds.length+' real wires');
+    return result;
+  }
+
+  focusAssembly(id) {
+    if(id===null) {
+      this.scene3d.setFocus(null);
+      this.log('Viewing complete design');
+      return;
+    }
+    const group=listAssemblies(this.diagrams[this.state.labId]).find(a=>a.id===id);
+    if(!group)throw Error('Assembly no longer exists');
+    if(group.staleBlockIds.length)throw Error('Assembly contains deleted blocks; ungroup or repair the design');
+    if(!this.set3D(true))throw Error('WebGL 3D view is not available');
+    this.scene3d.setFocus(group.blockIds,group.name);
+    this.log('Exploring '+group.name+' · '+group.blockIds.length+' components');
+  }
+
+  ungroup(id) {
+    const diagram=this.diagrams[this.state.labId];
+    if(!ungroupAssembly(diagram,id))throw Error('Assembly not found');
+    this.scene3d.setFocus(null);
+    this._diagramChanged(true);
+    this.log('Assembly annotation removed; its real blocks and wires remain');
+  }
+
+  removeModuleTemplate(id) {
+    const next=this.moduleLibrary.filter(t=>t.id!==id);
+    if(next.length===this.moduleLibrary.length)throw Error('Template not found');
+    this._persistModuleLibrary(next);
+    this.log('Removed reusable template from local library; existing design blocks remain');
+  }
+
+  exportModuleLibrary() {
+    download('invention-lab-computing-modules.json',serializeModuleLibrary(this.moduleLibrary),'application/json');
+    this.log('Exported reusable module library');
+  }
+
+  importModuleLibrary(raw) {
+    const incoming=parseModuleLibrary(raw);
+    const next=[...this.moduleLibrary];
+    for(const template of incoming){
+      const existing=next.find(t=>t.id===template.id);
+      if(existing) {
+        if(JSON.stringify(existing)!==JSON.stringify(template))
+          throw Error('Module ID conflict: '+template.id+' differs from existing template');
+      }else next.push(template);
+    }
+    const added=next.length-this.moduleLibrary.length;
+    this._persistModuleLibrary(next);
+    this.log('Module library imported: '+incoming.length+' entries, '+added+' added');
+    return next.length;
   }
 
   // --------------------------------------------------------------- panels --
@@ -707,7 +838,10 @@ export class App {
     this.diagrams[this.state.labId] = this._freshDiagram(this.state.labId, lab);
     this.history[this.state.labId] = { stack: [], idx: -1 };
     if (CANVAS_LABS.has(this.state.labId)) this.editor.mount(this.diagrams[this.state.labId]);
-    if (SCENE_LABS.has(this.state.labId)) this.scene3d.mount(this.diagrams[this.state.labId]);
+    if (SCENE_LABS.has(this.state.labId)) {
+      this.scene3d.mount(this.diagrams[this.state.labId]);
+      this.assemblyShelf.setData(this.diagrams[this.state.labId],this.moduleLibrary);
+    }
     if (this.state.labId === 'cpu') this._showCpuPanel(this.diagrams[this.state.labId]);
     if (this.state.labId === 'ai') this._showAiPanel(this.diagrams[this.state.labId]);
     this._refreshInspector();
@@ -841,7 +975,15 @@ ${report.checks.map((c) => `<tr><td>${escape(c.name)}</td><td class="${c.verdict
       this.viewMode === '3d' ? this.scene3d.fit() : this.editor.fit(); return;
     }
     if (e.key === '?') { this.showHelp(); return; }
-    if (e.key === 'Escape') { document.getElementById('overlay')?.remove(); }
+    if (e.key === 'Escape') {
+      document.getElementById('overlay')?.remove();
+      if(this.assemblyShelf.open){
+        this.assemblyShelf.toggle(false);
+        this.$assembliesButton.setAttribute('aria-expanded','false');
+      } else if(this.scene3d.focusIds) {
+        this.scene3d.setFocus(null);
+      }
+    }
   }
 }
 
