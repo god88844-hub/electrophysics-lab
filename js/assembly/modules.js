@@ -61,8 +61,29 @@ function indexTemplate(template) {
     const def = getComponent(b.type);
     if (!def || def.lab !== template.lab) errors.push('Unknown or cross-lab component: ' + b.type);
     if (!finitePosition(b.x) || !finitePosition(b.y)) errors.push('Invalid component coordinates: ' + b.id);
-    try { if (!plain(b.params)) throw Error('params must be an object'); validateParamData(b.params); }
-    catch (err) { errors.push('Invalid parameters for ' + b.id + ': ' + err.message); }
+    try {
+      if (!plain(b.params)) throw Error('params must be an object');
+      validateParamData(b.params);
+      if (def && def.lab === template.lab) {
+        for (const schema of def.params || []) {
+          if (!OWN(b.params,schema.key)) throw Error('missing explicit parameter ' + schema.key);
+          const value=b.params[schema.key];
+          if (schema.type === 'number' &&
+              (typeof value !== 'number' || !Number.isFinite(value)))
+            throw Error('parameter ' + schema.key + ' must be a finite number');
+          if ((schema.type === 'text' || schema.type === 'textarea') &&
+              typeof value !== 'string')
+            throw Error('parameter ' + schema.key + ' must be text');
+          if (schema.type === 'checkbox' && typeof value !== 'boolean')
+            throw Error('parameter ' + schema.key + ' must be boolean');
+          if (schema.type === 'select' && Array.isArray(schema.options) &&
+              !schema.options.some(option=>option===value))
+            throw Error('parameter ' + schema.key + ' is not an allowed option');
+        }
+      }
+    } catch (err) {
+      errors.push('Invalid parameters for ' + b.id + ': ' + err.message);
+    }
     blocks.set(b.id, b);
   }
   for (const w of template.wires) {
