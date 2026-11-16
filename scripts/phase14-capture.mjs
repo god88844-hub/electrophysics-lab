@@ -20,13 +20,13 @@ const log=raw.staLogSha256.toString('utf8');
 const timing=parsePhase14TimingLog(log);
 const version=spawnSync('sta',['-version'],{encoding:'utf8'});
 const v=(version.stdout||version.stderr||'').trim();
-if(!/OpenSTA|STA /i.test(v))throw Error('OpenSTA version not reported by external executable');
+if(version.status!==0||!/^[0-9]+\.[0-9]+(?:\.[0-9]+)?$/.test(v))throw Error('OpenSTA executable did not return a valid numeric version');
 const record={
  format:FORMAT,example:'alu8',libraryCorner:'tt_025C_1v80',
  analysis:'pre-layout-combinational-single-typical-corner',
  constraints:{periodNs:20,inputMaxNs:1,outputMaxNs:1,inputSlewNs:0.1,outputLoadPf:0.01},
  commitSha:process.env.GITHUB_SHA||null,
- tool:{version:v},libraryGitBlobSha1:blob,
+ tool:{version:'OpenSTA '+v},libraryGitBlobSha1:blob,
  timing,physicalValidation:'none',physicalQualified:false,
  physicalVerdict:'unknown',realWorldBuildSuccessPercent:null,
  postLayout:false,multiCorner:false,prototypeMeasurements:false,
