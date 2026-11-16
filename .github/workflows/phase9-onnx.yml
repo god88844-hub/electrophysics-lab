@@ -1,0 +1,57 @@
+# Phase 9 independent functional inference verification.
+# All dependencies must install and every frozen ONNX Runtime case must pass.
+# Existing RISC-V/Ngspice/Qiskit/NumPy/browser CI is retained separately.
+name: Phase 9 ONNX Runtime CPU reference
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  onnx-runtime-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned real ONNX protobuf and ONNX Runtime CPU reference
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "numpy==2.4.6" "onnx==1.23.2" "onnxruntime==1.32.0"
+          python3 - <<'PY'
+          import onnx,onnxruntime,numpy
+          assert onnx.__version__ == '1.23.2'
+          assert onnxruntime.__version__ == '1.32.0'
+          assert numpy.__version__ == '2.4.6'
+          assert 'CPUExecutionProvider' in onnxruntime.get_available_providers()
+          print('Real ONNX Runtime CPU reference installed')
+          PY
+      - name: Run bounded ONNX subset and evidence negative unit tests
+        run: node --test tests/onnx-subset.test.mjs tests/phase9-acceptance.test.mjs
+      - name: Execute actual ONNX opset-13 models with CPUExecutionProvider
+        run: node scripts/phase9-onnx-differential.mjs
+      - name: Require complete five-case signed-by-commit provenance and numeric comparisons
+        run: node scripts/phase9-strict.mjs
+      - name: Publish honest Phase 9 verdict
+        if: always()
+        run: |
+          if [ -f benchmarks/evidence/phase9-summary.json ]; then
+            cat benchmarks/evidence/phase9-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Missing mandatory real ONNX Runtime evidence — FAIL." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase9-onnxruntime-independent-evidence
+          path: |
+            benchmarks/evidence/phase9-onnx.json
+            benchmarks/evidence/phase9-summary.json
+          if-no-files-found: error
