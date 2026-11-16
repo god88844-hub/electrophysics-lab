@@ -99,7 +99,7 @@ test('Phase 9: validation returns fail, not a success, on malformed graphs',()=>
 });
 test('Phase 9: missing Gemm inputs, invalid Softmax axis and broadcasts must never silently pass',()=>{
   const g=get('gemm-sigmoid');
-  g.nodes[0].inputs.pop();
+  g.nodes[0].inputs.splice(1);
   assert.throws(()=>runOnnxSubset(g));
   const softmax=get('add-softmax');
   softmax.nodes[1].attrs.axis=0;
