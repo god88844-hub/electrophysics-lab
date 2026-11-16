@@ -1,0 +1,51 @@
+# Phase 13: actual external Yosys/ABC/Icarus and pinned real SKY130
+# standard-cell Liberty from public OpenROAD-flow-scripts commit.
+# This does not run place/route, STA/PVT, DRC, LVS, or silicon measurement.
+name: Phase 13 SKY130 open-cell technology mapping
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  real-sky130-mapping:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install actual HDL synthesis/formal and exhaustively simulate tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends yosys iverilog
+          yosys -V
+          iverilog -V
+      - name: Require all negative/false physical evidence gates to reject
+        run: node --test tests/phase13-evidence.test.mjs
+      - name: Download pinned real SkyWater SKY130HD Liberty, exhaustive RTL, formal equivalence, mutant and map
+        run: bash scripts/phase13-run.sh
+      - name: Require strict external integrity and physical UNKNOWN verdict
+        run: node scripts/phase13-strict.mjs
+      - name: Publish stage-specific summary
+        if: always()
+        run: |
+          if [ -f benchmarks/evidence/phase13/phase13-summary.json ]; then
+            cat benchmarks/evidence/phase13/phase13-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "SKY130 actual technology-mapping proof missing — FAIL" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase13-real-sky130-hdl-and-stdcell-mapping-evidence
+          path: |
+            benchmarks/evidence/phase13/phase13.json
+            benchmarks/evidence/phase13/phase13-summary.json
+            benchmarks/evidence/phase13/alu8-sky130-mapped.v
+            benchmarks/evidence/phase13/tool-logs/*.log
+            benchmarks/evidence/phase13/source/sky130_fd_sc_hd__tt_025C_1v80.lib
+          if-no-files-found: error
