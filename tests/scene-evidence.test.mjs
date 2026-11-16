@@ -145,3 +145,21 @@ test('scene: bidirectional chip terminals have valid 3D source and sink sockets'
   assert.deepEqual(after.wires[0].to,target);
   assert.equal(d.wires.length,1,'3D adapter must not create a second shadow netlist');
 });
+
+test('evidence: scenario estimates preserve frozen, reproducible input assumptions',()=>{
+  const r=estimateScenarioPassRate(scenario);
+  assert.equal(r.format,'invention-lab/scenario-evidence/1');
+  assert.deepEqual(r.parameters,scenario.parameters);
+  assert.deepEqual(r.constraints,scenario.constraints);
+  assert.ok(Object.isFrozen(r.parameters));
+  assert.ok(Object.isFrozen(r.parameters[0]));
+  assert.ok(Object.isFrozen(r.constraints));
+  assert.deepEqual(r.covariance,[[0]],'single zero-uncertainty parameter retains explicit covariance');
+});
+
+test('evidence: a deterministic parameter cannot have nonzero cross-covariance',()=>{
+  const p=[{name:'a',mean:1,sd:0},{name:'b',mean:1,sd:1}];
+  const args={...scenario,parameters:p,model:({a,b})=>({V:a+b}),
+    covariance:[[0,0.2],[0.2,1]]};
+  assert.throws(()=>estimateScenarioPassRate(args),/covariance|positive/i);
+});
