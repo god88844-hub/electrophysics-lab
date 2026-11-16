@@ -632,8 +632,8 @@ export class App {
     const listing=document.createElement('pre');listing.className='mono';
     listing.style.fontSize='11px';
     try {
-      const lines=String(diagram.meta.source||'').trim().split(/\\r?\\n/);
-      listing.textContent=lines.map((word,i)=>'0x'+(i*4).toString(16).padStart(8,'0')+'   '+word).join('\\n');
+      const lines=String(diagram.meta.source||'').trim().split(/\r?\n/);
+      listing.textContent=lines.map((word,i)=>'0x'+(i*4).toString(16).padStart(8,'0')+'   '+word).join('\n');
     } catch(error) { listing.textContent=error.message; }
     right.appendChild(listing);
   }
