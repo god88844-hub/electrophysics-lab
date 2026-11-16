@@ -8,6 +8,7 @@
 // The simulator deliberately does NOT turn unknown opcodes or timeouts into
 // successes; ECALL/EBREAK are stop/trap events, not fabricated OS behavior.
 export const ISA = 'RV32I 2.1';
+export const ISA_WITH_M = 'RV32IM (RV32I 2.1 + M 2.0)';
 export const DEFAULT_MEMORY_BYTES = 65536;
 const MAX_MEMORY = 16 * 1024 * 1024;
 const sign = (v, bits) => (v << (32 - bits)) >> (32 - bits);
@@ -53,7 +54,10 @@ function programBytes(source) {
   return rv32WordsToBytes(source);
 }
 export class RV32I {
-  constructor({ program, memoryBytes = DEFAULT_MEMORY_BYTES, base = 0, startPc = base, maxTrace = 256 } = {}) {
+  constructor({ program, memoryBytes = DEFAULT_MEMORY_BYTES, base = 0, startPc = base,
+    maxTrace = 256, isa = 'rv32i' } = {}) {
+    if(isa!=='rv32i'&&isa!=='rv32im')throw Error('Unsupported RV32 ISA profile: '+String(isa));
+    this.isa = isa;
     if (!validInteger(memoryBytes) || memoryBytes < 64 || memoryBytes > MAX_MEMORY) throw Error('Invalid RV32I memory size');
     if (!validInteger(base) || base < 0 || base > 0xffffffff ||
         !validInteger(startPc) || startPc < 0 || startPc > 0xffffffff) throw Error('Invalid RV32I address');
@@ -173,7 +177,30 @@ export class RV32I {
           hasResult = true;
           if (f3 === 0 && f7 === 0x20) { name = 'SUB'; result = a - b; break; }
           if (f3 === 5 && f7 === 0x20) { name = 'SRA'; result = a >> (b & 31); break; }
-          if (f7 !== 0) illegal('non-RV32I register arithmetic encoding');
+          if (f7 === 0x01) {
+            if (this.isa !== 'rv32im') illegal('RV32M extension is not enabled');
+            const sa = BigInt(a), sb = BigInt(b);
+            const ua = BigInt(u32(a)), ub = BigInt(u32(b));
+            switch (f3) {
+              case 0: name = 'MUL'; result = Math.imul(a,b); break;
+              case 1: name = 'MULH'; result = Number((sa * sb) >> 32n); break;
+              case 2: name = 'MULHSU'; result = Number((sa * ub) >> 32n); break;
+              case 3: name = 'MULHU'; result = Number((ua * ub) >> 32n); break;
+              case 4: name = 'DIV';
+                result = b === 0 ? -1 :
+                  (a === -2147483648 && b === -1) ? -2147483648 : Math.trunc(a / b);
+                break;
+              case 5: name = 'DIVU'; result = b === 0 ? 0xffffffff : Math.floor(u32(a) / u32(b)); break;
+              case 6: name = 'REM';
+                result = b === 0 ? a :
+                  (a === -2147483648 && b === -1) ? 0 : a % b;
+                break;
+              case 7: name = 'REMU'; result = b === 0 ? u32(a) : u32(a) % u32(b); break;
+              default: illegal('unrecognized RV32M operation');
+            }
+            break;
+          }
+          if (f7 !== 0) illegal('invalid register arithmetic funct7');
           switch (f3) {
             case 0: name = 'ADD'; result = a + b; break;
             case 1: name = 'SLL'; result = a << (b & 31); break;
@@ -225,7 +252,8 @@ export class RV32I {
       stopReason:this.stopReason, pc:u32(this.pc), retired:this.retired,
       regs:Array.from(this.regs, u32), traces:this.traces.map(x=>({...x})),
       writes:this.writes.map(x=>({...x})), trap:{...this.trap},
-      specification:'RV32I 2.1', model:'single-hart-functional',
+      specification:this.isa==='rv32im'?ISA_WITH_M:ISA, isa:this.isa,
+      model:'single-hart-functional',
       timing:'not-modelled', physicalValidation:'none', realWorldBuildSuccessPercent:null,
       note:'EBREAK reaching a trap is a test stopping convention, not an OS exit, manufacturing result, or ISA certification.',
     };
