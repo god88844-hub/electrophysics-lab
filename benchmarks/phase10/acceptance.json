@@ -1,0 +1,86 @@
+{
+  "format": "invention-lab/phase10-acceptance/1",
+  "fixtures": "benchmarks/phase10/quantized-cases.json",
+  "oracle": "scripts/phase10-onnx-oracle.py",
+  "opset": 13,
+  "required": [
+    {
+      "id": "qlinear-int8-symmetric",
+      "dtype": "int8",
+      "values": [
+        -6,
+        4,
+        10,
+        -17
+      ]
+    },
+    {
+      "id": "qlinear-uint8-offset",
+      "dtype": "uint8",
+      "values": [
+        121,
+        98,
+        181,
+        23
+      ]
+    },
+    {
+      "id": "qlinear-int8-saturation",
+      "dtype": "int8",
+      "values": [
+        127,
+        -128,
+        -128,
+        127
+      ]
+    },
+    {
+      "id": "qlinear-uint8-saturation",
+      "dtype": "uint8",
+      "values": [
+        255,
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "id": "qdq-int8-ties-even",
+      "dtype": "float32",
+      "values": [
+        -1,
+        -1,
+        0,
+        0,
+        1,
+        1,
+        63.5,
+        -64
+      ]
+    },
+    {
+      "id": "qdq-uint8-offset-saturation",
+      "dtype": "float32",
+      "values": [
+        -32,
+        0,
+        0.25,
+        0.75,
+        1.25,
+        31.75,
+        31.75,
+        -32
+      ]
+    }
+  ],
+  "frozenNumericalPolicy": {
+    "quantizedInteger": "exact",
+    "dequantizedAbsolute": 0.000001,
+    "dequantizedRelative": 0.000001,
+    "missingSkipDuplicateReorder": "fail",
+    "sourceDigestMismatch": "fail"
+  },
+  "reference": "actual ONNX 1.23.2 and ONNX Runtime CPUExecutionProvider 1.32.0, NumPy 2.4.6",
+  "physicalValidation": "none",
+  "realWorldBuildSuccessPercent": null
+}
