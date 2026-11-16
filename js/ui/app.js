@@ -11,8 +11,12 @@ import { Scene3DView } from '../scene/viewer.js';
 import { AssemblyShelf } from './module-shelf.js';
 import {
   captureModuleTemplate, instantiateModule, registerAssembly, ungroupAssembly,
-  listAssemblies, serializeModuleLibrary, parseModuleLibrary,
+  listAssemblies,
 } from '../assembly/modules.js';
+import {
+  COMPOSITE_FORMAT,captureCompositeFromAssemblies,instantiateComposite,
+  serializeHierarchicalLibrary,parseHierarchicalLibrary,
+} from '../assembly/composites.js';
 import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/feasibility.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
@@ -214,8 +218,9 @@ export class App {
     this.$editorToolbar.appendChild(this.$assembliesButton);
     this.assemblyShelf = new AssemblyShelf(this.$editorArea, {
       onCreate: (args) => this.createAssembly(args),
-      onPlace: (id) => this.placeModule(id),
-      onFocus: (id) => this.focusAssembly(id),
+      onCompose: (args) => this.composeAssemblies(args),
+      onPlace: (id,overrides={}) => this.placeModule(id,overrides),
+      onFocus: (id,path=null) => this.focusAssembly(id,path),
       onUngroup: (id) => this.ungroup(id),
       onRemoveTemplate: (id) => this.removeModuleTemplate(id),
       onImport: (raw) => this.importModuleLibrary(raw),
@@ -266,7 +271,7 @@ export class App {
   boot() {
     try {
       const stored = localStorage.getItem('ilab.moduleLibrary.v1');
-      this.moduleLibrary = stored ? parseModuleLibrary(stored) : [];
+      this.moduleLibrary = stored ? parseHierarchicalLibrary(stored) : [];
     } catch (error) {
       this.moduleLibrary = [];
       this.log('Module library could not be loaded: ' + error.message, 'warn');
@@ -398,7 +403,7 @@ export class App {
   }
 
   _persistModuleLibrary(next) {
-    const serialized = serializeModuleLibrary(next);
+    const serialized = serializeHierarchicalLibrary(next);
     try { localStorage.setItem('ilab.moduleLibrary.v1',serialized); }
     catch (error) { throw Error('Module library storage failed; export your library: ' + error.message); }
     this.moduleLibrary = next;
@@ -410,11 +415,17 @@ export class App {
     const template = captureModuleTemplate(diagram,{name,blockIds});
     const next = [...this.moduleLibrary,template];
     // Capacity/integrity check before touching the active design.
-    serializeModuleLibrary(next);
+    serializeHierarchicalLibrary(next);
     const previous = structuredClone(diagram.meta.assemblies || []);
     let record;
     try {
       record = registerAssembly(diagram,{name,blockIds,templateId:template.id});
+      // Persist the real port-to-block mapping. This survives later module
+      // composition even when a group was captured in a different block order.
+      const registered=diagram.meta.assemblies.find(a=>a.id===record.id);
+      registered.interfaceBindings=Object.fromEntries(template.interfaces.map(p=>[
+        p.name,{blockId:p.blockId,portId:p.portId,dir:p.dir,type:p.type},
+      ]));
       this._persistModuleLibrary(next);
     } catch (error) {
       // Never leave a group pretending to have been saved if the template
@@ -427,21 +438,39 @@ export class App {
     return {template,assembly:record};
   }
 
-  placeModule(templateId) {
+  composeAssemblies({name,groupIds}) {
+    const diagram=this.diagrams[this.state.labId];
+    const composite=captureCompositeFromAssemblies(diagram,groupIds,this.moduleLibrary,{name});
+    this._persistModuleLibrary([...this.moduleLibrary,composite]);
+    this.log('Nested module created: '+composite.name+' · '+composite.children.length+' child modules, '+composite.parameters.length+' numeric parameters');
+    return composite;
+  }
+
+  placeModule(templateId,overrides={}) {
     const template=this.moduleLibrary.find(t=>t.id===templateId);
     if(!template)throw Error('Reusable module not found');
     const diagram=this.diagrams[this.state.labId];
     const center=this.viewMode==='3d'?this.scene3d.centerDesign():
       this.editor.toWorld(this.editor.canvas.width/2,this.editor.canvas.height/2);
     const at = {x:center.x+120,y:center.y+80};
-    const result=instantiateModule(diagram,template,{...at});
+    const result=template.format===COMPOSITE_FORMAT
+      ? instantiateComposite(diagram,template,this.moduleLibrary,{...at,overrides})
+      : instantiateModule(diagram,template,{...at});
+    if(template.format!==COMPOSITE_FORMAT){
+      // Legacy leaf placements now preserve an exact named interface mapping
+      // for future captured composites, independent of its block order.
+      const original=diagram.meta.assemblies.find(a=>a.id===result.assembly.id);
+      original.interfaceBindings=Object.fromEntries(result.exposedPorts.map(p=>[
+        p.name,{blockId:p.blockId,portId:p.portId,dir:p.dir,type:p.type},
+      ]));
+    }
     this._diagramChanged();
     this.editor.requestRender();
     this.log('Placed '+template.name+' as '+result.createdBlockIds.length+' real blocks / '+result.createdWireIds.length+' real wires');
     return result;
   }
 
-  focusAssembly(id) {
+  focusAssembly(id,path=null) {
     if(id===null) {
       this.scene3d.setFocus(null);
       this.log('Viewing complete design');
@@ -451,6 +480,14 @@ export class App {
     if(!group)throw Error('Assembly no longer exists');
     if(group.staleBlockIds.length)throw Error('Assembly contains deleted blocks; ungroup or repair the design');
     if(!this.set3D(true))throw Error('WebGL 3D view is not available');
+    if(path!==null) {
+      const members=group.childGroups?.[path];
+      if(!Array.isArray(members)||!members.length || members.some(x=>!group.blockIds.includes(x)))
+        throw Error('Nested child path is not part of this assembly');
+      this.scene3d.setFocus(members,group.name+' / '+path);
+      this.log('Exploring nested child '+group.name+' / '+path+' · '+members.length+' components');
+      return;
+    }
     this.scene3d.setFocus(group.blockIds,group.name);
     this.log('Exploring '+group.name+' · '+group.blockIds.length+' components');
   }
@@ -466,17 +503,20 @@ export class App {
   removeModuleTemplate(id) {
     const next=this.moduleLibrary.filter(t=>t.id!==id);
     if(next.length===this.moduleLibrary.length)throw Error('Template not found');
+    if(this.moduleLibrary.some(t=>t.format===COMPOSITE_FORMAT &&
+        t.children.some(child=>child.templateId===id)))
+      throw Error('Cannot delete a module referenced by a composite; remove its dependents first');
     this._persistModuleLibrary(next);
     this.log('Removed reusable template from local library; existing design blocks remain');
   }
 
   exportModuleLibrary() {
-    download('invention-lab-computing-modules.json',serializeModuleLibrary(this.moduleLibrary),'application/json');
+    download('invention-lab-computing-modules.json',serializeHierarchicalLibrary(this.moduleLibrary),'application/json');
     this.log('Exported reusable module library');
   }
 
   importModuleLibrary(raw) {
-    const incoming=parseModuleLibrary(raw);
+    const incoming=parseHierarchicalLibrary(raw);
     const next=[...this.moduleLibrary];
     for(const template of incoming){
       const existing=next.find(t=>t.id===template.id);
