@@ -83,7 +83,7 @@ function assessPhysicalValidationEligibility({
   dataset, quality, criteria, criteriaMet, criteriaResults, comparisons,
   envelope, quantities, samples,
   calibrationRef, calibrationRecord, splitManifest,
-  provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
+  provenanceVerified, provenanceReceipt, validationPlan, model, params, declaredUse,
 }) {
   const blockers = [];
 
@@ -368,7 +368,7 @@ export function runExperimentalValidation({
     dataset, quality, criteria, criteriaMet, criteriaResults, comparisons,
     envelope, quantities, samples: selectedSamples,
     calibrationRef, calibrationRecord, splitManifest,
-    provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
+    provenanceVerified, provenanceReceipt, validationPlan, model, params, declaredUse,
   });
 
   // Software cannot independently authenticate an experimental acquisition or
