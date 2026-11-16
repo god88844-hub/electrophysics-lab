@@ -38,6 +38,13 @@ test('Phase 8 policy: missing, duplicate, unknown or skipped case cannot produce
     assert.equal(check(record).ok,false,kind);
   }
 });
+test('Phase 8 policy: shuffled word positions cannot be relabeled as passing',()=>{
+  const report=make();
+  const first=report.cases[0];
+  report.cases[0]=report.cases[1];
+  report.cases[1]=first;
+  assert.equal(check(report).ok,false,'word-position mismatch must fail even when all case IDs are present');
+});
 test('Phase 8 policy: frozen manifest cannot shrink/change an expected result',()=>{
   const smaller=structuredClone(manifest);smaller.requiredCases.pop();
   assert.equal(evaluatePhase8(smaller,make()).ok,false);
