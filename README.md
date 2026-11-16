@@ -67,6 +67,24 @@ justified probabilities. Physics and mathematics make modeling possible, but
 unmeasured model discrepancy and fabrication variation prevent universal
 simulation-to-physical equivalence claims.
 
+## Hierarchical computing assemblies (Phase 5 foundation)
+
+In the Logic, Chip and Quantum labs, use **Assemblies** to capture a set of
+components as a reusable module, place independent copies, and explore one
+subsystem in the 3D view. The template stores its registered parts, parameters,
+internal wires, and exposed input/output sockets. Placed copies expand into
+**real flat-netlist components and typed wires** so existing simulators keep
+their authority. The design's group metadata round-trips with project JSON;
+the browser module library can be imported/exported separately.
+
+This is one-level modular design and 3D visual drill-in, **not** yet a
+transistor-accurate multi-level CAD/fabrication system. Copying a working logic
+or chip module never implies a real-world physical validation PASS or a
+manufacturing success percentage.
+
+See [docs/ASSEMBLIES.md](docs/ASSEMBLIES.md) for interface contracts, the
+module-library format, risks, tests and roadmap.
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
