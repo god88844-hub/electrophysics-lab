@@ -108,6 +108,16 @@ export class AssemblyShelf {
       const item=element('div',undefined,'assembly-entry');
       item.append(element('strong',template.name));
       item.append(element('p',template.blocks.length+' real components · '+template.wires.length+' internal wires · '+template.interfaces.length+' exposed sockets','muted'));
+      if(template.interfaces.length){
+        const details=element('details');
+        details.append(element('summary','Inspect real module interface sockets'));
+        const list=element('ul',undefined,'assembly-interface-list');
+        for(const port of template.interfaces){
+          list.append(element('li',port.name+' — '+port.dir+' / '+port.type));
+        }
+        details.append(list);
+        item.append(details);
+      }
       const buttons=element('div',undefined,'assembly-actions');
       buttons.append(action('Place copy',()=>this.handlers.onPlace?.(template.id),'primary'));
       buttons.append(action('Forget',()=>this.handlers.onRemoveTemplate?.(template.id)));
