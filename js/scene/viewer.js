@@ -1,6 +1,6 @@
 // viewer.js — dependency-free WebGL 3D view of the SAME Diagram used by the labs.
 // This renderer is visualization/editing only. It never claims physical fidelity.
-import { sceneFromDiagram, worldToDesign } from './layout.js';
+import { sceneFromDiagram, worldToDesign, portPoint3D } from './layout.js';
 
 const VERT = `attribute vec3 aPosition;
 attribute vec3 aColor;
@@ -57,9 +57,9 @@ function programFor(gl) {
   return p;
 }
 function cube(mesh,b,selected){
-  const x=b.x,z=b.z,w=b.width/2,d=b.depth/2,h=b.height;
-  const p=[[x-w,0,z-d],[x+w,0,z-d],[x+w,0,z+d],[x-w,0,z+d],
-    [x-w,h,z-d],[x+w,h,z-d],[x+w,h,z+d],[x-w,h,z+d]];
+  const x=b.x,z=b.z,w=b.width/2,d=b.depth/2,h=b.height,base=b.baseY||0;
+  const p=[[x-w,base,z-d],[x+w,base,z-d],[x+w,base,z+d],[x-w,base,z+d],
+    [x-w,base+h,z-d],[x+w,base+h,z-d],[x+w,base+h,z+d],[x-w,base+h,z+d]];
   const faces=[
     [4,5,6,7,1.12],[0,3,2,1,0.36],[0,1,5,4,0.74],
     [1,2,6,5,0.64],[2,3,7,6,0.51],[3,0,4,7,0.88],
@@ -73,9 +73,9 @@ function line(arr,a,b,color){
   arr.push(a[0],a[1],a[2],...color,b[0],b[1],b[2],...color);
 }
 export class Scene3DView {
-  constructor(container,{onSelect=()=>{},onMove=()=>{},onError=()=>{}}={}){
-    this.container=container;this.onSelect=onSelect;this.onMove=onMove;this.onError=onError;
-    this.diagram=null;this.selectedId=null;
+  constructor(container,{onSelect=()=>{},onMove=()=>{},onConnect=()=>{},onError=()=>{}}={}){
+    this.container=container;this.onSelect=onSelect;this.onMove=onMove;this.onConnect=onConnect;this.onError=onError;
+    this.diagram=null;this.selectedId=null;this.wireSource=null;
     this.yaw=0.65;this.pitch=0.78;this.distance=12;this.center=[0,0,0];
     this.root=document.createElement('div');this.root.className='scene3d-root';
     this.root.style.display='none';this.root.setAttribute('aria-label','Interactive three-dimensional electronics workspace');
@@ -84,7 +84,7 @@ export class Scene3DView {
     this.overlay=document.createElement('canvas');this.overlay.className='scene3d-overlay';
     this.overlay.setAttribute('aria-hidden','true');
     this.notice=document.createElement('div');this.notice.className='scene3d-help';
-    this.notice.textContent='3D MODEL VIEW · drag orbit · wheel zoom · click select · Shift+drag move · palette to add · 2D mode to wire';
+    this.notice.textContent='3D MODEL VIEW · drag orbit · click sockets to wire · Shift+drag move · wheel zoom · palette to add';
     this.root.append(this.canvas,this.overlay,this.notice);container.appendChild(this.root);
     this.available=false;this._raf=0;
     try {
@@ -116,7 +116,7 @@ export class Scene3DView {
     if(value)this.resize();
   }
   mount(diagram){
-    this.diagram=diagram;this.selectedId=null;this.fit();
+    this.diagram=diagram;this.selectedId=null;this.wireSource=null;this.fit();
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
@@ -179,9 +179,45 @@ export class Scene3DView {
     }
     return hit;
   }
+  pickPort(clientX,clientY){
+    if(!this.diagram)return null;
+    const rect=this.canvas.getBoundingClientRect();
+    const x=clientX-rect.left,y=clientY-rect.top,cam=this.camera();
+    let nearest=null,best=17*17;
+    for(const block of sceneFromDiagram(this.diagram).blocks){
+      for(const [direction,arr] of [['in',block.ports.incoming],['out',block.ports.outgoing]]){
+        for(const port of arr){
+          const pos=portPoint3D(block,port.id,direction);
+          if(!pos)continue;
+          const pt=this.project(pos,cam.matrix);
+          if(!pt)continue;
+          const distance=(pt.x-x)**2+(pt.y-y)**2;
+          if(distance<best){best=distance;nearest={blockId:block.id,portId:port.id,direction};}
+        }
+      }
+    }
+    return nearest;
+  }
   _down(e){
     if(!this.available)return;
-    this.canvas.focus();this.canvas.setPointerCapture(e.pointerId);
+    this.canvas.focus();
+    const port=this.pickPort(e.clientX,e.clientY);
+    if(port){
+      e.preventDefault();
+      if(this.wireSource && port.direction==='in'){
+        const source=this.wireSource;this.wireSource=null;
+        this.onConnect(source.blockId,source.portId,port.blockId,port.portId);
+      } else if(port.direction==='out'){
+        this.wireSource=port;
+        this.selectedId=port.blockId;this.onSelect(port.blockId);
+      } else {
+        this.wireSource=null;
+        this.onError('Select an output socket first, then an input socket.');
+      }
+      this.requestRender();
+      return;
+    }
+    this.canvas.setPointerCapture(e.pointerId);
     const hit=this.pick(e.clientX,e.clientY);
     this.drag={x:e.clientX,y:e.clientY,prevX:e.clientX,prevY:e.clientY,
       mode:e.shiftKey&&hit?'move':'orbit',selected:hit,moved:false,
@@ -231,7 +267,18 @@ export class Scene3DView {
       line(lines,[-gridSize,0,i],[gridSize,0,i],[0.17,0.24,0.30]);
       line(lines,[i,0,-gridSize],[i,0,gridSize],[0.17,0.24,0.30]);
     }
-    for(const b of scene.blocks)cube(tri,b,b.id===this.selectedId);
+    for(const b of scene.blocks){
+      cube(tri,b,b.id===this.selectedId);
+      for(const [direction,ports] of [['in',b.ports.incoming],['out',b.ports.outgoing]]){
+        for(const port of ports){
+          const p=portPoint3D(b,port.id,direction);
+          if(!p)continue;
+          const active=this.wireSource?.blockId===b.id&&this.wireSource?.portId===port.id&&this.wireSource?.direction===direction;
+          cube(tri,{x:p.x,z:p.z,baseY:p.y-0.055,width:0.16,depth:0.16,height:0.11,
+            color:active?[1,0.85,0.3]:(direction==='out'?[0.42,0.96,0.72]:[0.47,0.70,0.97])},active);
+        }
+      }
+    }
     for(const wire of scene.wires)
       for(let i=1;i<wire.points.length;i++){
         const a=wire.points[i-1],b=wire.points[i];
@@ -267,6 +314,8 @@ export class Scene3DView {
       ctx.fillStyle=b.id===this.selectedId?'#ffdc85':'#dceaf7';
       ctx.fillText(label,pos.x,pos.y-1);
     }
-    this.notice.textContent=`3D COMPONENT WORKSPACE · ${scene.blocks.length} blocks · ${scene.wires.length} wires · visualization, NOT physical scale · Shift+drag move · switch to 2D to wire ports`;
+    this.notice.textContent=this.wireSource
+      ? `WIRE MODE: ${this.wireSource.blockId}.${this.wireSource.portId} → click a compatible input socket · click an output to restart`
+      : `3D COMPONENT WORKSPACE · ${scene.blocks.length} blocks · ${scene.wires.length} wires · click output then input sockets to wire · Shift+drag move · schematic scale`;
   }
 }
