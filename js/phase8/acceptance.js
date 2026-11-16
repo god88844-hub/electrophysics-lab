@@ -61,6 +61,12 @@ export function evaluatePhase8(manifest,report,{sourceSha256=null,commitSha=null
   if(!Array.isArray(rows)||rows.length!==REQUIRED_M_CASES.length)
     errors.push('Missing or extra RV32M cases');
   const seen=new Set(),present=new Set();
+  // The 48-byte QEMU/JS output has a *fixed positional word contract*.
+  // Do not allow a shuffled report to relabel a word as a different opcode.
+  if(Array.isArray(rows))for(let i=0;i<Math.min(rows.length,REQUIRED_M_CASES.length);i++){
+    if(rows[i]?.id!==REQUIRED_M_CASES[i][0])
+      errors.push('RV32M result word order does not match frozen machine-code output');
+  }
   if(Array.isArray(rows))for(const item of rows){
     if(!item||typeof item.id!=='string'){errors.push('Malformed reference case');continue;}
     if(seen.has(item.id))errors.push('Duplicate reference case '+item.id);
