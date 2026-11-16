@@ -89,10 +89,42 @@ try{
   assert(!app.assemblyShelf.open,'assemblies panel could not be closed');
   app.ungroup(grouped.assembly.id);
   assert(app.diagrams.logic.blocks.length===afterPlace,'ungroup removed simulated components');
+
+  // Phase 6: compose two real groups into a nested parametric module, then
+  // place it with an explicit numeric override and explore its children.
+  const originalGroup=app.createAssembly({name:'First leaf for nesting',blockIds:[a.id,b.id]});
+  const secondGroup=instance.assembly.id;
+  const composite=app.composeAssemblies({
+    name:'Nested computing pair',groupIds:[originalGroup.assembly.id,secondGroup],
+  });
+  assert(composite.children.length===2,'nested module lost child references');
+  assert(composite.parameters.length>0,'nested parameters not exposed');
+  const control=composite.parameters.find(p=>p.target.paramKey==='value');
+  assert(control,'numeric gate input control was not exposed');
+  const previousCount=app.diagrams.logic.blocks.length;
+  const nested=app.placeModule(composite.id,{[control.name]:1});
+  assert(app.diagrams.logic.blocks.length===previousCount+4,
+    'nested parameterized module did not expand into four real blocks');
+  assert(nested.createdWireIds.length===2,'nested module lost leaf connection topology');
+  assert(Object.keys(nested.assembly.childGroups).length>=2,'nested child provenance map absent');
+  app.focusAssembly(nested.assembly.id,'child1');
+  assert(app.scene3d.focusIds?.size===2,'nested child drill-in did not select its real blocks');
+  assert(app.scene3d.scene().blocks.length===2,'nested scene showed unrelated components');
+  app.scene3d.render();
+  assert(app.scene3d.gl.getError()===app.scene3d.gl.NO_ERROR,'nested 3D group caused WebGL errors');
+  app.focusAssembly(null);
+  assert(app.scene3d.scene().blocks.length===previousCount+4,'leaving nested focus lost components');
+  const encoded=app.moduleLibrary;
+  assert(encoded.some(t=>t.id===composite.id),'composite not present in module library');
+  app.$assembliesButton.click();
+  assert(app.assemblyShelf.root.textContent.includes('Nested computing pair'),
+    'nested module not visible in assembly shelf');
+  app.$assembliesButton.click();
+
   app.switchOutputTab('evidence');
   assert(app.$outputBody.textContent.includes('Not estimated'),'assembly editing fabricated a build-success percentage');
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — WebGL, typed 3D wiring, module capture/instantiation, assembly drill-in, undo/redo and evidence panel';
+  output.textContent='PASS — WebGL, hierarchical nested module composition, numeric overrides, flat-netlist expansion, recursive 3D exploration and honest evidence';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
