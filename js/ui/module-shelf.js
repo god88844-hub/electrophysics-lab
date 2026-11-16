@@ -48,6 +48,7 @@ export class AssemblyShelf {
     this.root.append(intro);
     this._captureSection();
     this._instancesSection();
+    this._composeSection();
     this._librarySection();
   }
   _captureSection(){
@@ -92,22 +93,66 @@ export class AssemblyShelf {
       item.append(element('strong',group.name));
       item.append(element('p',group.blockIds.length+' components'+(group.staleBlockIds.length?' · missing members: '+group.staleBlockIds.join(', '):''),'muted'));
       const buttons=element('div',undefined,'assembly-actions');
-      buttons.append(action('Explore in 3D',()=>this.handlers.onFocus?.(group.id)));
-      buttons.append(action('Ungroup',()=>this.handlers.onUngroup?.(group.id)));
-      item.append(buttons);section.append(item);
+      buttons.append(action('Explore in 3D',()=>this._safely(()=>this.handlers.onFocus?.(group.id))));
+      buttons.append(action('Ungroup',()=>this._safely(()=>this.handlers.onUngroup?.(group.id))));
+      item.append(buttons);
+      const paths=Object.entries(group.childGroups||{}).sort(([a],[b])=>a.localeCompare(b));
+      if(paths.length){
+        const details=element('details');
+        details.append(element('summary','Explore nested children ('+paths.length+')'));
+        for(const [path,members] of paths){
+          details.append(action('↳ '+path+' · '+members.length+' real blocks',
+            ()=>this._safely(()=>this.handlers.onFocus?.(group.id,path))));
+        }
+        item.append(details);
+      }
+      section.append(item);
     }
-    if(groups.length)section.append(action('Exit assembly focus',()=>this.handlers.onFocus?.(null)));
+    if(groups.length)section.append(action('Exit assembly focus',()=>this._safely(()=>this.handlers.onFocus?.(null))));
+    this.root.append(section);
+  }
+  _safely(operation){
+    try {return operation();}catch(error){this.handlers.onError?.(error.message);}
+  }
+  _composeSection(){
+    const groups=listAssemblies(this.diagram).filter(g=>
+      g.templateId && !g.staleBlockIds.length &&
+      this.templates.some(t=>t.id===g.templateId && t.lab===this.diagram.lab));
+    const section=element('section',undefined,'assembly-section');
+    section.append(element('h4','3 · Compose modules inside a module'));
+    section.append(element('p','Choose two or more existing assemblies. Their real cross-wires become child connections; numeric parameters become editable controls.','muted'));
+    if(groups.length<2){
+      section.append(element('p','Create at least two reusable assemblies to compose a nested module.','muted'));
+      this.root.append(section);return;
+    }
+    const nameLabel=element('label','Nested module name');
+    const name=element('input');name.type='text';name.maxLength=100;name.placeholder='e.g. Ternary processing stage';
+    name.setAttribute('aria-label','Nested module name');nameLabel.append(name);section.append(nameLabel);
+    const picker=element('div',undefined,'assembly-block-picker'),boxes=[];
+    for(const group of groups){
+      const row=element('label',undefined,'assembly-checkbox');
+      const check=element('input');check.type='checkbox';check.value=group.id;
+      row.append(check,document.createTextNode(group.name+' · '+group.blockIds.length+' blocks'));
+      picker.append(row);boxes.push(check);
+    }
+    section.append(picker,action('Compose selected assemblies',()=>this._safely(()=>{
+      const groupIds=boxes.filter(c=>c.checked).map(c=>c.value);
+      this.handlers.onCompose?.({name:name.value,groupIds});
+    }),'primary'));
     this.root.append(section);
   }
   _librarySection(){
     const section=element('section',undefined,'assembly-section');
-    section.append(element('h4','3 · Reusable module library'));
+    section.append(element('h4','4 · Reusable module library'));
     const matches=this.templates.filter(t=>t.lab===this.diagram.lab);
     if(!matches.length)section.append(element('p','Capture a module to add it to your local library.','muted'));
     for(const template of matches){
       const item=element('div',undefined,'assembly-entry');
       item.append(element('strong',template.name));
-      item.append(element('p',template.blocks.length+' real components · '+template.wires.length+' internal wires · '+template.interfaces.length+' exposed sockets','muted'));
+      const nested=template.format==='invention-lab/computing-composite/1';
+      item.append(element('p',nested
+        ? 'Nested module · '+template.children.length+' children · '+template.wires.length+' child connections · '+template.parameters.length+' numerical controls'
+        : template.blocks.length+' real components · '+template.wires.length+' internal wires · '+template.interfaces.length+' exposed sockets','muted'));
       if(template.interfaces.length){
         const details=element('details');
         details.append(element('summary','Inspect real module interface sockets'));
@@ -118,9 +163,34 @@ export class AssemblyShelf {
         details.append(list);
         item.append(details);
       }
+      const numericInputs=[];
+      if(nested && template.parameters.length){
+        const parameterDetails=element('details');
+        parameterDetails.append(element('summary','Configure numeric parameters ('+template.parameters.length+')'));
+        const fields=element('div',undefined,'assembly-param-fields');
+        for(const p of template.parameters){
+          const label=element('label',p.name);
+          const input=element('input');input.type='number';input.step='any';
+          input.value=String(p.default);
+          if(p.min!==undefined)input.min=String(p.min);
+          if(p.max!==undefined)input.max=String(p.max);
+          input.setAttribute('aria-label','Module parameter '+p.name);
+          label.append(input);
+          fields.append(label);numericInputs.push([p,input]);
+        }
+        parameterDetails.append(fields);
+        item.append(parameterDetails);
+      }
       const buttons=element('div',undefined,'assembly-actions');
-      buttons.append(action('Place copy',()=>this.handlers.onPlace?.(template.id),'primary'));
-      buttons.append(action('Forget',()=>this.handlers.onRemoveTemplate?.(template.id)));
+      buttons.append(action('Place copy',()=>this._safely(()=>{
+        const overrides={};
+        for(const [p,input] of numericInputs){
+          if(input.value.trim()==='')throw Error('Missing numeric parameter '+p.name);
+          overrides[p.name]=Number(input.value);
+        }
+        this.handlers.onPlace?.(template.id,overrides);
+      }),'primary'));
+      buttons.append(action('Forget',()=>this._safely(()=>this.handlers.onRemoveTemplate?.(template.id))));
       item.append(buttons);
       section.append(item);
     }
