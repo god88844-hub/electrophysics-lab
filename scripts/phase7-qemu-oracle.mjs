@@ -46,9 +46,9 @@ try {
     format:'invention-lab/phase7-cross-engine/1',
     result:'pass',independentReference:'QEMU RISC-V user-mode',
     toolVersions:{
-      assembler:invoke('riscv64-unknown-elf-as',['--version']).split('\\n')[0],
-      linker:invoke('riscv64-unknown-elf-ld',['--version']).split('\\n')[0],
-      emulator:invoke('qemu-riscv32',['--version']).split('\\n')[0],
+      assembler:invoke('riscv64-unknown-elf-as',['--version']).split('\n')[0],
+      linker:invoke('riscv64-unknown-elf-ld',['--version']).split('\n')[0],
+      emulator:invoke('qemu-riscv32',['--version']).split('\n')[0],
     },
     source:{path:'benchmarks/phase7/rv32i-sum.S',sha256:digest(await readFile(input))},
     compiled:{sha256:digest(binary),baseAddress:'0x10000',bytes:binary.length},
@@ -61,10 +61,10 @@ try {
   };
   const dest=path.join(root,'benchmarks/evidence/phase7-rv32i.json');
   await mkdir(path.dirname(dest),{recursive:true});
-  await writeFile(dest,JSON.stringify(record,null,2)+'\\n');
+  await writeFile(dest,JSON.stringify(record,null,2)+'\n');
   process.stdout.write('PHASE7 INDEPENDENT RV32I ORACLE PASS: QEMU stdout='+
     JSON.stringify(qemu)+', JS register x6='+state.regs[6]+
-    ', compiled SHA256='+record.compiled.sha256+'\\n');
+    ', compiled SHA256='+record.compiled.sha256+'\n');
 }finally{
   await rm(tmp,{recursive:true,force:true});
 }
