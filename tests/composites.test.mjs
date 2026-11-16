@@ -148,3 +148,44 @@ test('composites: copied hierarchies preserve 3D group labels without altering u
   assert.equal(scene.blocks.length,3);
   assert.ok(r.exposedPorts.every(p=>r.createdBlockIds.includes(p.blockId)));
 });
+
+test('composites: duplicated cross-module edges must fail before instantiation',()=>{
+  const {composite,library}=makeComposite(),modified=structuredClone(composite);
+  modified.wires.push({...structuredClone(modified.wires[0]),id:'duplicate-wire'});
+  const verdict=validateCompositeTemplate(modified,library);
+  assert.equal(verdict.ok,false,'duplicate connections cannot be accepted as a valid reusable hierarchy');
+  assert.match(verdict.errors.join(' '),/duplicate/i);
+});
+test('composites: duplicate bindings to the same child parameter are rejected',()=>{
+  const {composite,library}=makeComposite(),modified=structuredClone(composite);
+  const p=modified.parameters.find(p=>p.target.blockId==='src'&&p.target.paramKey==='value');
+  modified.parameters.push({...structuredClone(p),name:'second-alias'});
+  const verdict=validateCompositeTemplate(modified,library);
+  assert.equal(verdict.ok,false);
+  assert.match(verdict.errors.join(' '),/duplicate|binding/i);
+});
+test('composites: duplicate outer interface aliases cannot secretly reference one physical pin',()=>{
+  const {composite,library}=makeComposite(),modified=structuredClone(composite);
+  modified.interfaces.push({...structuredClone(modified.interfaces[0]),name:'second-alias'});
+  const verdict=validateCompositeTemplate(modified,library);
+  assert.equal(verdict.ok,false);
+  assert.match(verdict.errors.join(' '),/duplicate|interface/i);
+});
+test('composites: hierarchy paths must not collide with user-authored separators',()=>{
+  const {composite,library}=makeComposite(),modified=structuredClone(composite);
+  modified.children[0].id='path/other-child';
+  const verdict=validateCompositeTemplate(modified,library);
+  assert.equal(verdict.ok,false);
+  assert.match(verdict.errors.join(' '),/path|ID|separator|child/i);
+});
+test('composites: spoofed persisted interface mapping cannot bypass real port types',()=>{
+  const {d,input,gate}=makeComposite();
+  const first=d.meta.assemblies.find(a=>a.id==='group-source');
+  first.interfaceBindings={
+    'src.out': {blockId:'src',portId:'missing-port',dir:'out',type:'logic'},
+  };
+  assert.throws(
+    ()=>captureCompositeFromAssemblies(d,['group-source','group-gate'],[input,gate],{name:'Spoofed mapping'}),
+    /interface|port|signature/i,
+  );
+});
