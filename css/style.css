@@ -234,3 +234,15 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
 }
 .evidence-stats strong { font-size:13px; }
 @media (max-width:720px) { .evidence-stats { grid-template-columns:1fr; } }
+
+
+.scenario-demo {
+  margin-top:12px; padding:13px; border:1px solid var(--border);
+  border-radius:9px; background:var(--bg-raised);
+}
+.scenario-demo h4 { margin:0 0 5px; font-size:13px; }
+.scenario-demo p { margin:6px 0 12px; }
+.scenario-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin:11px 0; }
+.scenario-fields label { display:flex; flex-direction:column; gap:4px; color:var(--text-dim); font-size:11px; }
+.scenario-fields input { width:100%; }
+.scenario-result { font-weight:600; color:var(--text); line-height:1.6; }
