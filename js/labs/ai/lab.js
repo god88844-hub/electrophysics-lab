@@ -86,7 +86,7 @@ export const aiLab = {
       verdict: 'warn',
       stage: 'physical',
       actual: null, expected: null, tolerance: null,
-      note: 'Analytical model excludes memory traffic; expect ±30% vs silicon. Not a cycle-accurate simulator.',
+      note: 'Analytical model excludes memory traffic, interconnect, caches, thermal effects and measured silicon calibration. No defensible error bound or device performance guarantee is available; this is not cycle-accurate.',
       evidence: null,
     });
 
