@@ -146,6 +146,30 @@ certification, cycle-accurate chip timing, physically validated silicon
 or a manufacturing-success probability. See
 [Phase 8 validation and data dependencies](docs/PHASE8-RV32M-VALIDATION.md).
 
+## ONNX functional inference and independent CPU oracle (Phase 9)
+
+The **AI Accelerator Lab** now includes five interactive, bounded
+**ONNX opset-13 float32 inference graph examples**. They cover MatMul,
+Gemm, Add, ReLU, Sigmoid and Softmax as 2D fixed-shape tensors,
+including two-layer dense-network inference. Unknown ops, unsupported
+shapes, unexpected data types and invalid graph references are rejected.
+
+The separate [Phase 9 ONNX Runtime CPU workflow](.github/workflows/phase9-onnx.yml)
+creates actual ONNX protobuf graphs and uses a pinned
+**ONNX Runtime CPUExecutionProvider** to independently compute all five
+outputs. Invention Lab's existing accelerator kernels are then
+compared with the real ONNX outputs under a fixed numerical error
+budget. [The frozen graph suite](benchmarks/phase9/graphs.json) and
+[the acceptance manifest](benchmarks/phase9/acceptance.json) prevent
+silently skipping or renaming cases; source/tool versions, file
+fingerprints and output checksums are recorded as CI artifacts.
+
+This subset is **not a general ONNX parser or runtime**. It does not
+implement full MLPerf, ONNX model zoo, transformer inference, GPU/TPU
+microarchitecture, real hardware timing, fabrication verification or
+a measured manufacturing-success probability. See
+[Phase 9 data, limitations and evidence policy](docs/PHASE9-ONNX-INFERENCE.md).
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
