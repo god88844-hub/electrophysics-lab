@@ -332,6 +332,10 @@ export const Scope = {
   },
 
   render_ai(c, res) {
+    if(res?.kind==='iris-model-benchmark'){
+      this.render_iris_holdout(c,res);
+      return;
+    }
     if(res?.kind==='onnx-per-axis-conv'){
       this.render_phase11_onnx(c,res);
       return;
@@ -362,6 +366,27 @@ export const Scope = {
       res.mlp.targets.map((t, i) => [`[${[[0, 0], [0, 1], [1, 0], [1, 1]][i]}]`, t, res.mlp.predictions[i].toFixed(3)]),
       { numCols: [2] },
     ));
+  },
+
+  render_iris_holdout(c,res){
+    c.appendChild(el('div',{text:'UCI Iris classifier — real labeled holdout (CC BY 4.0)'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'MODEL-ONLY browser result. Trained only on 120 of 150 original UCI Iris rows. The remaining 30 labels were NOT used for fitting. Independent scikit-learn and ONNX Runtime comparisons run separately in CI.'}));
+    c.appendChild(table(['Observed holdout','Correct predictions','Accuracy','Macro-F1'],[[
+      res.samples,res.correct,(100*res.accuracy).toFixed(1)+'%',res.macroF1.toFixed(4)
+    ]]));
+    c.appendChild(el('div',{text:'Three-class confusion matrix (rows = true, columns = predicted)'}));
+    c.appendChild(table(['Actual class','Predicted setosa','Predicted versicolor','Predicted virginica'],
+      res.confusion.map((row,i)=>[res.classes[i],...row])));
+    c.appendChild(el('div',{text:'All 30 independent holdout predictions'}));
+    c.appendChild(table(['Source row','True class','Predicted class','Confidence','Correct?'],
+      res.predictions.map((predicted,i)=>[
+        i+1,res.classes[res.trueLabels[i]],res.classes[predicted],
+        (100*res.probabilities[i][predicted]).toFixed(2)+'%',
+        predicted===res.trueLabels[i]?'yes':'no'
+      ])));
+    c.appendChild(el('div',{class:'muted',text:
+      'Only 30 holdout examples: the observed accuracy is a small-sample estimate, NOT a guaranteed accuracy on future data and NOT a calibrated GPU/TPU, MLPerf, circuit, or silicon validation. Physical validation: NONE. Real-world chip build success: Not estimated.'}));
   },
 
   render_phase11_onnx(c,res){
