@@ -332,6 +332,10 @@ export const Scope = {
   },
 
   render_ai(c, res) {
+    if(res?.kind==='onnx-quantized'){
+      this.render_onnx_quantized(c,res);
+      return;
+    }
     if(res?.kind==='onnx-subset'){
       this.render_onnx_subset(c,res);
       return;
@@ -354,6 +358,26 @@ export const Scope = {
       res.mlp.targets.map((t, i) => [`[${[[0, 0], [0, 1], [1, 0], [1, 1]][i]}]`, t, res.mlp.predictions[i].toFixed(3)]),
       { numCols: [2] },
     ));
+  },
+
+  render_onnx_quantized(c,res){
+    c.appendChild(el('div',{text:'ONNX quantization subset — '+res.caseId+' (opset 13)'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'MODEL-ONLY JS arithmetic. Real ONNX Runtime runs ONLY in CI; no measured GPU/TPU timing, silicon reliability or fabrication yield.'}));
+    c.appendChild(table(['Executed operations','Output dtype','Shape'],[[
+      res.operations.join(' → '),res.output.dtype,res.output.shape.join('×')
+    ]]));
+    const render=(label,t)=>{
+      c.appendChild(el('div',{text:label+' ('+t.dtype+')'}));
+      const [rows,cols]=t.shape;
+      c.appendChild(table(Array.from({length:cols},(_,i)=>'C'+i),
+        Array.from({length:rows},(_,i)=>t.values.slice(i*cols,(i+1)*cols).map(x=>
+          typeof x==='number'?Number(x.toPrecision(8)):x))));
+    };
+    if(res.quantized)render('Quantized intermediate',res.quantized);
+    render('Result',res.output);
+    c.appendChild(el('div',{class:'muted',text:
+      'Physical validation: NONE. Real-world build success: Not estimated. Supported only: bounded 2D per-tensor int8/uint8 QLinearMatMul, QuantizeLinear and DequantizeLinear.'}));
   },
 
   render_onnx_subset(c,res){
