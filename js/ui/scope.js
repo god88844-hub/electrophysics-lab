@@ -301,7 +301,7 @@ export const Scope = {
 
   render_rv32i(c, res) {
     if (!res.cpu) {
-      c.appendChild(el('div',{class:'err',text:(res.problems||[]).join('\\n')}));
+      c.appendChild(el('div',{class:'err',text:(res.problems||[]).join('\n')}));
       return;
     }
     const cpu=res.cpu;
