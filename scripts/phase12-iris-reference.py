@@ -108,8 +108,9 @@ def main():
     np.testing.assert_allclose(X_test,
         np.asarray(graph['inputs'][0]['values'],dtype=np.float32).reshape(30,4),
         rtol=0,atol=1e-6)
-    trained=MLPClassifier(hidden_layer_sizes=(6,),solver='lbfgs',activation='relu',
-                          alpha=0.03,max_iter=500,random_state=2026)
+    trained=MLPClassifier(hidden_layer_sizes=(6,),solver='adam',activation='relu',
+                          alpha=0.03,max_iter=1000,learning_rate_init=0.01,
+                          tol=1e-5,n_iter_no_change=200,random_state=2026)
     trained.fit(X_train,y[train])
     if not np.array_equal(trained.classes_,[0,1,2]):
         raise ValueError('unexpected sklearn class label mapping')
