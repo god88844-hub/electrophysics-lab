@@ -2,6 +2,13 @@
 // Monte Carlo pass rate is NOT a physical build success probability. There is no
 // implicit conversion from passing simulation checks to real-world confidence.
 const integer=(n,min,max)=>Number.isInteger(n)&&n>=min&&n<=max;
+function freezeSnapshot(value){
+  if(value&&typeof value==='object'){
+    for(const v of Object.values(value))freezeSnapshot(v);
+    Object.freeze(value);
+  }
+  return value;
+}
 function rng(seed){
   let state=seed>>>0;
   return ()=>{
@@ -48,7 +55,7 @@ function wilson(successes,n,z=1.95996398454005){
 }
 export function estimateScenarioPassRate({
   designId,intendedUse,parameters,covariance=null,independenceAsserted=false,
-  model,constraints,assumptions,seed=7,samples=5000,
+  model,modelReference=null,constraints,assumptions,seed=7,samples=5000,
 }){
   if(!designId||!intendedUse)throw Error('scenario requires a design ID and intended use');
   if(!Array.isArray(assumptions)||!assumptions.length||assumptions.some(a=>typeof a!=='string'||!a.trim()))
@@ -73,6 +80,11 @@ export function estimateScenarioPassRate({
   for(let i=0;i<n;i++){
     if(Math.abs(matrix[i][i]-parameters[i].sd**2)>1e-9*Math.max(1,parameters[i].sd**2))
       throw Error('covariance diagonal must equal the declared parameter variances');
+    for(let j=0;j<n;j++){
+      if(!Number.isFinite(matrix[i][j]))throw Error('all covariance entries must be finite');
+      if(parameters[i].sd===0 && matrix[i][j]!==0)
+        throw Error('zero-variance parameters must have zero covariance with all other variables');
+    }
   }
   // Zero-variance dimensions are deterministic. Cholesky only for random dims.
   const variable=parameters.map((p,i)=>p.sd>0?i:-1).filter(i=>i>=0);
@@ -104,8 +116,14 @@ export function estimateScenarioPassRate({
   // A failed model invocation is not a physically failed build and must not
   // be silently counted as a failure to manufacture.
   const complete=errors===0;
-  return Object.freeze({
-    status:complete?'model-only':'inconclusive',designId,intendedUse,seed,samples,passes,modelErrors:errors,
+  return freezeSnapshot({
+    format:'invention-lab/scenario-evidence/1',
+    status:complete?'model-only':'inconclusive',designId,intendedUse,modelReference,
+    seed,samples,passes,modelErrors:errors,
+    parameters:structuredClone(parameters),
+    covariance:matrix.map(row=>[...row]),
+    independenceAsserted:covariance===null?Boolean(independenceAsserted):null,
+    constraints:structuredClone(constraints),
     modeledPassRatePercent:complete?100*rate:null,
     samplingInterval95Percent:complete?[100*interval.lower,100*interval.upper]:null,
     realWorldBuildSuccessPercent:null,
