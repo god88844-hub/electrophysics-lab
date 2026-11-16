@@ -12,6 +12,7 @@ import './labs/logic/lab.js';
 import './labs/chip/components.js';
 import './labs/chip/lab.js';
 import './labs/cpu/lab.js';
+import './labs/rv32i/lab.js';
 import './labs/ai/lab.js';
 import './labs/quantum/components.js';
 import './labs/quantum/lab.js';
