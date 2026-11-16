@@ -240,6 +240,37 @@ This is a very small educational model-level correctness benchmark,
 **not MLPerf, real GPU/TPU speed/energy, a qualified chip process, or
 a measured real-world build-success probability**.
 
+## Real hardware technology-mapping evidence and physical-validation ladder (Phase 13)
+
+**Primary project goal: evidence credible enough to make engineering build/no-build
+decisions.** Invention Lab is a computing-hardware and digital-twin
+invention platform spanning logic, circuits, novel architectures,
+CPU/RTL, GPU/TPU, semiconductor design and quantum systems. The
+earlier independent Ngspice/Qiskit/NumPy, RISC-V and ONNX tests are
+valuable *software-scope checks*; they do not equal physical-silicon
+validation.
+
+A new [real SKY130 mapping workflow](.github/workflows/phase13-sky130.yml)
+now tests an actual synthesizable **8-bit ALU** against an independently
+formulated reference using **all 262,144 input vectors**, requires real
+**Yosys RTL equivalence** and proves that a deliberately incorrect XOR
+implementation **fails**. It downloads a pinned **Apache-2.0 SKY130HD
+standard-cell Liberty file** (Git blob and fixed original size checked)
+and runs genuine **Yosys ABC technology mapping** to produce a
+standard-cell gate-level Verilog netlist. Full logs, tool versions,
+actual cell counts, exact source/netlist hashes and an evidence artifact
+are required; no missing part is treated as PASS.
+
+The [physical-validation readiness ladder](docs/PHASE13-PHYSICAL-VALIDATION-LADDER.md)
+separates proven **functional HDL and standard-cell mapping** from
+the still **UNKNOWN** engineering stages: real constrained STA, PVT,
+place/route/parasitics, DRC, LVS, actual silicon measurements and
+calibration on independent physical evidence.
+
+**No physical chip build-success percentage is estimated**, and
+technology mapping alone is never called successful fabrication.
+Phase 3's measurement/calibration PR remains separately unmerged.
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
