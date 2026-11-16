@@ -104,6 +104,10 @@ export class App {
       onChange: () => this._diagramChanged(),
       onSelect: (sel) => {
         if (sel?.kind === 'error') { this.log(sel.message, 'err'); return; }
+        if (this.scene3d) {
+          this.scene3d.selectedId = sel?.kind === 'block' ? sel.id : null;
+          this.scene3d.sync();
+        }
         this._refreshInspector();
       },
     });
@@ -270,6 +274,7 @@ export class App {
   set3D(enabled) {
     const canShow = enabled && SCENE_LABS.has(this.state.labId) && this.scene3d.available;
     this.viewMode = canShow ? '3d' : '2d';
+    if (canShow) this.scene3d.selectedId = this.editor.selection?.kind === 'block' ? this.editor.selection.id : null;
     this.scene3d.activate(canShow);
     this.editor.canvas.style.display = canShow || !CANVAS_LABS.has(this.state.labId) ? 'none' : '';
     this.$sceneButton.style.display = SCENE_LABS.has(this.state.labId) ? '' : 'none';
