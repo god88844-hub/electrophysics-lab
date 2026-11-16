@@ -134,10 +134,32 @@ try{
   assert(app.lastResult.cpu.stopReason==='ebreak', 'RV32I browser execution did not reach the architectural breakpoint');
   app.switchOutputTab('evidence');
   assert(app.$outputBody.textContent.includes('Not estimated'), 'RV32I UI fabricated a physical success percentage');
+
+  // Phase 8: only explicitly selected RV32IM may execute M operations.
+  const isaSelector=app.$centerPanel.querySelector('[aria-label="RISC-V ISA profile"]');
+  assert(isaSelector?.value==='rv32i','new RISC-V profile must default to RV32I');
+  const sourceEditor=app.$centerPanel.querySelector('[aria-label="RV32I machine-code editor"]');
+  sourceEditor.value='00600093\\n00700113\\n022081b3\\n00100073'.replaceAll('\\n','\n');
+  sourceEditor.dispatchEvent(new Event('change',{bubbles:true}));
+  await app.run();
+  assert(app.lastResult?.cpu?.stopReason==='illegal-instruction','RV32I must reject MUL by default');
+  isaSelector.value='rv32im';
+  isaSelector.dispatchEvent(new Event('change',{bubbles:true}));
+  const expected=app.$centerPanel.querySelectorAll('input[type="number"]');
+  assert(expected.length>=2,'Expected register controls missing');
+  expected[1].value='42';
+  expected[1].dispatchEvent(new Event('change',{bubbles:true}));
+  await app.run();
+  assert(app.lastResult?.cpu?.regs?.[3]===42,'RV32IM browser MUL instruction did not compute 6*7');
+  assert(app.lastResult.cpu.isa==='rv32im','RV32M opt-in ISA provenance missing');
+  assert(app.diagrams.rv32i.meta.isa==='rv32im','RV32M ISA profile not saved into project');
+  assert(app.diagrams.rv32i.meta.expectedValue===42,'RV32M expected register value not saved');
+  app.switchOutputTab('evidence');
+  assert(app.$outputBody.textContent.includes('Not estimated'),'RV32IM UI fabricated physical hardware confidence');
   app.switchLab('logic');
 
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — 3D nested computing modules, RV32I interpreter UI, independent evidence panel and no fabricated physical success percentage';
+  output.textContent='PASS — 3D nested modules, RV32I default rejects MUL, RV32IM opt-in executes MUL, and physical confidence remains unestimated';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
