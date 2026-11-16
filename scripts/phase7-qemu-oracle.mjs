@@ -44,6 +44,7 @@ try {
   assert.equal(state.regs[6],103,'sum-of-1-to-10 arithmetic state must equal g ASCII 103');
   const record={
     format:'invention-lab/phase7-cross-engine/1',
+    commitSha:process.env.GITHUB_SHA||null,
     result:'pass',independentReference:'QEMU RISC-V user-mode',
     toolVersions:{
       assembler:invoke('riscv64-unknown-elf-as',['--version']).split('\n')[0],
