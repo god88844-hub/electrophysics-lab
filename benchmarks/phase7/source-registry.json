@@ -1,0 +1,106 @@
+{
+  "format": "invention-lab/phase7-source-registry/1",
+  "reviewDate": "2026-11-16",
+  "scope": "Invention Lab computing, binary/ternary logic, chips, CPU, accelerators and quantum systems; never AeroForge",
+  "policy": "A link to a public reference is not a downloaded, checked or calibrated physical dataset. Actual benchmark source/binary hashes are computed on every external CI run. No physical validation is claimed.",
+  "sources": [
+    {
+      "id": "riscv-rv32i-2.1",
+      "url": "https://docs.riscv.org/reference/isa/v20260120/unpriv/rv32.html",
+      "role": "required-specification",
+      "status": "authoritative-text-reference",
+      "scope": "RISC-V RV32I base integer instruction encoding and semantics v2.1",
+      "artifactInRepo": false
+    },
+    {
+      "id": "gnu-riscv-binutils",
+      "url": "https://www.gnu.org/software/binutils/",
+      "role": "required-reference-toolchain",
+      "status": "executed-from-ubuntu-24.04-package",
+      "scope": "RV32I GNU assembler/linker/objcopy; actual tool version recorded in Phase 7 CI evidence",
+      "artifactInRepo": false
+    },
+    {
+      "id": "qemu-riscv32",
+      "url": "https://www.qemu.org/docs/master/user/main.html",
+      "role": "required-external-oracle",
+      "status": "executed-from-ubuntu-24.04-package",
+      "scope": "Independent RISC-V instruction execution for one bounded GNU-assembled RV32I program",
+      "artifactInRepo": false
+    },
+    {
+      "id": "numpy",
+      "url": "https://numpy.org/doc/stable/reference/generated/numpy.matmul.html",
+      "role": "required-external-oracle",
+      "status": "executed-in-ci",
+      "pinnedVersion": "2.4.6",
+      "scope": "NumPy float64 matrix multiplication against exact small integer fixtures",
+      "artifactInRepo": false
+    },
+    {
+      "id": "riscv-architectural-certification-tests",
+      "url": "https://github.com/riscv/riscv-arch-test",
+      "role": "future-isa-certification-framework",
+      "status": "public-reference-not-yet-executed",
+      "licensing": "repository includes BSD-3-Clause and Apache-2.0 source components and CC-BY-4.0 documentation; file-level licenses must be respected",
+      "scope": "ACT4 self-checking architectural tests; not equivalent to complete processor verification",
+      "artifactInRepo": false
+    },
+    {
+      "id": "riscv-sail",
+      "url": "https://github.com/riscv/sail-riscv",
+      "role": "future-formal-isa-oracle",
+      "status": "public-reference-not-yet-executed",
+      "scope": "RISC-V International adopted ISA formal specification; future broad conformance integration",
+      "artifactInRepo": false
+    },
+    {
+      "id": "riscv-spike",
+      "url": "https://github.com/riscv-software-src/riscv-isa-sim",
+      "role": "future-independent-isa-oracle",
+      "status": "public-reference-not-yet-executed",
+      "scope": "Functional RV32/RV64 ISA simulator; no Spike execution is claimed for current Phase 7",
+      "artifactInRepo": false
+    },
+    {
+      "id": "mlcommons-tiny",
+      "url": "https://mlcommons.org/benchmarks/inference-tiny/",
+      "role": "future-accelerator-benchmark",
+      "status": "public-reference-not-yet-executed",
+      "scope": "MLPerf Tiny full model/dataset quality and latency metrics; not equivalent to the current tiny NumPy arithmetic cases",
+      "artifactInRepo": false
+    },
+    {
+      "id": "skywater-sky130",
+      "url": "https://skywater-pdk.readthedocs.io/en/main/",
+      "role": "future-process-specific-design-rules",
+      "status": "experimental-preview-not-downloaded",
+      "scope": "Open 130 nm PDK; no DRC/LVS, timing closure, physical measurement or production capability demonstrated in Phase 7",
+      "artifactInRepo": false
+    },
+    {
+      "id": "gf180mcu",
+      "url": "https://github.com/google/gf180mcu-pdk",
+      "role": "future-optional-process-kit",
+      "status": "experimental-preview-not-downloaded",
+      "scope": "Open 180 nm PDK; production qualification must not be inferred",
+      "artifactInRepo": false
+    },
+    {
+      "id": "openroad",
+      "url": "https://github.com/The-OpenROAD-Project/OpenROAD",
+      "role": "future-design-flow",
+      "status": "public-reference-not-executed",
+      "scope": "RTL to placed/routed design and possible DRC/LVS; no external RTL-to-GDS job executed by this Phase 7 slice",
+      "artifactInRepo": false
+    },
+    {
+      "id": "silicon-measurements",
+      "url": null,
+      "role": "required-for-physical-calibration-and-yield",
+      "status": "absent",
+      "scope": "Device-specific instrument source files, independently traceable acquisition records, test splits, environmental conditions and process-variation/yield datasets",
+      "artifactInRepo": false
+    }
+  ]
+}
