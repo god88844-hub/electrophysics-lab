@@ -82,8 +82,10 @@ test('Phase11 acceptance: wrong frozen output, quantum/conv input mutation and t
  const e=structuredClone(fixture);e.cases[2].wScales[0]=0.5;
  assert.equal(check(fake(),manifest,e).ok,false);
 });
-test('Phase11 acceptance: actual little-endian f32 and int8/uint8 output checksums are type-specific',()=>{
- assert.notEqual(outputDigest('int8',[-1,0,127]),outputDigest('uint8',[255,0,127]));
+test('Phase11 acceptance: identical int8/uint8 bytes need explicit dtype metadata, with bounded hashing',()=>{
+ // -1 in int8 and 255 in uint8 share a byte encoding. The evidence gate
+ // MUST check dtype as well as the content hash; a digest alone is not typed.
+ assert.equal(outputDigest('int8',[-1,0,127]),outputDigest('uint8',[255,0,127]));
  assert.throws(()=>outputDigest('float32',[NaN]));
  assert.throws(()=>outputDigest('other',[1]));
 });
