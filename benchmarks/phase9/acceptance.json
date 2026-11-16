@@ -1,0 +1,76 @@
+{
+  "format": "invention-lab/phase9-onnx-acceptance/1",
+  "scope": "Five fixed 2D float32 ONNX opset-13 graph outputs against real ONNX Runtime CPUExecutionProvider; not general ONNX compatibility, MLPerf, hardware performance or physical validation",
+  "fixturePath": "benchmarks/phase9/graphs.json",
+  "referencePath": "scripts/phase9-onnxruntime-oracle.py",
+  "operatorSet": 13,
+  "dtype": "float32",
+  "requiredCases": [
+    {
+      "id": "matmul-relu",
+      "ops": [
+        "MatMul",
+        "Relu"
+      ],
+      "outputs": [
+        "Y"
+      ]
+    },
+    {
+      "id": "gemm-sigmoid",
+      "ops": [
+        "Gemm",
+        "Sigmoid"
+      ],
+      "outputs": [
+        "Y"
+      ]
+    },
+    {
+      "id": "add-softmax",
+      "ops": [
+        "Add",
+        "Softmax"
+      ],
+      "outputs": [
+        "Y"
+      ]
+    },
+    {
+      "id": "gemm-transpose",
+      "ops": [
+        "Gemm"
+      ],
+      "outputs": [
+        "Y"
+      ]
+    },
+    {
+      "id": "two-layer-mlp",
+      "ops": [
+        "Gemm",
+        "Relu",
+        "Gemm",
+        "Softmax"
+      ],
+      "outputs": [
+        "Y"
+      ]
+    }
+  ],
+  "tolerance": {
+    "maxAbsoluteError": 0.00001,
+    "maxRelativeError": 0.00001
+  },
+  "require": {
+    "missingOrDuplicateCase": "fail",
+    "unexpectedOperator": "fail",
+    "invalidTensor": "fail",
+    "missingReference": "fail",
+    "nonfinite": "fail",
+    "skippedCase": "fail",
+    "sourceHashMismatch": "fail",
+    "commitMismatch": "fail",
+    "physicalClaims": "fail"
+  }
+}
