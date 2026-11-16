@@ -1,0 +1,58 @@
+# Phase 10 actual ONNX Runtime signed/unsigned quantization references.
+# Missing runtime, operator mismatch or skipped cases MUST fail CI.
+# No existing source/CI suite is changed or relaxed.
+name: Phase 10 ONNX int8 quantized reference
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quantized-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned real ONNX Runtime CPU and protobuf
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "numpy==2.4.6" "onnx==1.23.2" "onnxruntime==1.32.0"
+          python3 - <<'PY'
+          import onnx,onnxruntime,numpy
+          assert onnx.__version__ == '1.23.2'
+          assert onnxruntime.__version__ == '1.32.0'
+          assert numpy.__version__ == '2.4.6'
+          assert 'CPUExecutionProvider' in onnxruntime.get_available_providers()
+          print('Actual pinned ONNX Runtime CPU quantization engine installed')
+          PY
+      - name: Validate quantized operations and strict evidence negative controls
+        run: node --test tests/phase10-quantized.test.mjs tests/phase10-acceptance.test.mjs
+      - name: Execute six actual ONNX protobuf models against CPUExecutionProvider
+        run: node scripts/phase10-quantized-differential.mjs
+      - name: Require exact reference outputs, model bytes and case provenance
+        run: node scripts/phase10-strict.mjs
+      - name: Publish strict evidence verdict
+        if: always()
+        run: |
+          if [ -f benchmarks/evidence/phase10-summary.json ]; then
+            cat benchmarks/evidence/phase10-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Missing mandatory Phase 10 independent ONNX Runtime reference: FAIL." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase10-quantized-onnx-independent-evidence
+          path: |
+            benchmarks/evidence/phase10-quantized.json
+            benchmarks/evidence/phase10-summary.json
+            benchmarks/evidence/phase10-models/*.onnx
+          if-no-files-found: error
