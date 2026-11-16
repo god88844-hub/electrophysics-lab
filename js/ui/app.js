@@ -20,6 +20,7 @@ import {
 import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/feasibility.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
+import { runOnnxSubset } from '../labs/ai/onnx-subset.js';
 
 const CANVAS_LABS = new Set(['logic', 'chip', 'quantum', 'optics']);
 const SCENE_LABS = new Set(['logic', 'chip', 'quantum']);
@@ -705,6 +706,38 @@ export class App {
     runBtn.addEventListener('click', () => this.run());
     left.appendChild(runBtn);
 
+    const onnxSection=document.createElement('section');
+    onnxSection.className='field';
+    const heading=document.createElement('h3');
+    heading.textContent='ONNX operator-graph examples (opset 13, float32)';
+    onnxSection.append(heading);
+    const description=document.createElement('p');description.className='muted';
+    description.textContent='Five small, fixed 2D networks: MatMul, Gemm, Add, Relu, Sigmoid, Softmax. Independent ONNX Runtime evidence is generated in CI only; local execution is model-only.';
+    onnxSection.append(description);
+    const selector=document.createElement('select');
+    selector.setAttribute('aria-label','ONNX operator graph example');
+    for(const [id,name] of [
+      ['matmul-relu','MatMul + Relu'],
+      ['gemm-sigmoid','Gemm + Sigmoid'],
+      ['add-softmax','Broadcast Add + Softmax'],
+      ['gemm-transpose','Gemm transposes / alpha / beta'],
+      ['two-layer-mlp','Two-layer MLP + Softmax'],
+    ]) {
+      const option=document.createElement('option');
+      option.value=id;option.textContent=name;selector.append(option);
+    }
+    onnxSection.append(selector);
+    const runOnnx=document.createElement('button');
+    runOnnx.type='button';runOnnx.className='primary';
+    runOnnx.setAttribute('data-action','run-onnx-subset');
+    runOnnx.textContent='▶ Run ONNX subset graph';
+    runOnnx.addEventListener('click',()=>this.runOnnxExample(selector.value).catch(error=>{
+      this.log('ONNX subset failed: '+error.message,'err');
+      this._setVerdict('fail');
+    }));
+    onnxSection.append(runOnnx);
+    left.append(onnxSection);
+
     right.innerHTML = `
       <div>What this runs:</div>
       <ul class="muted">
@@ -713,6 +746,28 @@ export class App {
         <li>2-3-1 MLP trained on XOR (deterministic seed) with prediction table</li>
         <li>Validation: precision-dependent error bounds, self-consistency, honesty notes</li>
       </ul>`;
+  }
+
+  async runOnnxExample(caseId='matmul-relu'){
+    if(this.state.labId!=='ai')throw Error('ONNX subset can run only in the accelerator lab');
+    const response=await fetch('./benchmarks/phase9/graphs.json');
+    if(!response.ok)throw Error('ONNX fixture file unavailable: HTTP '+response.status);
+    const manifest=await response.json();
+    if(manifest?.format!=='invention-lab/onnx-subset-fixtures/1'||
+       manifest?.operatorSet!==13||manifest?.dtype!=='float32'||
+       !Array.isArray(manifest.cases)||manifest.cases.length!==5)
+      throw Error('Unsupported or incomplete frozen ONNX example library');
+    const graph=manifest.cases.find(item=>item.id===caseId);
+    if(!graph)throw Error('Unknown ONNX operator graph example '+caseId);
+    const result=runOnnxSubset(graph);
+    result.kind='onnx-subset';
+    result.caseId=caseId;
+    this.lastResult=result;
+    this.switchOutputTab('scope');
+    this._setVerdict('warn');
+    this.log('Model-only ONNX opset-13 graph '+caseId+' computed with '+result.executedNodes+
+      ' f32 tensor nodes; independent verification belongs to Phase 9 CI.');
+    return result;
   }
 
   _showCrosslabPanel() {
