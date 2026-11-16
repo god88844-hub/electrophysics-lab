@@ -24,5 +24,7 @@ grep -q sky130_fd_sc_hd__ "$NET"
 # OpenSTA is run noninteractively; capture stderr as well as stdout.
 # A reported pass requires a complete tool log with actual constrained paths.
 sta -no_splash -exit scripts/phase14-sta.tcl > "$ROOT/tool-logs/sta.log" 2>&1
+# Keep full executed STA output visible to reviewers even if evidence parsing fails.
+cat "$ROOT/tool-logs/sta.log"
 node scripts/phase14-capture.mjs
 node scripts/phase14-strict.mjs
