@@ -99,16 +99,20 @@ export function evaluatePhase13Evidence(manifest,report,opts={}){
   physicalStagesPassed:0,physicalVerdict:'unknown',
   physicalQualified:false,realWorldBuildSuccessPercent:null};
 }
+// Reporting an untrusted JSON file is NOT independent tool execution.
+// Only scripts/phase13-strict.mjs reopens and re-hashes actual tool outputs.
+// This summary intentionally cannot label self-reported stages "verified".
 export function describePhysicalReadiness(evidence){
- if(!evidence||!Array.isArray(evidence.stages))return {
-   verdict:'unknown',claim:'No independently executed hardware stage evidence provided',
-   physicalQualified:false,realWorldBuildSuccessPercent:null};
- const verified=evidence.stages.filter(s=>s.status==='pass').map(s=>s.id);
+ const reported=Array.isArray(evidence?.stages)?
+   evidence.stages.filter(s=>s.status==='pass'&&
+     PHYSICAL_STAGES.slice(0,3).includes(s.id)).map(s=>s.id):[];
  return {
-   verdict:'unknown',verifiedComputationalStages:verified.filter(x=>
-     PHYSICAL_STAGES.slice(0,3).includes(x)),
-   missingPhysicalStages:PHYSICAL_STAGES.slice(3),
-   claim:'Technology-mapped logic only; physical DRC/LVS/PVT/parasitics/device measurements are unverified.',
-   physicalQualified:false,realWorldBuildSuccessPercent:null
+   verdict:'unknown',
+   reportedComputationalStages:reported,
+   verifiedComputationalStages:[],
+   missingPhysicalStages:[...PHYSICAL_STAGES.slice(3)],
+   claim:'Untrusted result metadata alone is not a tool proof. Real independent CI logs/model bytes are required; STA, PVT, post-layout, DRC/LVS and silicon measurement are still unverified.',
+   physicalQualified:false,
+   realWorldBuildSuccessPercent:null
  };
 }
