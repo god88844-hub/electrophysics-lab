@@ -262,6 +262,18 @@ export function instantiateComposite(diagram,template,library,{
     blockId:p.blockId,portId:p.portId,dir:p.dir,type:p.type,
   }]));
   actual.parameterOverrides=copied(overrides);
+  // Preserve the ordered flat provenance of every nested child path so the
+  // visual explorer can zoom from parent → child → grandchild without creating
+  // a second simulation graph. All memberships are real block IDs.
+  const childrenByPath={};
+  for(const [flatId,actualId] of map){
+    const parts=flatId.split('/');
+    for(let j=1;j<parts.length;j++){
+      const path=parts.slice(0,j).join('/');
+      (childrenByPath[path]??=[]).push(actualId);
+    }
+  }
+  actual.childGroups=childrenByPath;
   diagram.blocks.push(...candidate.blocks.slice(blockStart));
   diagram.wires.push(...candidate.wires.slice(wireStart));
   diagram.meta.assemblies=candidate.meta.assemblies;
