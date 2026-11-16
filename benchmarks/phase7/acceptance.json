@@ -1,0 +1,21 @@
+{
+  "format": "invention-lab/phase7-acceptance/1",
+  "scope": "RV32I external QEMU reference plus small accelerator NumPy cross-check; NOT ISA certification, physical validation, PDK qualification, or build-yield estimation",
+  "requiredIds": [
+    "rv32i-qemu-gnu",
+    "matmul-2x3x2-signed",
+    "matmul-3x2x3-mixed"
+  ],
+  "references": {
+    "rv32i-qemu-gnu": "qemu-riscv32 with GNU assembler, linker and objcopy",
+    "matmul-2x3x2-signed": "numpy.float64 @",
+    "matmul-3x2x3-mixed": "numpy.float64 @"
+  },
+  "acceptance": {
+    "requiredVerdict": "pass",
+    "noSkips": true,
+    "noMissingIds": true,
+    "noDuplicates": true,
+    "noPhysicalValidationClaims": true
+  }
+}
