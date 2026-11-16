@@ -41,7 +41,7 @@ export function registerValidationPlan({ modelId, datasetId, envelopeId, declare
  * A single blocker prevents the validated status.
  */
 function assessPhysicalValidationEligibility({
-  dataset, quality, criteriaMet, criteriaResults,
+  dataset, quality, criteria, criteriaMet, criteriaResults,
   envelope, quantities, samples,
   calibrationRef, calibrationRecord, splitManifest,
   provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
@@ -247,7 +247,7 @@ export function runExperimentalValidation({
 
   // ---- centralized physical-validation eligibility (review round 1) --------
   const eligibility = assessPhysicalValidationEligibility({
-    dataset, quality, criteriaMet, criteriaResults,
+    dataset, quality, criteria, criteriaMet, criteriaResults,
     envelope, quantities, samples: dataset.samples,
     calibrationRef, calibrationRecord, splitManifest,
     provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
