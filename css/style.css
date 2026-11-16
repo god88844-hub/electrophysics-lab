@@ -246,3 +246,36 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
 .scenario-fields label { display:flex; flex-direction:column; gap:4px; color:var(--text-dim); font-size:11px; }
 .scenario-fields input { width:100%; }
 .scenario-result { font-weight:600; color:var(--text); line-height:1.6; }
+
+
+/* Phase 5: reusable computing assembly library, never a substitute netlist. */
+.assembly-shelf {
+  position:absolute; z-index:12; top:38px; right:8px; bottom:8px;
+  width:min(355px,calc(100% - 16px));
+  overflow:auto; padding:14px; display:flex; flex-direction:column; gap:12px;
+  border:1px solid #3c5970; border-radius:10px;
+  background:rgba(15,24,36,.98); color:#e7f0fa;
+  box-shadow:0 12px 36px rgba(0,0,0,.50);
+}
+.assembly-shelf[hidden] { display:none !important; }
+.assembly-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.assembly-header h3 { margin:0; font-size:15px; }
+.assembly-shelf .muted { color:#9fb4c8; font-size:11px; line-height:1.4; }
+.assembly-section { border-top:1px solid #304459; padding-top:12px; }
+.assembly-section h4 { margin:0 0 10px; font-size:12px; }
+.assembly-section > label {
+  display:flex; flex-direction:column; gap:6px; font-size:11px; color:#c5d7e7;
+}
+.assembly-section input[type="text"], .assembly-section input[type="file"] {
+  width:100%; min-width:0; border:1px solid #456078;
+  border-radius:5px; padding:7px; color:inherit; background:#1b2b3d;
+}
+.assembly-block-picker { margin:9px 0; max-height:136px; overflow:auto; border:1px solid #304459; border-radius:5px; }
+.assembly-checkbox { display:flex; align-items:center; gap:9px; padding:6px 8px; font-size:11px; border-bottom:1px solid #29394d; }
+.assembly-checkbox:last-child { border-bottom:0; }
+.assembly-checkbox input:disabled { opacity:.4; }
+.assembly-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+.assembly-actions button { padding:6px 8px; }
+.assembly-entry { margin:8px 0; padding:9px; border:1px solid #304459; border-radius:7px; background:#172638; }
+.assembly-entry strong { font-size:12px; }
+.assembly-entry p { margin:5px 0; }
