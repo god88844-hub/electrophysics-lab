@@ -299,6 +299,38 @@ export const Scope = {
     }
   },
 
+  render_rv32i(c, res) {
+    if (!res.cpu) {
+      c.appendChild(el('div',{class:'err',text:(res.problems||[]).join('\\n')}));
+      return;
+    }
+    const cpu=res.cpu;
+    c.appendChild(el('div',{text:'RV32I 2.1 architectural execution: '+cpu.status+' ('+cpu.stopReason+')'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'This is a functional instruction-level model, not cycle timing or physical validation. An EBREAK is an architectural trap and only a teaching-harness stop.'}));
+    c.appendChild(el('div',{text:'Retired instructions: '+cpu.retired+', final PC: 0x'+cpu.pc.toString(16).padStart(8,'0')}));
+    const rows=Array.from({length:8},(_,r)=>
+      Array.from({length:4},(_,c)=>'x'+(r*4+c)+' = 0x'+cpu.regs[r*4+c].toString(16).padStart(8,'0')));
+    c.appendChild(table(['Registers 0–7','8–15','16–23','24–31'],rows));
+    if(cpu.traces.length) {
+      c.appendChild(el('div',{text:'Instruction trace (last 32 retired instructions):'}));
+      c.appendChild(table(['PC','Instruction','Mnemonic','Next PC'],
+        cpu.traces.slice(-32).map(t=>[
+          '0x'+t.pc.toString(16).padStart(8,'0'),
+          '0x'+t.word.toString(16).padStart(8,'0'),
+          t.mnemonic,
+          '0x'+t.nextPc.toString(16).padStart(8,'0'),
+        ])));
+    }
+    if(cpu.writes.length) {
+      c.appendChild(el('div',{text:'Memory writes (up to 32 shown):'}));
+      c.appendChild(table(['Address','Bytes','Value'],cpu.writes.slice(0,32).map(w=>[
+        '0x'+w.address.toString(16).padStart(8,'0'),w.size,'0x'+w.value.toString(16),
+      ])));
+    }
+    c.appendChild(el('div',{class:'muted',text:'Physical validation: NONE. Real-world fabrication success percentage: NOT ESTIMATED.'}));
+  },
+
   render_ai(c, res) {
     const m = res.matmul;
     c.appendChild(el('div', { text: `Matmul ${m.dims.join('×')} in ${m.precision}: max |C−C_f64| = ${m.err.toExponential(3)}` }));
