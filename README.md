@@ -194,6 +194,28 @@ mixed-precision GPU/TPU hardware, real model accuracy, or a measured
 manufacturing-success probability**. See the
 [Phase 10 scope and evidence policy](docs/PHASE10-QUANTIZED-ONNX.md).
 
+## Per-axis ONNX and quantized convolution (Phase 11)
+
+The **AI Accelerator Lab** now runs six new examples for **2D
+per-axis QuantizeLinear/DequantizeLinear** and **4D NCHW QLinearConv**
+with int8/uint8 inputs, per-output-channel weight scales and offsets,
+padding, strides and integer bias. Users can inspect quantized
+intermediates and convolution output feature maps. The browser uses
+a **MODEL-ONLY** arithmetic interpreter.
+
+The independent [Phase 11 ONNX CPU reference workflow](.github/workflows/phase11-onnx-conv.yml)
+constructs and executes six actual ONNX opset-13 models in
+**ONNX Runtime CPUExecutionProvider**, compares every output against
+separate [frozen expectations](benchmarks/phase11/acceptance.json),
+verifies source/commit/output hashes and archives the six real model
+binaries. All earlier physical honesty checks and scientific CI suites
+remain mandatory. Read the
+[Phase 11 validation and data limits](docs/PHASE11-CONV-AND-PER-AXIS.md).
+
+Successful external software comparison does **not** imply complete
+ONNX compatibility, calibrated GPU/TPU timing or a physically
+validated chip manufacturing-success probability.
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
