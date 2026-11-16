@@ -76,6 +76,7 @@ export class Scene3DView {
   constructor(container,{onSelect=()=>{},onMove=()=>{},onConnect=()=>{},onError=()=>{}}={}){
     this.container=container;this.onSelect=onSelect;this.onMove=onMove;this.onConnect=onConnect;this.onError=onError;
     this.diagram=null;this.selectedId=null;this.wireSource=null;
+    this.focusIds=null;this.focusLabel=null;
     this.yaw=0.65;this.pitch=0.78;this.distance=12;this.center=[0,0,0];
     this.root=document.createElement('div');this.root.className='scene3d-root';
     this.root.style.display='none';this.root.setAttribute('aria-label','Interactive three-dimensional electronics workspace');
@@ -116,15 +117,31 @@ export class Scene3DView {
     if(value)this.resize();
   }
   mount(diagram){
-    this.diagram=diagram;this.selectedId=null;this.wireSource=null;this.fit();
+    this.diagram=diagram;this.selectedId=null;this.wireSource=null;
+    this.focusIds=null;this.focusLabel=null;this.fit();
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
+    if(this.focusIds && ![...this.focusIds].some(id=>this.diagram?.block(id))){
+      this.focusIds=null;this.focusLabel=null;
+    }
     this.requestRender();
+  }
+  scene(){
+    return sceneFromDiagram(this.diagram,{visibleBlockIds:this.focusIds});
+  }
+  setFocus(blockIds=null,label=null){
+    if(blockIds!==null && (!Array.isArray(blockIds)||!blockIds.length ||
+        !blockIds.some(id=>this.diagram?.block(id)))) throw Error('Assembly focus requires existing component IDs');
+    this.focusIds=blockIds===null?null:new Set(blockIds);
+    this.focusLabel=blockIds===null?null:String(label||'Assembly');
+    this.wireSource=null;
+    this.selectedId=null;
+    this.fit();
   }
   fit(){
     if(!this.diagram)return;
-    const scene=sceneFromDiagram(this.diagram);
+    const scene=this.scene();
     this.center=[scene.center.x,0,scene.center.z];
     this.distance=clip(scene.span*1.9+3,7,150);
     this.requestRender();
@@ -171,7 +188,7 @@ export class Scene3DView {
     const x=clientX-bounds.left,y=clientY-bounds.top;
     const cam=this.camera();
     let hit=null,best=44*44;
-    for(const block of sceneFromDiagram(this.diagram).blocks){
+    for(const block of this.scene().blocks){
       const pt=this.project({x:block.x,y:block.height/2,z:block.z},cam.matrix);
       if(!pt)continue;
       const d=(x-pt.x)**2+(y-pt.y)**2;
@@ -184,7 +201,7 @@ export class Scene3DView {
     const rect=this.canvas.getBoundingClientRect();
     const x=clientX-rect.left,y=clientY-rect.top,cam=this.camera();
     let nearest=null,best=17*17;
-    for(const block of sceneFromDiagram(this.diagram).blocks){
+    for(const block of this.scene().blocks){
       for(const [direction,arr] of [['in',block.ports.incoming],['out',block.ports.outgoing]]){
         for(const port of arr){
           const pos=portPoint3D(block,port.id,direction);
@@ -259,13 +276,19 @@ export class Scene3DView {
   }
   render(){
     if(!this.available||!this.diagram||this.root.style.display==='none')return;
-    const gl=this.gl,scene=sceneFromDiagram(this.diagram);
+    const gl=this.gl,scene=this.scene();
     const tri=[],lines=[];
     // physical scale is deliberately NOT implied by arbitrary visualization units.
     const gridSize=scene.span>16?24:16,gridStep=scene.span>16?2:1;
     for(let i=-gridSize;i<=gridSize;i+=gridStep){
       line(lines,[-gridSize,0,i],[gridSize,0,i],[0.17,0.24,0.30]);
       line(lines,[i,0,-gridSize],[i,0,gridSize],[0.17,0.24,0.30]);
+    }
+    for(const group of scene.assemblies){
+      cube(tri,{
+        x:group.x,z:group.z,baseY:0.005,width:group.width,depth:group.depth,
+        height:0.035,color:group.incomplete?[0.48,0.20,0.18]:[0.12,0.32,0.40],
+      },false);
     }
     for(const b of scene.blocks){
       cube(tri,b,b.id===this.selectedId);
@@ -304,6 +327,18 @@ export class Scene3DView {
     ctx.clearRect(0,0,this.canvas.clientWidth,this.canvas.clientHeight);
     ctx.font='12px system-ui,sans-serif';ctx.textAlign='center';
     const cam=this.camera();
+    for(const group of scene.assemblies){
+      const pos=this.project({x:group.x,y:0.57,z:group.z},cam.matrix);
+      if(!pos)continue;
+      ctx.textAlign='center';ctx.font='bold 13px system-ui,sans-serif';
+      const label='◈ '+String(group.name||'Assembly').slice(0,40);
+      const width=ctx.measureText(label).width+18;
+      ctx.fillStyle='rgba(9,36,46,.86)';
+      ctx.fillRect(pos.x-width/2,pos.y-15,width,21);
+      ctx.fillStyle='#80dfea';
+      ctx.fillText(label,pos.x,pos.y);
+    }
+    ctx.font='12px system-ui,sans-serif';
     for(const b of scene.blocks){
       const pos=this.project({x:b.x,y:b.height+0.28,z:b.z},cam.matrix);
       if(!pos)continue;
@@ -316,6 +351,6 @@ export class Scene3DView {
     }
     this.notice.textContent=this.wireSource
       ? `WIRE MODE: ${this.wireSource.blockId}.${this.wireSource.portId} → click a compatible input socket · click an output to restart`
-      : `3D COMPONENT WORKSPACE · ${scene.blocks.length} blocks · ${scene.wires.length} wires · click output then input sockets to wire · Shift+drag move · schematic scale`;
+      : `${this.focusLabel ? 'EXPLORING '+this.focusLabel+' · ' : ''}3D COMPONENT WORKSPACE · ${scene.blocks.length} blocks · ${scene.wires.length} wires · click output then input sockets to wire · Shift+drag move · schematic scale`;
   }
 }
