@@ -5,6 +5,8 @@ import '../js/labs/chip/components.js';
 import '../js/labs/quantum/components.js';
 import { Diagram } from '../js/core/diagram.js';
 import { sceneFromDiagram, designToWorld, worldToDesign } from '../js/scene/layout.js';
+import { Scene3DView } from '../js/scene/viewer.js';
+import { App } from '../js/ui/app.js';
 import { estimateScenarioPassRate, summarizeDesignEvidence } from '../js/evidence/feasibility.js';
 
 test('scene: 3D coordinates round-trip through snapped canonical design coordinates', () => {
@@ -117,4 +119,9 @@ test('evidence: no undocumented assumptions, invalid tolerances or fake sample c
   assert.throws(()=>estimateScenarioPassRate({...scenario,samples:20}),/samples/);
   assert.throws(()=>estimateScenarioPassRate({...scenario,constraints:[{metric:'V',min:5,max:4}]}),/constraints/);
   assert.throws(()=>estimateScenarioPassRate({...scenario,parameters:[{name:'V',mean:5,sd:-1}]}),/parameters/);
+});
+
+test('scene: browser viewer and app shell modules load without WebGL in Node tests', () => {
+  assert.equal(typeof Scene3DView, 'function');
+  assert.equal(typeof App, 'function');
 });
