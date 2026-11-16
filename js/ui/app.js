@@ -313,6 +313,9 @@ export class App {
       this.editor.mount(diagram);
       if (SCENE_LABS.has(labId)) this.scene3d.mount(diagram);
       this.palette.show(labId, allComponents());
+    } else if (labId === 'rv32i') {
+      this._showRv32iPanel(diagram);
+      this.palette.show('none', allComponents());
     } else if (labId === 'cpu') {
       this._showCpuPanel(diagram);
       this.palette.show('none', allComponents());
@@ -397,6 +400,7 @@ export class App {
       this.assemblyShelf.setData(d,this.moduleLibrary);
     }
     if (this.state.labId === 'cpu') this._showCpuPanel(d);
+    if (this.state.labId === 'rv32i') this._showRv32iPanel(d);
     this._refreshInspector();
     this.editor.requestRender();
     this.log(`History: ${h.idx + 1}/${h.stack.length}`);
@@ -577,6 +581,63 @@ export class App {
     right.appendChild(listing);
   }
 
+  _showRv32iPanel(diagram) {
+    const p = this.$centerPanel;
+    p.replaceChildren();
+    const h = document.createElement('h2');
+    h.textContent = 'RISC-V RV32I — 32-bit integer architecture';
+    p.appendChild(h);
+    const warning = document.createElement('p');
+    warning.className = 'muted';
+    warning.textContent = 'Bounded, single-hart functional ISA model. Not a cycle-accurate CPU, privileged OS, hardware verification result or real silicon.';
+    p.appendChild(warning);
+    const grid = document.createElement('div');
+    grid.className = 'grid2';
+    const left = document.createElement('div'), right = document.createElement('div');
+    grid.append(left, right); p.appendChild(grid);
+    const sourceLabel = document.createElement('label');
+    sourceLabel.textContent = '32-bit little-endian RV32I instruction words (one 8-hex-digit word per line)';
+    const editor = document.createElement('textarea');
+    editor.className = 'code-editor'; editor.value = String(diagram.meta.source || '');
+    editor.setAttribute('aria-label','RV32I machine-code editor');
+    editor.addEventListener('change',()=>{
+      diagram.meta.source = editor.value;
+      this._diagramChanged(true);
+    });
+    sourceLabel.appendChild(editor); left.appendChild(sourceLabel);
+    for (const item of [
+      {key:'expectedRegister',label:'Expected register x0–x31',min:0,max:31},
+      {key:'expectedValue',label:'Expected unsigned 32-bit value',min:0,max:4294967295},
+      {key:'maxSteps',label:'Instruction step budget (1–1,000,000)',min:1,max:1000000},
+    ]) {
+      const label=document.createElement('label');
+      label.textContent=item.label;label.className='field';
+      const input=document.createElement('input');
+      input.type='number';input.step='1';input.min=String(item.min);input.max=String(item.max);
+      input.value=String(diagram.meta[item.key]??getLab('rv32i').metaSchema.find(x=>x.key===item.key)?.default);
+      input.addEventListener('change',()=>{
+        diagram.meta[item.key]=Number(input.value);
+        this._diagramChanged(true);
+      });
+      label.appendChild(input);left.appendChild(label);
+    }
+    const run=document.createElement('button');
+    run.className='primary';run.type='button';run.textContent='▶ Decode and execute RV32I';
+    run.addEventListener('click',()=>this.run());
+    left.appendChild(run);
+    const note=document.createElement('p');note.className='muted';
+    note.textContent='The built-in example computes 5 + 7 → register x3 = 12, then stops at EBREAK. EBREAK is a trap, not an OS exit. User-entered expected values are NOT independent verification references.';
+    left.appendChild(note);
+    right.appendChild(Object.assign(document.createElement('div'),{textContent:'Instruction words and architectural state:'}));
+    const listing=document.createElement('pre');listing.className='mono';
+    listing.style.fontSize='11px';
+    try {
+      const lines=String(diagram.meta.source||'').trim().split(/\\r?\\n/);
+      listing.textContent=lines.map((word,i)=>'0x'+(i*4).toString(16).padStart(8,'0')+'   '+word).join('\\n');
+    } catch(error) { listing.textContent=error.message; }
+    right.appendChild(listing);
+  }
+
   _showAiPanel(diagram) {
     const p = this.$centerPanel;
     p.innerHTML = '';
@@ -672,7 +733,7 @@ export class App {
     const sel = this.editor.selection;
     const block = sel?.kind === 'block' ? diagram.block(sel.id) : null;
     if (block) this.inspector.showBlock(block, { diagram });
-    else if (CANVAS_LABS.has(labId) || labId === 'cpu') {
+    else if (CANVAS_LABS.has(labId) || labId === 'cpu' || labId === 'rv32i') {
       this.inspector.showDesign(lab, diagram, { onMetaChange: () => this._diagramChanged(true) });
     } else {
       this.inspector.showMessage('This lab runs fixed workloads — see the center panel.');
@@ -890,6 +951,7 @@ export class App {
       this.assemblyShelf.setData(this.diagrams[this.state.labId],this.moduleLibrary);
     }
     if (this.state.labId === 'cpu') this._showCpuPanel(this.diagrams[this.state.labId]);
+    if (this.state.labId === 'rv32i') this._showRv32iPanel(this.diagrams[this.state.labId]);
     if (this.state.labId === 'ai') this._showAiPanel(this.diagrams[this.state.labId]);
     this._refreshInspector();
     this.log('New design created.');
