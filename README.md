@@ -85,6 +85,22 @@ manufacturing success percentage.
 See [docs/ASSEMBLIES.md](docs/ASSEMBLIES.md) for interface contracts, the
 module-library format, risks, tests and roadmap.
 
+## Parametric Nested Computing Modules (Phase 6)
+
+The reusable module shelf can now **compose modules inside other modules**.
+Choose two or more existing assembly groups, capture their actual typed
+cross-connections, expose numeric parameters, and place a nested copy with
+edited component values. Hierarchies are compiled into the **same real
+blocks and wires** used by the Logic, Chip and Quantum solvers; 3D child
+drill-in is an inspection view, not a substitute simulation.
+
+Import/export uses versioned module-library JSON and remains compatible with
+Phase 5's original one-level module library files. Cycles, incompatible
+interfaces, duplicate connections, invalid numeric values and invalid child
+references are rejected before altering the project.
+
+[Phase 6 implementation and limitations](docs/NESTED-MODULES.md)
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
