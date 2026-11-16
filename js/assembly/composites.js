@@ -15,7 +15,7 @@ const isObj=x=>x!==null && typeof x==='object' && !Array.isArray(x);
 const owns=(obj,key)=>Object.prototype.hasOwnProperty.call(obj,key);
 const noControls=x=>![...x].some(char=>char.charCodeAt(0)<32);
 const isId=x=>typeof x==='string'&&x.trim().length>0&&x.length<=128&&
-  !x.includes('/')&&!x.includes('\\\\')&&noControls(x)&&
+  !x.includes('/')&&!x.includes(String.fromCharCode(92))&&noControls(x)&&
   !['__proto__','prototype','constructor'].includes(x);
 const isLabel=x=>typeof x==='string'&&x.trim().length>0&&x.length<=128&&noControls(x);
 const position=x=>typeof x==='number'&&Number.isFinite(x)&&Math.abs(x)<=1e6;
