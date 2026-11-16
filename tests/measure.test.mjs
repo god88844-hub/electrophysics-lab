@@ -729,3 +729,18 @@ test('phase3-integrity: nested validation evidence is immutable', () => {
   assert.ok(Object.isFrozen(result.comparisons));
 });
 
+
+test('phase3-integrity: nested datasets are deeply frozen and receipts bind sample content', () => {
+  const raw = 'meter,voltage\\nunit1,2.5';
+  const d = createDataset({
+    id: 'nested', origin: 'real-measurement', experiment: { id: 'nested-e' },
+    source: { file: 'meter.csv', rawFileSha256: sha256(raw) },
+    configuration: { nested: { adjustable: false } },
+  }, [{ t: 0, V: 2.5, values: { sample: 1 } }], { rawSource: raw });
+  assert.ok(Object.isFrozen(d.source));
+  assert.ok(Object.isFrozen(d.configuration.nested));
+  assert.ok(Object.isFrozen(d.samples[0].values));
+  const receipt = verifySourceReceipt(d, raw, { acquisitionRecordId: 'UNIT-TEST' });
+  assert.ok(Object.isFrozen(receipt));
+  assert.throws(() => verifySourceReceipt(d, 'altered original', { acquisitionRecordId: 'UNIT-TEST' }), /checksum mismatch/);
+});
