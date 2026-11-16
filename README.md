@@ -1,8 +1,11 @@
 # ⚗ Invention Lab
 
-A modular multi-domain simulation platform (digital twin) where you design, simulate, test, and
-validate engineered systems: **logic circuits, analog chips, CPUs, AI accelerators, quantum
-devices — and whatever the plugin API lets you add next**.
+An interactive computing invention laboratory: design, assemble, simulate, experiment with,
+and evaluate **electronics, binary/ternary/multivalued logic, analog and digital chips,
+CPUs, GPUs/TPUs and other computing architectures, and quantum circuits**.
+
+**AeroForge is a separate flight-simulation project** and is not part of this
+repository or its development roadmap.
 
 ## The mission
 
@@ -30,13 +33,39 @@ they have to be to not be useful."*
 
 ```bash
 npm start          # zero dependencies — starts http://127.0.0.1:8080
-npm test           # 106 tests across all engines (node --test)
+npm test           # complete versioned test suite (node --test)
 ```
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080), pick a lab, load an example from the menu,
 press **▶ Run**. Every design gets a verdict badge (✔ PASS / ⚠ WARN / ✘ FAIL / ? UNKNOWN) and a
 full report in the **Report** tab. Press **?** for the beginner tutorial.
 
+
+## 3D computing playground foundation (new)
+
+The Logic, Chip and Quantum labs now include a **3D View** toggle that renders the
+**same design and connections** in a dependency-free WebGL workspace. Orbit, zoom,
+select, add components, Shift-drag to move, and click 3D output/input sockets to
+connect existing typed ports. Toggle **2D Wiring** to use the precise diagram editor.
+Existing simulation solvers, project files and scientific validation remain shared.
+
+The **Build Evidence** tab does not fabricate a physical build-success percentage.
+It reports current design checks, states when real-world probability is **not
+estimated**, and offers a separately labelled educational resistor-divider
+Monte Carlo experiment. The latter calculates a *conditional model-only*
+scenario pass percentage under explicit Gaussian and independence assumptions,
+not physical manufacturing yield.
+
+See [docs/3D-PLAYGROUND-FOUNDATION.md](docs/3D-PLAYGROUND-FOUNDATION.md)
+for implemented capabilities, limitations, and the roadmap to multi-scale
+semiconductor / processor / quantum invention workflows.
+
+Our long-term goal is that simulation evidence becomes sufficiently validated
+to support **the same specific engineering decisions** as physical evidence
+inside demonstrated operating envelopes, with traceable uncertainty and
+justified probabilities. Physics and mathematics make modeling possible, but
+unmeasured model discrepancy and fabrication variation prevent universal
+simulation-to-physical equivalence claims.
 
 ## Independent benchmarking (Phase 2)
 
@@ -100,7 +129,7 @@ js/labs/quantum/      qudit.js (state vector), gates.js, algorithms.js
 js/plugins/           third-party labs (optics demo) — one import line registers a lab
 js/examples/          16 built-in examples + 2 cross-lab pipelines
 js/ui/                canvas editor, palette, inspector, scopes, app shell
-tests/                106 node --test tests (no browser needed)
+tests/                Node regression and evidence-integrity suites
 docs/                 PLUGIN_API.md, TUTORIALS.md
 ```
 
