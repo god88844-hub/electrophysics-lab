@@ -123,8 +123,21 @@ try{
 
   app.switchOutputTab('evidence');
   assert(app.$outputBody.textContent.includes('Not estimated'),'assembly editing fabricated a build-success percentage');
+
+  // Phase 7: the dedicated RISC-V architectural lab runs real encoded words
+  // and reports a breakpoint, not an invented hardware timing or yield claim.
+  app.switchLab('rv32i');
+  assert(app.$centerPanel.textContent.includes('RISC-V RV32I'), 'RV32I architecture lab panel not registered');
+  assert(app.$centerPanel.querySelector('[aria-label="RV32I machine-code editor"]'), 'RV32I machine-code editor missing');
+  await app.run();
+  assert(app.lastResult?.cpu?.regs?.[3]===12, 'RV32I browser execution did not produce x3 = 12');
+  assert(app.lastResult.cpu.stopReason==='ebreak', 'RV32I browser execution did not reach the architectural breakpoint');
+  app.switchOutputTab('evidence');
+  assert(app.$outputBody.textContent.includes('Not estimated'), 'RV32I UI fabricated a physical success percentage');
+  app.switchLab('logic');
+
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — WebGL, hierarchical nested module composition, numeric overrides, flat-netlist expansion, recursive 3D exploration and honest evidence';
+  output.textContent='PASS — 3D nested computing modules, RV32I interpreter UI, independent evidence panel and no fabricated physical success percentage';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
