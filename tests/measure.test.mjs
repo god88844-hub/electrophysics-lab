@@ -744,3 +744,61 @@ test('phase3-integrity: nested datasets are deeply frozen and receipts bind samp
   assert.ok(Object.isFrozen(receipt));
   assert.throws(() => verifySourceReceipt(d, 'altered original', { acquisitionRecordId: 'UNIT-TEST' }), /checksum mismatch/);
 });
+
+
+// -------- second integrity pass: regressions written before implementation -----
+
+test('phase3-regression: dataset digest changes for altered derived measurements', () => {
+  const raw = 'real-instrument-raw';
+  const d = createDataset({
+    id: 'hash-parent', origin: 'real-measurement', experiment: { id: 'e' },
+    source: { file: 'meter.csv', rawFileSha256: sha256(raw) },
+  }, [{ t: 0, V: 1 }], { rawSource: raw });
+  const child = deriveDataset(d, { method: 'scale', multiplier: 2 }, [{ t: 0, V: 2 }]);
+  assert.notEqual(child.source.datasetSha256, d.source.datasetSha256,
+    'derived measurements must have a distinct dataset-content digest');
+  assert.equal(child.transformations[0].parentChecksum, d.source.datasetSha256);
+  assert.equal(child.source.rawFileSha256, d.source.rawFileSha256,
+    'original instrument-file digest must remain unchanged');
+});
+
+test('phase3-regression: altered JSON sample cannot retain the original dataset digest', () => {
+  const d = createDataset({
+    id: 'hash-parser', origin: 'real-measurement', experiment: { id: 'e' },
+  }, [{ t: 0, V: 1 }], { rawSource: 'source-e' });
+  const changed = JSON.parse(JSON.stringify(d));
+  changed.samples[0].V = 999;
+  assert.throws(() => parseDataset(JSON.stringify(changed)), /dataset.*checksum|integrity|SHA-256/i,
+    'metadata/content checksum drift must not be accepted by parsing');
+});
+
+test('phase3-regression: split manifest fails when its source dataset is replaced', () => {
+  const a = createDataset({ id: 'same-id', experiment: { id: 'e' }, origin: 'real-measurement' },
+    [{ t: 0, session: 'A', V: 1 }, { t: 1, session: 'B', V: 2 }], { rawSource: 'a' });
+  const m = partitionByField(a, 'session', { calibrationValues: ['A'], validationValues: ['B'] });
+  const b = createDataset({ id: 'same-id', experiment: { id: 'e' }, origin: 'real-measurement' },
+    [{ t: 0, session: 'B', V: 100 }, { t: 1, session: 'A', V: 200 }], { rawSource: 'b' });
+  const v = verifySplit(m, b);
+  assert.equal(v.ok, false, 'a positional split cannot authenticate a different dataset with the same sample count');
+  assert.ok(v.errors.some(e => /checksum|dataset|group|source/i.test(e)), v.errors.join('; '));
+});
+
+test('phase3-regression: missing required comparisons cannot create positive eligibility', () => {
+  const result = runVal({ quantities: [{ name: 'V_out' }, { name: 'nonexistent_quantity' }] });
+  assert.equal(result.physicalValidation.programmaticEligibility, 'blocked');
+  assert.ok(result.physicalValidation.blockers.some(b => /missing-data|completeness|quantity/i.test(b)),
+    result.physicalValidation.blockers.join('; '));
+});
+
+test('phase3-regression: invalid uncertainty cannot create positive eligibility', () => {
+  const result = runVal({ quantities: [{ name: 'V_out', measurementUncertainty: -1 }] });
+  assert.equal(result.physicalValidation.programmaticEligibility, 'blocked');
+  assert.ok(result.physicalValidation.blockers.some(b => /uncertainty/i.test(b)),
+    result.physicalValidation.blockers.join('; '));
+});
+
+test('phase3-regression: arbitrary tested points are not independent envelope provenance', () => {
+  const result = runVal({});
+  assert.ok(result.physicalValidation.blockers.some(b => /tested-point provenance|envelope evidence|binding/i.test(b)),
+    'the caller currently supplies points without a dataset-bound acquisition evidence record');
+});
