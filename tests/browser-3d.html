@@ -215,10 +215,28 @@ try{
     'Phase 11 browser wrongly reported external or physical validation');
   assert(axisQ.realWorldBuildSuccessPercent===null,
     'Per-axis QDQ browser calculated an unjustified hardware manufacturing probability');
+
+  // Phase 12: 30 genuine licensed UCI Iris labels held out of training.
+  // Browser runs ONLY JS model; independently executed sklearn/ORT live in CI.
+  const modelButton=app.$centerPanel.querySelector('[data-action="run-iris-holdout"]');
+  assert(modelButton,'Real Iris model-level holdout button missing from the accelerator UI');
+  const iris=await app.runIrisHoldoutBenchmark();
+  assert(iris.kind==='iris-model-benchmark'&&iris.samples===30&&iris.trainSamples===120,
+    'Real Iris model did not evaluate the bounded 120/30 test split');
+  assert(iris.correct===29&&Math.abs(iris.accuracy-29/30)<1e-12,
+    'Iris 30-row holdout model-level accuracy diverged from fixed real labels');
+  assert(JSON.stringify(iris.confusion)===JSON.stringify([[10,0,0],[0,10,0],[0,1,9]]),
+    'Iris per-class confusion matrix diverged from frozen holdout');
+  assert(app.$outputBody.textContent.includes('CC BY 4.0') &&
+         app.$outputBody.textContent.includes('MODEL-ONLY') &&
+         app.$outputBody.textContent.includes('Not estimated'),
+    'Real dataset UI lost license, model-only or physical-evidence warning');
+  assert(iris.physicalValidation==='none'&&iris.realWorldBuildSuccessPercent===null,
+    'Classification accuracy was misrepresented as physically validated chip yield');
   app.switchLab('logic');
 
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — 3D nested modules, RV32IM, ONNX f32/int8 per-tensor and per-axis convolution with no fabricated silicon validation';
+  output.textContent='PASS — nested 3D modules, RV32IM, ONNX f32/int8, real CC BY 4.0 Iris 29/30 holdout model with honest physical-evidence limits';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
