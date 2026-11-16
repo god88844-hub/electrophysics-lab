@@ -170,6 +170,30 @@ microarchitecture, real hardware timing, fabrication verification or
 a measured manufacturing-success probability. See
 [Phase 9 data, limitations and evidence policy](docs/PHASE9-ONNX-INFERENCE.md).
 
+## Quantized ONNX int8 / uint8 execution with independent references (Phase 10)
+
+In the **AI Accelerator Lab**, a new quantized-ONNX example selector
+offers six small 2D **opset-13** examples using `QLinearMatMul`,
+`QuantizeLinear` and `DequantizeLinear`. The numerical model
+explicitly handles signed/unsigned 8-bit storage, zero-point offsets,
+rounding-to-nearest-even, per-tensor float32 scale and output saturation.
+It is opt-in and does not replace or loosen the earlier float32 ONNX
+inference and 24-case scientific benchmarks.
+
+The independent [Phase 10 ONNX Runtime CPU workflow](.github/workflows/phase10-quantized.yml)
+builds and archives **six real ONNX protobuf models**, executes them using
+the pinned ONNX Runtime CPU provider, and checks the exact integer
+intermediates and final numerical outputs against committed
+[inputs](benchmarks/phase10/quantized-cases.json) and
+[separate frozen expected values](benchmarks/phase10/acceptance.json).
+The acceptance gate rejects missing, duplicate, stale, reordered or
+spoofed results and verifies all reference model and output checksums.
+
+This small slice **does not implement the complete ONNX standard,
+mixed-precision GPU/TPU hardware, real model accuracy, or a measured
+manufacturing-success probability**. See the
+[Phase 10 scope and evidence policy](docs/PHASE10-QUANTIZED-ONNX.md).
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
