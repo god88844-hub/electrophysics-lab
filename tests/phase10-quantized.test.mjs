@@ -50,7 +50,7 @@ test('Phase10: rejecting missing fields, invalid scales and invalid zero-point t
  for(const mutate of [
   x=>x.aScale=0,x=>x.yScale=-1,x=>x.bScale=NaN,
   x=>x.aZeroPoint=512,x=>x.bZeroPoint=-1.5,x=>delete x.yZeroPoint,
-  x=>x.yType='float32',x=>x.b.dtype='float32',x=>x.a.dtype='uint8',
+  x=>x.yType='float32',x=>x.b.dtype='float32',x=>x.a.dtype='int8',
   x=>x.nonstandard='surprise'
  ]){
   const c=get('qlinear-uint8-offset');mutate(c);
