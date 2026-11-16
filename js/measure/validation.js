@@ -20,9 +20,20 @@
 // reason recorded. Favorable numerical residuals cannot override failed
 // evidence requirements.
 
-import { sha256 } from './dataset.js';
+import { sha256, sourceReceiptMatches } from './dataset.js';
+import { qualityReport } from './quality.js';
 import { classifyRequest } from './envelope.js';
 import { verifySplit } from './split.js';
+
+const registeredPlans = new WeakSet();
+/** A scope-bound in-process plan; independent evidence of advance approval still requires external review. */
+export function registerValidationPlan({ modelId, datasetId, envelopeId, declaredUse, criteria, approvalRecord = null }) {
+  if (!modelId || !datasetId || !envelopeId || !declaredUse || !criteria || typeof criteria !== 'object') throw new Error('validation plan requires model, dataset, envelope, use and criteria');
+  const plan = Object.freeze({ format: 'invention-lab/validation-plan/1', modelId, datasetId, envelopeId, declaredUse, criteria: deepFreeze(structuredClone(criteria)), approvalRecord });
+  registeredPlans.add(plan);
+  return plan;
+}
+
 
 /**
  * Centralized physical-validation eligibility assessment.
@@ -33,7 +44,7 @@ function assessPhysicalValidationEligibility({
   dataset, quality, criteriaMet, criteriaResults,
   envelope, quantities, samples,
   calibrationRef, calibrationRecord, splitManifest,
-  provenanceVerified,
+  provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
 }) {
   const blockers = [];
 
@@ -42,7 +53,9 @@ function assessPhysicalValidationEligibility({
     blockers.push(`G1: dataset origin is "${dataset.origin}" — only real-measurement can support physical validation`);
   }
 
-  // G2: quality must be ACCEPTED (conditionally-usable is insufficient)
+  // Recompute quality; the caller cannot grant eligibility by forging a QC result.
+  const independentlyCheckedQuality = qualityReport(dataset, { requireCalibration: true });
+  if (independentlyCheckedQuality.verdict !== 'accepted') blockers.push(`G2: independent QC is ${independentlyCheckedQuality.verdict}`);
   if (quality.verdict !== 'accepted') {
     blockers.push(`G2: dataset quality is "${quality.verdict}" — only accepted quality can support physical validation`);
   }
@@ -50,9 +63,14 @@ function assessPhysicalValidationEligibility({
     blockers.push('G2: quality.physicalValidationAllowed is false — the quality system has blocked physical validation');
   }
 
-  // G3: provenance must be verified
-  if (!provenanceVerified) {
-    blockers.push('G3: raw-source provenance not verified — the original measurement file checksum has not been validated');
+  // A caller-provided boolean cannot certify raw-source integrity.
+  if (!sourceReceiptMatches(dataset, provenanceReceipt)) blockers.push('G3: dataset-bound raw-source verification receipt absent or invalid; provenanceVerified boolean is insufficient');
+  // An in-process registered plan is a necessary guard, but not proof of
+  // approval before looking at results; external prespecification review remains required.
+  if (!validationPlan || !registeredPlans.has(validationPlan) || validationPlan.modelId !== model?.id ||
+      validationPlan.datasetId !== dataset.id || validationPlan.envelopeId !== envelope?.id ||
+      validationPlan.declaredUse !== declaredUse || JSON.stringify(validationPlan.criteria) !== JSON.stringify(criteria)) {
+    blockers.push('G4: registered scope-matching validation plan is absent or mismatched');
   }
 
   // G4: prespecified criteria must be met
@@ -103,13 +121,20 @@ function assessPhysicalValidationEligibility({
         blockers.push('G7: DATA LEAKAGE — calibration and validation use the SAME dataset (matching checksums). Holdout independence violated.');
       }
     }
+    if (!calibrationRecord || !calibrationRecord.dataset?.checksum || !calibrationRecord.dataset?.id || (calibrationRef && calibrationRecord.id !== calibrationRef)) blockers.push('G7: calibration record missing or not bound to its source dataset');
     if (!splitManifest) {
       blockers.push('G7: calibration parameters used but no split manifest — holdout independence cannot be verified');
     } else {
       const v = verifySplit(splitManifest, dataset);
-      if (!v.ok) {
-        blockers.push(`G7: split manifest verification failed: ${v.errors.join('; ')}`);
+      if (!v.ok) blockers.push(`G7: split manifest verification failed: ${v.errors.join('; ')}`);
+      // A positional split alone is not a cross-dataset independence certificate.
+      if (!splitManifest.sourceDatasetId || !splitManifest.sourceDatasetSha256 ||
+          splitManifest.sourceDatasetId !== dataset.id || splitManifest.sourceDatasetSha256 !== dataset.source?.datasetSha256) {
+        blockers.push('G7: split manifest not bound to the validation dataset and source checksum');
       }
+      const used = calibrationRecord?.dataset?.sampleIndices;
+      const expected = splitManifest.partition?.calibration?.sampleIndices ?? [];
+      if (!Array.isArray(used) || used.length !== expected.length || used.some(i => !expected.includes(i))) blockers.push('G7: calibration record does not establish which fitting samples were used');
     }
   }
 
@@ -146,7 +171,7 @@ function assessPhysicalValidationEligibility({
 export function runExperimentalValidation({
   model, params, declaredUse, dataset, quality, criteria, envelope, quantities,
   calibrationRef = null, calibrationRecord = null, splitManifest = null,
-  provenanceVerified = false,
+  provenanceVerified = false, provenanceReceipt = null, validationPlan = null,
 }) {
   const problems = [];
   if (!dataset || dataset.format !== 'invention-lab/measurement-dataset/1') {
@@ -225,13 +250,16 @@ export function runExperimentalValidation({
     dataset, quality, criteriaMet, criteriaResults,
     envelope, quantities, samples: dataset.samples,
     calibrationRef, calibrationRecord, splitManifest,
-    provenanceVerified,
+    provenanceVerified, provenanceReceipt, validationPlan, model, declaredUse,
   });
 
-  const stage = eligibility.allowed ? 'physicalValidation' : 'softwareDemonstration';
-  const pvStatus = eligibility.allowed ? 'validated' : 'none';
+  // Software cannot independently authenticate an experimental acquisition or
+  // certify the holdout review. Leave physical validation NONE until those
+  // external trust requirements are established.
+  const stage = 'softwareDemonstration';
+  const pvStatus = 'none';
   const pvNote = eligibility.allowed
-    ? 'all mandatory gates passed: real origin, accepted quality, verified provenance, criteria met, envelope coverage, holdout independence'
+    ? 'Programmatic eligibility satisfied, but independent acquisition and holdout review remain unverified: NOT physical validation.'
     : eligibility.blockers.join(' | ');
 
   const result = {
@@ -259,6 +287,7 @@ export function runExperimentalValidation({
       note: pvNote,
       scope: eligibility.scope,
       blockers: eligibility.blockers,
+      programmaticEligibility: eligibility.allowed ? 'candidate-for-independent-review' : 'blocked',
     },
   };
   return deepFreeze(result);
