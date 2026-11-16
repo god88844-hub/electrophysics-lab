@@ -1,0 +1,49 @@
+# Mandatory Phase 8 integer ISA extension reference; no mocked QEMU or skips.
+# Leaves existing Phase 7 QEMU/NumPy, Phase 2 Ngspice/Qiskit, Node and WebGL CI intact.
+name: Phase 8 RV32M independent QEMU differential
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  rv32m-qemu-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real QEMU and GNU RISC-V binutils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user binutils-riscv64-unknown-elf
+          command -v qemu-riscv32
+          command -v riscv64-unknown-elf-as
+          command -v riscv64-unknown-elf-ld
+          command -v riscv64-unknown-elf-objcopy
+      - name: Verify all RV32M operations and evidence fail-closed unit tests
+        run: node --test tests/rv32m.test.mjs tests/phase8-acceptance.test.mjs
+      - name: Independently execute GNU RV32IM machine code under QEMU
+        run: node scripts/phase8-qemu-rv32m.mjs
+      - name: Verify exact source, tool versions, 12 cases and commit-bound evidence
+        run: node scripts/phase8-strict.mjs
+      - name: Publish Phase 8 verdict
+        if: always()
+        run: |
+          if [ -f benchmarks/evidence/phase8-summary.json ]; then
+            cat benchmarks/evidence/phase8-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Required Phase 8 QEMU reference missing: FAIL." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase8-rv32m-independent-evidence
+          path: |
+            benchmarks/evidence/phase8-rv32m.json
+            benchmarks/evidence/phase8-summary.json
+          if-no-files-found: error
