@@ -1,0 +1,217 @@
+{
+  "format": "invention-lab/phase10-quantized-fixtures/1",
+  "opset": 13,
+  "perTensorScalesOnly": true,
+  "rank": 2,
+  "scope": "int8/uint8 QLinearMatMul and QuantizeLinear->DequantizeLinear; no real silicon",
+  "cases": [
+    {
+      "id": "qlinear-int8-symmetric",
+      "op": "QLinearMatMul",
+      "a": {
+        "dtype": "int8",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          1,
+          -2,
+          3,
+          4,
+          0,
+          -1
+        ]
+      },
+      "b": {
+        "dtype": "int8",
+        "shape": [
+          3,
+          2
+        ],
+        "values": [
+          2,
+          -3,
+          1,
+          4,
+          -2,
+          5
+        ]
+      },
+      "aScale": 0.25,
+      "bScale": 0.5,
+      "yScale": 0.125,
+      "aZeroPoint": 0,
+      "bZeroPoint": 0,
+      "yZeroPoint": 0,
+      "yType": "int8"
+    },
+    {
+      "id": "qlinear-uint8-offset",
+      "op": "QLinearMatMul",
+      "a": {
+        "dtype": "uint8",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          125,
+          130,
+          140,
+          100,
+          110,
+          120
+        ]
+      },
+      "b": {
+        "dtype": "uint8",
+        "shape": [
+          3,
+          2
+        ],
+        "values": [
+          128,
+          131,
+          125,
+          130,
+          128,
+          126
+        ]
+      },
+      "aScale": 0.5,
+      "bScale": 0.25,
+      "yScale": 0.125,
+      "aZeroPoint": 128,
+      "bZeroPoint": 128,
+      "yZeroPoint": 127,
+      "yType": "uint8"
+    },
+    {
+      "id": "qlinear-int8-saturation",
+      "op": "QLinearMatMul",
+      "a": {
+        "dtype": "int8",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          127,
+          127,
+          127,
+          -128,
+          -128,
+          -128
+        ]
+      },
+      "b": {
+        "dtype": "int8",
+        "shape": [
+          3,
+          2
+        ],
+        "values": [
+          127,
+          -128,
+          127,
+          -128,
+          127,
+          -128
+        ]
+      },
+      "aScale": 0.5,
+      "bScale": 0.5,
+      "yScale": 0.25,
+      "aZeroPoint": 0,
+      "bZeroPoint": 0,
+      "yZeroPoint": 0,
+      "yType": "int8"
+    },
+    {
+      "id": "qlinear-uint8-saturation",
+      "op": "QLinearMatMul",
+      "a": {
+        "dtype": "uint8",
+        "shape": [
+          2,
+          2
+        ],
+        "values": [
+          255,
+          255,
+          0,
+          0
+        ]
+      },
+      "b": {
+        "dtype": "uint8",
+        "shape": [
+          2,
+          2
+        ],
+        "values": [
+          255,
+          0,
+          255,
+          0
+        ]
+      },
+      "aScale": 0.25,
+      "bScale": 0.5,
+      "yScale": 0.125,
+      "aZeroPoint": 0,
+      "bZeroPoint": 0,
+      "yZeroPoint": 3,
+      "yType": "uint8"
+    },
+    {
+      "id": "qdq-int8-ties-even",
+      "op": "QuantizeDequantize",
+      "x": {
+        "dtype": "float32",
+        "shape": [
+          2,
+          4
+        ],
+        "values": [
+          -1.25,
+          -0.75,
+          -0.25,
+          0.25,
+          0.75,
+          1.25,
+          63.75,
+          -64
+        ]
+      },
+      "scale": 0.5,
+      "zeroPoint": 0,
+      "qType": "int8"
+    },
+    {
+      "id": "qdq-uint8-offset-saturation",
+      "op": "QuantizeDequantize",
+      "x": {
+        "dtype": "float32",
+        "shape": [
+          2,
+          4
+        ],
+        "values": [
+          -100,
+          0,
+          0.25,
+          0.75,
+          1.25,
+          50.5,
+          1000,
+          -1000
+        ]
+      },
+      "scale": 0.25,
+      "zeroPoint": 128,
+      "qType": "uint8"
+    }
+  ]
+}
