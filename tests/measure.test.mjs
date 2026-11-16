@@ -805,3 +805,84 @@ test('phase3-regression: arbitrary tested points are not independent envelope pr
   assert.ok(result.physicalValidation.blockers.some(b => /tested-point provenance|envelope evidence|binding/i.test(b)),
     'the caller currently supplies points without a dataset-bound acquisition evidence record');
 });
+
+
+// ------- calibrated holdout: trace fit to original dataset without leakage -----
+
+function fittedHoldoutFixture() {
+  const raw = 'MOCK_ONLY_NOT_AN_INSTRUMENT_RECORD';
+  const dataset = createDataset({
+    id: 'holdout-mock', origin: 'real-measurement',
+    experiment: { id: 'mock-e', date: '2026-01-01' },
+    source: { file: 'mock-source.txt', rawFileSha256: sha256(raw) },
+    instruments: [{ manufacturer: 'MOCK', model: 'MOCK', resolution: 0.001, uncertainty: 0.005,
+      calibration: { certificateRef: 'MOCK-NOT-REAL', status: 'valid' } }],
+    quantities: [{ name: 'V_in', unit: 'V' }, { name: 'V_out', unit: 'V' }],
+    replicates: [{ group: 'mock', members: [0, 1] }],
+    uncertainty: { V_out: 0.005 },
+    acquisition: { procedure: 'UNIT TEST ONLY, NO EXPERIMENT' },
+  }, [
+    { t: 0, session: 'cal-session', V_in: 5, V_out: 2.498 },
+    { t: 1, session: 'val-session', V_in: 10, V_out: 5.001 },
+  ], { rawSource: raw });
+  const splitManifest = partitionByField(dataset, 'session', {
+    calibrationValues: ['cal-session'], validationValues: ['val-session'],
+  });
+  const calibrationRecord = runCalibration({
+    id: 'divider-fit-mock', modelId: 'divider-gain',
+    dataset: { id: dataset.id, version: dataset.version, checksum: dataset.source.datasetSha256,
+      sampleIndices: [0], quantity: 'V_out' },
+    modelFn: ([gain]) => [5 * gain], measurements: [2.498],
+    p0: [0.4], lower: [0], upper: [1], parameterNames: ['gain'],
+  });
+  const criteria = { maxAbsError: 0.05 };
+  const envelope = defineEnvelope({
+    id: 'mock-holdout-env', ranges: { V_in: [0, 12] },
+    testedPoints: [{ V_in: 5 }, { V_in: 10 }],
+    evidence: { datasetId: dataset.id, datasetVersion: dataset.version,
+      datasetSha256: dataset.source.datasetSha256, sampleIndices: [0, 1] },
+  });
+  const validationPlan = registerValidationPlan({
+    modelId: 'divider-gain', datasetId: dataset.id, envelopeId: envelope.id,
+    declaredUse: 'software holdout audit ONLY', criteria,
+  });
+  const provenanceReceipt = verifySourceReceipt(dataset, raw, { acquisitionRecordId: 'MOCK-NOT-PHYSICAL' });
+  return {
+    model: { id: 'divider-gain', predict: (p) => ({ V_out: p.gain * p.V_in }) },
+    params: { gain: calibrationRecord.params.values[0] },
+    dataset, quality: qualityReport(dataset), criteria, envelope,
+    declaredUse: 'software holdout audit ONLY',
+    quantities: [{ name: 'V_out', measurementUncertainty: 0.005 }],
+    calibrationRef: calibrationRecord.id, calibrationRecord, splitManifest,
+    validationPlan, provenanceReceipt,
+  };
+}
+
+test('phase3-regression: fitted calibration subset excluded from validation comparisons', () => {
+  const args = fittedHoldoutFixture();
+  const result = runExperimentalValidation(args);
+  assert.deepEqual(result.statistics.sampleIndices, [1],
+    'only independent validation session B belongs in held-out comparisons');
+  assert.deepEqual(result.comparisons.map(c => c.sampleIndex), [1]);
+  assert.equal(result.physicalValidation.programmaticEligibility, 'candidate-for-independent-review',
+    result.physicalValidation.blockers.join('; '));
+  assert.equal(result.physicalValidation.status, 'none',
+    'MOCK source and self-created records are NOT physical experiment evidence');
+});
+
+test('phase3-regression: fitted measurement vector tampering invalidates holdout evidence', () => {
+  const args = fittedHoldoutFixture();
+  args.calibrationRecord.measurementSha256 = sha256('tampered');
+  const result = runExperimentalValidation(args);
+  assert.equal(result.physicalValidation.programmaticEligibility, 'blocked');
+  assert.ok(result.physicalValidation.blockers.some(b => /G7.*fitted measurement vector/i.test(b)),
+    result.physicalValidation.blockers.join('; '));
+});
+
+test('phase3-regression: same dataset identifier with modified sample values invalidates split', () => {
+  const args = fittedHoldoutFixture();
+  const tampered = JSON.parse(JSON.stringify(args.dataset));
+  tampered.samples[0].V_out += 1;
+  assert.throws(() => parseDataset(JSON.stringify(tampered)), /checksum mismatch/i);
+  assert.equal(verifySplit(args.splitManifest, args.dataset).ok, true);
+});
