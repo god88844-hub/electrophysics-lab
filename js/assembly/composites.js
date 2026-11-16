@@ -13,12 +13,15 @@ const MAX_CHILDREN=40, MAX_PARAMS=80, MAX_PORTS=512;
 const copied=x=>structuredClone(x);
 const isObj=x=>x!==null && typeof x==='object' && !Array.isArray(x);
 const owns=(obj,key)=>Object.prototype.hasOwnProperty.call(obj,key);
+const noControls=x=>![...x].some(char=>char.charCodeAt(0)<32);
 const isId=x=>typeof x==='string'&&x.trim().length>0&&x.length<=128&&
-  !/[\\/\\u0000-\\u001f]/.test(x)&&
+  !x.includes('/')&&!x.includes('\\\\')&&noControls(x)&&
   !['__proto__','prototype','constructor'].includes(x);
+const isLabel=x=>typeof x==='string'&&x.trim().length>0&&x.length<=128&&noControls(x);
 const position=x=>typeof x==='number'&&Number.isFinite(x)&&Math.abs(x)<=1e6;
 function fail(message){throw Error('Composite module: '+message);}
 function requiredId(value,where){if(!isId(value))fail(where+' requires a safe nonempty ID');}
+function requiredLabel(value,where){if(!isLabel(value))fail(where+' requires a nonempty label');}
 const same=(a,b)=>a===b;
 function signatureOk(a,b){
   return Boolean(a && b &&
@@ -72,7 +75,7 @@ function checkNumericSelector(template,selector){
 function validateCompositeStructure(template,byId,stack=[]){
   if(!isObj(template)||template.format!==COMPOSITE_FORMAT)fail('invalid composite format');
   requiredId(template.id,'composite');
-  requiredId(template.name,'name');
+  requiredLabel(template.name,'name');
   requireLab(template.lab);
   if(stack.includes(template.id))fail('dependency cycle: '+[...stack,template.id].join(' -> '));
   if(stack.length>=MAX_DEPTH)fail('module dependency nesting exceeds depth '+MAX_DEPTH);
@@ -252,7 +255,7 @@ export function instantiateComposite(diagram,template,library,{
 }={}){
   if(!(diagram instanceof Diagram)||diagram.lab!==template?.lab)fail('target Diagram has incompatible lab');
   if(!position(x)||!position(y))fail('placement must have finite bounded coordinates');
-  requiredId(id,'assembly');requiredId(name,'assembly name');
+  requiredId(id,'assembly');requiredLabel(name,'assembly name');
   if((diagram.meta?.assemblies||[]).some(a=>a.id===id))fail('duplicate assembly ID');
   const blueprint=flattenComposite(template,library,{overrides});
   const candidate=diagram.clone();
@@ -364,7 +367,7 @@ function groupPorts(group,template,diagram){
  */
 export function captureCompositeFromAssemblies(diagram,groupIds,library,{id=uid('composite'),name}={}){
   if(!(diagram instanceof Diagram))fail('capture needs a Diagram');
-  requiredId(id,'composite');requiredId(name,'composite name');
+  requiredId(id,'composite');requiredLabel(name,'composite name');
   if(!Array.isArray(groupIds)||groupIds.length<2||groupIds.length>MAX_CHILDREN||
     new Set(groupIds).size!==groupIds.length)fail('select 2–40 different assemblies');
   const byId=templatesById(library),groups=diagram.meta?.assemblies||[];
