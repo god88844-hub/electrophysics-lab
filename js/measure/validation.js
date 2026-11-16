@@ -426,7 +426,7 @@ export function runExperimentalValidation({
       validationPlan: trustedPlan ? structuredClone({ format: trustedPlan.format, checksum: trustedPlan.checksum, recordedAt: trustedPlan.recordedAt, approvalRecord: trustedPlan.approvalRecord }) : null,
       calibration: calibrationRecord ? {
         id: calibrationRecord.id, modelId: calibrationRecord.modelId ?? null,
-        fittingDataset: calibrationRecord.dataset ?? null,
+        fittingDataset: calibrationRecord.dataset ? structuredClone(calibrationRecord.dataset) : null,
         measurementSha256: calibrationRecord.measurementSha256 ?? null,
       } : null,
       holdoutSplit: splitManifest ? { id: splitManifest.id, checksum: splitManifest.checksum, sourceDatasetSha256: splitManifest.sourceDatasetSha256 ?? null } : null,
