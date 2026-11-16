@@ -211,3 +211,26 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+
+/* Interactive WebGL 3D design view. Shapes are visualization, not dimensional CAD. */
+.scene3d-root { position:absolute; inset:0; overflow:hidden; background:#0b1019; z-index:2; }
+.scene3d-surface, .scene3d-overlay { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.scene3d-surface { touch-action:none; cursor:grab; }
+.scene3d-surface:active { cursor:grabbing; }
+.scene3d-overlay { pointer-events:none; }
+.scene3d-help {
+  position:absolute; left:12px; bottom:12px; right:12px; width:max-content;
+  max-width:calc(100% - 24px); font-size:11px; color:#acc6db;
+  padding:6px 10px; border:1px solid #33455c;
+  border-radius:6px; background:rgba(7,15,25,.88); pointer-events:none;
+}
+#editor-toolbar { z-index:6; }
+#editor-toolbar button[aria-pressed="true"] { color:var(--pass); border-color:var(--pass); }
+.evidence-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:8px 0 12px; }
+.evidence-stats > div {
+  border:1px solid var(--border); border-radius:7px; padding:10px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.evidence-stats strong { font-size:13px; }
+@media (max-width:720px) { .evidence-stats { grid-template-columns:1fr; } }
