@@ -411,10 +411,17 @@ export class App {
     const next = [...this.moduleLibrary,template];
     // Capacity/integrity check before touching the active design.
     serializeModuleLibrary(next);
-    const record = registerAssembly(diagram,{
-      name,blockIds,templateId:template.id,
-    });
-    this._persistModuleLibrary(next);
+    const previous = structuredClone(diagram.meta.assemblies || []);
+    let record;
+    try {
+      record = registerAssembly(diagram,{name,blockIds,templateId:template.id});
+      this._persistModuleLibrary(next);
+    } catch (error) {
+      // Never leave a group pretending to have been saved if the template
+      // library failed to persist (quota, disabled storage, invalid module).
+      diagram.meta.assemblies = previous;
+      throw error;
+    }
     this._diagramChanged(true);
     this.log('Reusable module created: '+template.name+' · '+template.blocks.length+' components');
     return {template,assembly:record};
