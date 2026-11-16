@@ -180,3 +180,15 @@ test('assemblies: editor and module shelf remain importable in pure Node CI',()=
   assert.equal(typeof AssemblyShelf,'function');
   assert.equal(typeof App,'function');
 });
+
+test('assemblies: imported module parameters must match registered component parameter types',()=>{
+  const diagram=logicDesign(),original=JSON.stringify(diagram.toJSON()),template=selectTemplate(diagram);
+  const changed=structuredClone(template);
+  changed.blocks.find(b=>b.id==='input').params.value='1';
+  assert.equal(validateModuleTemplate(changed).ok,false);
+  assert.throws(()=>instantiateModule(diagram,changed),/Invalid module template/);
+  assert.equal(JSON.stringify(diagram.toJSON()),original);
+  const changedName=structuredClone(template);
+  changedName.blocks.find(b=>b.id==='probe').params.name=42;
+  assert.equal(validateModuleTemplate(changedName).ok,false);
+});
