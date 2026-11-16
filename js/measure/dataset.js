@@ -120,15 +120,14 @@ export function parseDataset(text) {
   if (obj.format !== DATASET_FORMAT) {
     throw new Error(`not an Invention Lab measurement dataset (format "${obj.format ?? 'missing'}")`);
   }
-  const recorded = obj.source?.sha256 ?? null;
-  const d = createDataset(obj, obj.samples ?? [], { rawSource: text });
-  // artifact integrity: the SHA-256 of THIS dataset file is recorded so the
-  // file can be re-verified later. source.sha256 refers to the ORIGINAL raw
-  // instrument file and is verified via verifyChecksum against that file.
+  // Preserve the separate ORIGINAL raw-file checksum and the source-dataset
+  // artifact checksum. Parsing a serialized dataset must not silently replace
+  // either with the hash of this JSON representation.
+  const d = createDataset(obj, obj.samples ?? []);
   const textSha256 = sha256(text);
-  if (recorded && recorded === obj.source?.selfChecksum && obj.source?.selfChecksum !== textSha256) {
-    throw new Error('dataset self-checksum mismatch — the dataset file was altered after its checksum was recorded');
-  }
+  // The actual serialized-file checksum is returned separately. A caller must
+  // compare it with an independently stored expected checksum when available;
+  // a self-referential checksum inside the file is not an authenticity proof.
   return Object.freeze({ ...d, textSha256 });
 }
 
@@ -199,7 +198,7 @@ export function deriveDataset(parent, transformation, newSamples, newMeta = {}) 
     version: (parent.version ?? 1) + 1,
     origin: parent.origin, // derived data INHERITS the parent's origin class
     source: { ...parent.source, derivedFrom: parent.id, transformation },
-    transformations: [...(parent.transformations ?? []), { transformation, parentChecksum: parent.source.sha256 }],
+    transformations: [...(parent.transformations ?? []), { transformation, parentChecksum: parent.source.datasetSha256 }],
   }, newSamples);
   return derived;
 }
