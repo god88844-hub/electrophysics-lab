@@ -173,8 +173,15 @@ test('F3: nominal parameters need no calibration split but cannot attest physica
 
 test('F4: synthetic relabelled to real-measurement is blocked without verified provenance', () => {
   const { dataset: fake } = syntheticDividerDataset();
+  const spoofedMeta = JSON.parse(JSON.stringify({ ...fake, samples: [...fake.samples] }));
+  assert.throws(() => createDataset({
+    ...spoofedMeta, origin: 'real-measurement',
+  }, [...fake.samples]), /checksum mismatch/,
+    'relabeling an existing dataset without updating its digest must fail at ingestion');
+  // Rehashing a false claim is possible, but does NOT prove its provenance.
   const relabelled = createDataset({
-    ...JSON.parse(JSON.stringify({ ...fake, samples: [...fake.samples] })),
+    ...spoofedMeta,
+    source: { ...spoofedMeta.source, datasetSha256: null },
     origin: 'real-measurement',
   }, [...fake.samples]);
   assert.equal(relabelled.origin, 'real-measurement');
