@@ -1,0 +1,60 @@
+# Phase 7: real independent RISC-V and accelerator references.
+# An unavailable dependency or missing case is a FAILURE, never a skip/PASS.
+# This does not replace the existing strict 24-case Phase 2 benchmark workflow.
+name: Phase 7 independent architecture references
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  architecture-oracles:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install actual RV32I execution reference (QEMU) and GNU cross binutils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user binutils-riscv64-unknown-elf
+          command -v qemu-riscv32
+          command -v riscv64-unknown-elf-as
+          command -v riscv64-unknown-elf-ld
+          command -v riscv64-unknown-elf-objcopy
+          qemu-riscv32 --version | head -n 1
+      - name: Pin independent accelerator reference
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "numpy==2.4.6"
+          python3 -c "import numpy; assert numpy.__version__ == '2.4.6'; print('NumPy', numpy.__version__)"
+      - name: Run RV32I and evidence-gate unit regressions
+        run: |
+          node --test tests/rv32i.test.mjs tests/phase7-acceptance.test.mjs
+      - name: Cross-check machine code with QEMU RISC-V
+        run: node scripts/phase7-qemu-oracle.mjs
+      - name: Cross-check accelerator arithmetic with NumPy
+        run: node scripts/phase7-numpy-check.mjs
+      - name: Strict Phase 7 independent reference acceptance
+        run: node scripts/phase7-strict.mjs
+      - name: Publish verdict
+        if: always()
+        run: |
+          if [ -f benchmarks/evidence/phase7-summary.json ]; then
+            cat benchmarks/evidence/phase7-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Phase 7 evidence incomplete or missing — NOT a PASS." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-independent-evidence
+          path: |
+            benchmarks/evidence/phase7-rv32i.json
+            benchmarks/evidence/phase7-numpy.json
+            benchmarks/evidence/phase7-summary.json
+          if-no-files-found: error
