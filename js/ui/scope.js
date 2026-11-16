@@ -332,6 +332,10 @@ export const Scope = {
   },
 
   render_ai(c, res) {
+    if(res?.kind==='onnx-per-axis-conv'){
+      this.render_phase11_onnx(c,res);
+      return;
+    }
     if(res?.kind==='onnx-quantized'){
       this.render_onnx_quantized(c,res);
       return;
@@ -358,6 +362,34 @@ export const Scope = {
       res.mlp.targets.map((t, i) => [`[${[[0, 0], [0, 1], [1, 0], [1, 1]][i]}]`, t, res.mlp.predictions[i].toFixed(3)]),
       { numCols: [2] },
     ));
+  },
+
+  render_phase11_onnx(c,res){
+    c.appendChild(el('div',{text:'ONNX Phase 11 — '+res.caseId+' (opset 13)'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'MODEL-ONLY educational JS execution. Actual ONNX Runtime CPU reference executes separately in CI; no hardware timing, power, production qualification or fabricated success probability.'}));
+    c.appendChild(table(['Operation','Tensor dtype','Output shape'],
+      [[res.operations.join(' → '),res.output.dtype,res.output.shape.join('×')]]));
+    const showTensor=(label,t)=>{
+      c.appendChild(el('div',{text:label+' ('+t.dtype+', shape '+t.shape.join('×')+')'}));
+      if(t.shape.length===2){
+        const [rows,cols]=t.shape;
+        c.appendChild(table(Array.from({length:cols},(_,i)=>'C'+i),
+          Array.from({length:rows},(_,i)=>t.values.slice(i*cols,(i+1)*cols))));
+      }else if(t.shape.length===4){
+        const [batch,channels,h,w]=t.shape;
+        for(let n=0;n<batch;n++)for(let ch=0;ch<channels;ch++){
+          c.appendChild(el('div',{text:'Batch '+n+', channel '+ch}));
+          const offset=(n*channels+ch)*h*w;
+          c.appendChild(table(Array.from({length:w},(_,i)=>'X'+i),
+            Array.from({length:h},(_,y)=>t.values.slice(offset+y*w,offset+(y+1)*w))));
+        }
+      }
+    };
+    if(res.quantized)showTensor('Quantized intermediate Q',res.quantized);
+    showTensor('Output Y',res.output);
+    c.appendChild(el('div',{class:'muted',text:
+      'Physical validation: NONE. Real-world build success: Not estimated. Only bounded per-axis QDQ and NCHW QLinearConv arithmetic is modeled.'}));
   },
 
   render_onnx_quantized(c,res){
