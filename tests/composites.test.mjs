@@ -113,11 +113,11 @@ test('composites: a corrupted port or wire type cannot be flattened into a valid
   const {composite,library}=makeComposite();
   const wrong=structuredClone(composite);
   wrong.wires[0].from.port='not-a-port';
-  assert.equal(validateCompositeTemplate(wrong,library).ok,false);
+  assert.equal(validateCompositeTemplate(wrong,library.filter(t=>t.id!==composite.id)).ok,false);
   assert.throws(()=>flattenComposite(wrong,library),/unknown|incompatible/);
   const duplicate=structuredClone(composite);
   duplicate.children[1].id=duplicate.children[0].id;
-  assert.equal(validateCompositeTemplate(duplicate,library).ok,false);
+  assert.equal(validateCompositeTemplate(duplicate,library.filter(t=>t.id!==composite.id)).ok,false);
 });
 test('composites: rejected placement is atomic, including malformed overrides',()=>{
   const {composite,library}=makeComposite(),d=buildCircuit();
@@ -152,7 +152,7 @@ test('composites: copied hierarchies preserve 3D group labels without altering u
 test('composites: duplicated cross-module edges must fail before instantiation',()=>{
   const {composite,library}=makeComposite(),modified=structuredClone(composite);
   modified.wires.push({...structuredClone(modified.wires[0]),id:'duplicate-wire'});
-  const verdict=validateCompositeTemplate(modified,library);
+  const verdict=validateCompositeTemplate(modified,library.filter(t=>t.id!==composite.id));
   assert.equal(verdict.ok,false,'duplicate connections cannot be accepted as a valid reusable hierarchy');
   assert.match(verdict.errors.join(' '),/duplicate/i);
 });
@@ -160,14 +160,14 @@ test('composites: duplicate bindings to the same child parameter are rejected',(
   const {composite,library}=makeComposite(),modified=structuredClone(composite);
   const p=modified.parameters.find(p=>p.target.blockId==='src'&&p.target.paramKey==='value');
   modified.parameters.push({...structuredClone(p),name:'second-alias'});
-  const verdict=validateCompositeTemplate(modified,library);
+  const verdict=validateCompositeTemplate(modified,library.filter(t=>t.id!==composite.id));
   assert.equal(verdict.ok,false);
   assert.match(verdict.errors.join(' '),/duplicate|binding/i);
 });
 test('composites: duplicate outer interface aliases cannot secretly reference one physical pin',()=>{
   const {composite,library}=makeComposite(),modified=structuredClone(composite);
   modified.interfaces.push({...structuredClone(modified.interfaces[0]),name:'second-alias'});
-  const verdict=validateCompositeTemplate(modified,library);
+  const verdict=validateCompositeTemplate(modified,library.filter(t=>t.id!==composite.id));
   assert.equal(verdict.ok,false);
   assert.match(verdict.errors.join(' '),/duplicate|interface/i);
 });
@@ -181,7 +181,7 @@ test('composites: hierarchy paths must not collide with user-authored separators
   }
   for(const port of modified.interfaces)if(port.childId===old)port.childId=newId;
   for(const parameter of modified.parameters)if(parameter.target.childId===old)parameter.target.childId=newId;
-  const verdict=validateCompositeTemplate(modified,library);
+  const verdict=validateCompositeTemplate(modified,library.filter(t=>t.id!==composite.id));
   assert.equal(verdict.ok,false);
   assert.match(verdict.errors.join(' '),/path|ID|separator|child/i);
 });
