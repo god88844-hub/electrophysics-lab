@@ -26,7 +26,7 @@ function fixture(){
   timing,physicalValidation:'none',physicalQualified:false,physicalVerdict:'unknown',
   realWorldBuildSuccessPercent:null,postLayout:false,multiCorner:false,prototypeMeasurements:false};
 }
-const check=x=>evaluatePhase14Timing(x,{commitSha:'unit-synthetic',timing:parsePhase14TimingLog(exampleLog())});
+const check=x=>evaluatePhase14Timing(x,{commitSha:'unit-synthetic',netlistSha256:H,timing:parsePhase14TimingLog(exampleLog())});
 test('Phase 14 genuine single-corner report shape remains MODEL ONLY',()=>{
  const x=check(fixture());assert.equal(x.ok,true,x.errors.join('; '));
  assert.equal(x.status,'pre-layout-model-only');
