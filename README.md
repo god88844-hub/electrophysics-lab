@@ -101,6 +101,30 @@ references are rejected before altering the project.
 
 [Phase 6 implementation and limitations](docs/NESTED-MODULES.md)
 
+## RISC-V architecture lab and independent numerical references (Phase 7)
+
+A new **RISC-V RV32I** lab accepts bounded, real 32-bit machine-code words.
+It models a single unprivileged RV32I 2.1 integer hart with registers,
+byte-addressed memory, branch/jump execution and explicit traps. An example
+computes x3 = 12 and stops at EBREAK. It remains separate from the original
+IL-8 pipeline CPU Lab and does **not** claim cycle-accurate processor timing
+or real silicon behavior.
+
+The separate [Phase 7 independent architecture references](.github/workflows/phase7-oracles.yml)
+CI workflow uses **GNU RISC-V binutils and QEMU user-mode** to execute a
+real RV32I program independently, then compares its output with the
+JavaScript interpreter. It also cross-checks two fixed arithmetic workloads
+in the AI accelerator model against **real NumPy 2.4.6**. The
+[Phase 7 acceptance manifest](benchmarks/phase7/acceptance.json) fails on
+missing/duplicate/nonpassing reference evidence. All reports retain
+source/fixture fingerprints and a clearly absent physical-validation stage.
+
+The research findings and their limits are summarized in
+[Phase 7 Data and Validation](docs/PHASE7-DATA-AND-VALIDATION.md).
+A public PDK link does **not** prove our circuit passed actual DRC/LVS, and
+numerical agreement does **not** establish a physically validated build
+probability.
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
