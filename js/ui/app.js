@@ -750,7 +750,7 @@ export class App {
 
   async runOnnxExample(caseId='matmul-relu'){
     if(this.state.labId!=='ai')throw Error('ONNX subset can run only in the accelerator lab');
-    const response=await fetch('./benchmarks/phase9/graphs.json');
+    const response=await fetch(new URL('../../benchmarks/phase9/graphs.json',import.meta.url));
     if(!response.ok)throw Error('ONNX fixture file unavailable: HTTP '+response.status);
     const manifest=await response.json();
     if(manifest?.format!=='invention-lab/onnx-subset-fixtures/1'||
