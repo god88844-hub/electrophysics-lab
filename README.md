@@ -216,6 +216,30 @@ Successful external software comparison does **not** imply complete
 ONNX compatibility, calibrated GPU/TPU timing or a physically
 validated chip manufacturing-success probability.
 
+## Real UCI Iris model-level inference accuracy (Phase 12)
+
+The **AI Accelerator Lab** can now run a small six-hidden-unit neural
+network on **30 unseen labeled Iris observations** from a real
+[UCI CC BY 4.0](https://archive.ics.uci.edu/dataset/53/iris)
+dataset (DOI: `10.24432/C56C76`). The 150 original rows are included
+with attribution, and a frozen stratified 120-training/30-holdout
+split prevents accidental label/data leakage. Browser output gives the
+observed **29/30 holdout accuracy**, actual class confusion and every
+sample's predicted class, rather than a simulated device-performance
+percentage.
+
+The separate [Phase 12 independent CI workflow](.github/workflows/phase12-iris.yml)
+runs a real train-only **scikit-learn MLP** and **actual ONNX Runtime CPU**
+model using the same frozen parameters and compares **every three-class
+probability vector** with the existing JS accelerator engine. Missing
+or altered test rows, source/license attribution, wrong predictions,
+stale source hashes, mismatched ONNX binary and fabricated physical
+claims fail closed. See [Phase 12 data and validation](docs/PHASE12-IRIS-MODEL-VALIDATION.md).
+
+This is a very small educational model-level correctness benchmark,
+**not MLPerf, real GPU/TPU speed/energy, a qualified chip process, or
+a measured real-world build-success probability**.
+
 ## Independent benchmarking (Phase 2)
 
 Invention Lab's numbers are validated against **real external solvers** — not against its own
