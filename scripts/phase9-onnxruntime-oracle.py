@@ -9,6 +9,8 @@ Only a small fixed-shape float32 2D subset is permitted in this benchmark.
 import hashlib
 import json
 import sys
+import re
+from pathlib import Path
 
 import numpy as np
 import onnx
@@ -87,9 +89,16 @@ def main():
     if not isinstance(doc.get("cases"), list) or len(doc["cases"]) != 5:
         raise ValueError("expected exactly five frozen graph cases")
     cases = []
+    model_dir = Path(__file__).resolve().parent.parent / "benchmarks" / "evidence" / "phase9-models"
+    model_dir.mkdir(parents=True, exist_ok=True)
     for case in doc["cases"]:
+        if not re.fullmatch(r"[a-z][a-z0-9-]{0,39}", case["id"]):
+            raise ValueError("unsafe model output ID")
         model = _model(case)
         buf = model.SerializeToString()
+        # Real, inspectable ONNX protobuf bytes become a CI artifact.
+        # A later strict step verifies these files against the output record.
+        (model_dir / (case["id"] + ".onnx")).write_bytes(buf)
         session = ort.InferenceSession(buf, providers=["CPUExecutionProvider"])
         if session.get_providers() != ["CPUExecutionProvider"]:
             raise AssertionError("independent reference was not CPUExecutionProvider")
