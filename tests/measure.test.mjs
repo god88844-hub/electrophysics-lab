@@ -14,7 +14,8 @@ import {
 import { runCalibration, symmetricEigen } from '../js/measure/calibration.js';
 import { createSplitManifest, verifySplit, partitionByField } from '../js/measure/split.js';
 import { defineEnvelope, classifyRequest, envelopeGate } from '../js/measure/envelope.js';
-import { runExperimentalValidation } from '../js/measure/validation.js';
+import { runExperimentalValidation, registerValidationPlan } from '../js/measure/validation.js';
+import { verifySourceReceipt } from '../js/measure/dataset.js';
 import {
   dividerModel, rcModel, diodeModel,
   syntheticDividerDataset, syntheticRCDataset, syntheticDiodeDataset,
@@ -368,8 +369,9 @@ test('phase3: validation against a real-measurement dataset inside the envelope 
     provenanceVerified: true,
   });
   assert.equal(result.criteriaMet, true, JSON.stringify(result.criteriaResults));
-  assert.equal(result.stage, 'physicalValidation');
-  assert.equal(result.physicalValidation.status, 'validated');
+  assert.equal(result.stage, 'softwareDemonstration');
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.ok(result.physicalValidation.blockers.some(b => b.includes('G3')));
   assert.ok(result.physicalValidation.scope.quantities.includes('V_out'));
 });
 
@@ -464,7 +466,7 @@ test('phase3: a synthetic dataset cannot be relabelled to unlock physical valida
   const tamperedText = JSON.stringify(tampered);
   // detection: the recorded SHA-256 covers the ORIGINAL raw text —
   // tamperedText has a different checksum, so the relabeling IS detectable
-  assert.notEqual(sha256(tamperedText), dataset.source.sha256, 'tampered text must have a different SHA-256');
+  assert.notEqual(sha256(tamperedText), dataset.source.datasetSha256, 'tampered text must have a different SHA-256');
   // and the trust gate on the ORIGINAL dataset correctly blocks physical validation
   const q = qualityReport(dataset);
   assert.equal(q.physicalValidationAllowed, false);
@@ -481,6 +483,7 @@ test('phase3: a synthetic dataset cannot be relabelled to unlock physical valida
 function acceptedRealDataset() {
   const d = createDataset({
     id: 'real-accepted', origin: 'real-measurement',
+    source: { file: 'claimed-instrument-record.csv', rawFileSha256: sha256('real-accepted-raw') },
     experiment: { id: 'exp-1', date: '2026-01-15' },
     instruments: [{ manufacturer: 'Fluke', model: '179', serialNumber: 'SN-1', resolution: 0.001, uncertainty: 0.005, calibration: { certificateRef: 'CAL-001', status: 'valid', validUntil: '2026-12-01' } }],
     quantities: [{ name: 'V_in', unit: 'V' }, { name: 'V_out', unit: 'V' }],
@@ -503,6 +506,8 @@ const ENVELOPE_WITH_POINTS = defineEnvelope({
 
 function runVal(overrides = {}) {
   const { dataset, quality } = acceptedRealDataset();
+  const plan = registerValidationPlan({ modelId: 'divider-vout', datasetId: dataset.id, envelopeId: ENVELOPE_WITH_POINTS.id, declaredUse: 'verify divider ratio', criteria: ACCEPT_CRITERIA });
+  const receipt = verifySourceReceipt(dataset, 'real-accepted-raw', { acquisitionRecordId: 'UNVERIFIED-TEST-FIXTURE' });
   return runExperimentalValidation({
     model: { id: 'divider-vout', predict: (p) => ({ V_out: (p.V_in * p.R2) / (p.R1 + p.R2) }) },
     params: { R1: 1000, R2: 1000 },
@@ -511,7 +516,7 @@ function runVal(overrides = {}) {
     criteria: ACCEPT_CRITERIA,
     envelope: ENVELOPE_WITH_POINTS,
     quantities: [{ name: 'V_out', measurementUncertainty: 0.005 }],
-    provenanceVerified: true,
+    provenanceVerified: true, provenanceReceipt: receipt, validationPlan: plan,
     ...overrides,
   });
 }
@@ -537,10 +542,11 @@ test('F1: envelope tested points far from measurement conditions → none', () =
   assert.ok(result.physicalValidation.note.includes('envelope') || result.physicalValidation.note.includes('interpolation'));
 });
 
-test('F1: correct envelope with matching tested points → validated', () => {
+test('F1: matching envelope creates candidate only, not fabricated physical validation', () => {
   const result = runVal({});
-  assert.equal(result.stage, 'physicalValidation');
-  assert.equal(result.physicalValidation.status, 'validated');
+  assert.equal(result.stage, 'softwareDemonstration');
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.equal(result.physicalValidation.programmaticEligibility, 'candidate-for-independent-review');
   assert.ok(result.physicalValidation.scope, 'scope must record dataset + quantities + envelope');
 });
 
@@ -615,9 +621,10 @@ test('F3: calibration on group A + validation on group A → leakage detected, n
     'using the same dataset for calibration and validation must block physical validation');
 });
 
-test('F3: nominal parameters (no calibration) work without a split manifest', () => {
+test('F3: nominal parameters do not require a split but remain unvalidated', () => {
   const result = runVal({});
-  assert.equal(result.stage, 'physicalValidation');
+  assert.equal(result.stage, 'softwareDemonstration');
+  assert.equal(result.physicalValidation.programmaticEligibility, 'candidate-for-independent-review');
   assert.equal(result.paramProvenance.source, 'nominal values');
   assert.ok(result.physicalValidation.note.includes('nominal') || !result.physicalValidation.note.includes('leakage'));
 });
@@ -652,3 +659,73 @@ test('F4: dataset source separates rawFileSha256 from datasetSha256', () => {
   const parsed = parseDataset(JSON.stringify({ ...JSON.parse(JSON.stringify({ ...d, samples: [...d.samples] })) }));
   assert.equal(parsed.source.rawFileSha256, sha256(rawText), 'raw file checksum survives parsing');
 });
+
+
+// ---------------- direct GitHub remediation: evidence cannot self-authorize ----
+
+test('phase3-integrity: caller boolean alone is never source verification', () => {
+  const result = runVal({ provenanceReceipt: null, provenanceVerified: true });
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.equal(result.physicalValidation.programmaticEligibility, 'blocked');
+  assert.ok(result.physicalValidation.blockers.some(s => s.includes('G3')));
+});
+
+test('phase3-integrity: a fabricated receipt or another dataset receipt is rejected', () => {
+  const fake = { format: 'invention-lab/source-verification/1', datasetId: 'real-accepted' };
+  const result = runVal({ provenanceReceipt: fake });
+  assert.equal(result.physicalValidation.programmaticEligibility, 'blocked');
+  assert.ok(result.physicalValidation.blockers.some(s => s.includes('G3')));
+});
+
+test('phase3-integrity: criteria require a registered plan with the exact model, dataset and envelope', () => {
+  const missing = runVal({ validationPlan: null });
+  assert.ok(missing.physicalValidation.blockers.some(s => s.includes('G4')));
+  const wrong = registerValidationPlan({ modelId: 'different-model', datasetId: 'real-accepted', envelopeId: 'env-ok', declaredUse: 'verify divider ratio', criteria: ACCEPT_CRITERIA });
+  const result = runVal({ validationPlan: wrong });
+  assert.equal(result.physicalValidation.programmaticEligibility, 'blocked');
+  assert.ok(result.physicalValidation.blockers.some(s => s.includes('G4')));
+});
+
+test('phase3-integrity: a forged quality report cannot override rejected actual dataset QC', () => {
+  const d = createDataset({ id: 'poor', origin: 'real-measurement', experiment: { id: 'exp' }, source: { rawFileSha256: sha256('poor') } },
+    [{ t: 0, V_in: 5, V_out: NaN }], { rawSource: 'poor' });
+  const forged = { verdict: 'accepted', physicalValidationAllowed: true };
+  const result = runVal({ dataset: d, quality: forged });
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.ok(result.physicalValidation.blockers.some(s => s.includes('G2')));
+});
+
+test('phase3-integrity: original measurement hash survives dataset serialization and derivation', () => {
+  const raw = 'instrument,circuit,V\nA,divider,2.5\n';
+  const d = createDataset({ id: 'original', origin: 'real-measurement', experiment: { id: 'exp' },
+    source: { rawFileSha256: sha256(raw) } }, [{ t: 0, V_out: 2.5 }], { rawSource: raw });
+  const parsed = parseDataset(JSON.stringify(d));
+  assert.equal(parsed.source.rawFileSha256, sha256(raw));
+  assert.equal(parsed.source.datasetSha256, d.source.datasetSha256, 'parser must not silently overwrite the original dataset provenance hash');
+  const derived = deriveDataset(d, { method: 'noop' }, d.samples);
+  assert.equal(derived.transformations[0].parentChecksum, d.source.datasetSha256);
+});
+
+test('phase3-integrity: calibration without bound fitting observations is never independent holdout evidence', () => {
+  const { dataset } = acceptedRealDataset();
+  const manifest = partitionByField(
+    createDataset({ id: dataset.id, origin: 'real-measurement', experiment: { id: 'x' } },
+      [{ t: 0, session: 'A' }, { t: 1, session: 'B' }], { rawSource: 'separate' }),
+    'session', { calibrationValues: ['A'], validationValues: ['B'] }
+  );
+  const result = runVal({
+    calibrationRef: 'fit-x', calibrationRecord: { id: 'fit-x', dataset: { id: 'unrelated', checksum: 'invented' } },
+    splitManifest: manifest,
+  });
+  assert.equal(result.physicalValidation.status, 'none');
+  assert.ok(result.physicalValidation.blockers.some(s => s.includes('G7')));
+});
+
+test('phase3-integrity: nested validation evidence is immutable', () => {
+  const result = runVal({});
+  assert.ok(Object.isFrozen(result.physicalValidation));
+  assert.ok(Object.isFrozen(result.physicalValidation.scope));
+  assert.ok(Object.isFrozen(result.physicalValidation.blockers));
+  assert.ok(Object.isFrozen(result.comparisons));
+});
+
