@@ -19,7 +19,7 @@ export function evaluatePhase7(manifest,{qemu,numpy},sha=null){
       errors.push(label+' reference missing or nonpassing');
     if(report?.physicalValidation!=='none'||report?.realWorldBuildSuccessPercent!==null)
       errors.push(label+' report falsely claims physical validation or a build probability');
-    if(sha && report?.commitSha && report.commitSha!==sha)
+    if(sha && report?.commitSha!==sha)
       errors.push(label+' provenance commit does not match the source under review');
   }
   const actual=[];
