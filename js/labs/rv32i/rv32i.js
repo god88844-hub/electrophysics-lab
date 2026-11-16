@@ -85,7 +85,7 @@ export class RV32I {
   _store(addr, size, value) {
     const i = this._offset(addr, size, size);
     for (let j = 0; j < size; j++) this.mem[i + j] = (value >>> (j * 8)) & 255;
-    if (this.writes.length < 4096) this.writes.push({ address: u32(addr), size, value: u32(value) & (size === 4 ? 0xffffffff : (1 << (size * 8)) - 1) });
+    if (this.writes.length < 4096) this.writes.push({ address: u32(addr), size, value: size === 4 ? u32(value) : (u32(value) & ((1 << (size * 8)) - 1)) });
   }
   _stop(reason, detail, word = null) {
     this.halted = true; this.stopReason = reason;
