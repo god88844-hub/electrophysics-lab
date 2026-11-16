@@ -40,8 +40,9 @@ export function validateIrisFixture(fixture){
     fail('raw holdout measurements must contain four finite positive features');
   if(train?.implementation!=='scikit-learn'||train?.version!=='1.8.0'||
      train?.algorithm!=='MLPClassifier'||train?.hiddenUnits!==6||
-     train?.activation!=='relu'||train?.solver!=='lbfgs'||train?.alpha!==0.03||
-     train?.maxIter!==500||train?.randomState!==2026||
+     train?.activation!=='relu'||train?.solver!=='adam'||train?.alpha!==0.03||
+     train?.maxIter!==1000||train?.learningRateInit!==0.01||
+     train?.tol!==1e-5||train?.nIterNoChange!==200||train?.randomState!==2026||
      train?.preprocessing!=='StandardScaler fit exclusively on train indices')
     fail('training recipe version/parameters changed');
   const mean=boundedArray(train.mean,4,'train-only normalization mean');
