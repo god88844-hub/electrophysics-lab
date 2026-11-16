@@ -196,3 +196,21 @@ test('composites: spoofed persisted interface mapping cannot bypass real port ty
     /interface|port|signature/i,
   );
 });
+
+test('composites: numeric overrides change the computed binary and ternary probe value',()=>{
+  const {composite,library}=makeComposite();
+  const knob=composite.parameters.find(p=>p.target.blockId==='src'&&p.target.paramKey==='value');
+  for(const radix of [2,3]){
+    const d=new Diagram({lab:'logic',meta:{radix}});
+    const normal=instantiateComposite(d,composite,library,{name:'Unchanged'});
+    const changed=instantiateComposite(d,composite,library,{
+      name:'Forced zero',x:600,y:0,overrides:{[knob.name]:0},
+    });
+    const result=logicLab.run(d);
+    const first=result.probes[normal.createdBlockIds[2]]?.values.at(-1);
+    const second=result.probes[changed.createdBlockIds[2]]?.values.at(-1);
+    assert.equal(first,radix-2);
+    assert.equal(second,radix-1,'overrides must affect actual simulated quantum/logic component parameters');
+    assert.equal(result.warnings.length,0);
+  }
+});
