@@ -193,10 +193,32 @@ try{
          app.$outputBody.textContent.includes('Not estimated'),
     'Quantized ONNX UI fabricated independent or physical validation');
   assert(unsigned.realWorldBuildSuccessPercent===null,'Quantized ONNX produced false build yield');
+
+  // Phase 11: real browser JS numerical execution of 4D QLinearConv and
+  // per-axis quantization. The independent ORT CPU runs only in GitHub CI.
+  const convSelector=app.$centerPanel.querySelector('[aria-label="Phase 11 ONNX convolution and per-axis example"]');
+  const convButton=app.$centerPanel.querySelector('[data-action="run-phase11-onnx"]');
+  assert(convSelector?.options.length===6,'Phase 11 NCHW/per-axis examples absent');
+  assert(convButton,'Phase 11 convolution run button absent');
+  const conv=await app.runPhase11Example('qconv-mixed-per-channel');
+  assert(conv.output.dtype==='uint8'&&
+    JSON.stringify(conv.output.shape)===JSON.stringify([1,2,2,2]),
+    'Quantized convolution output rank/shape invalid in browser');
+  assert(JSON.stringify(conv.output.values)===JSON.stringify([192,129,178,152,255,204,34,144]),
+    'Browser QLinearConv with per-channel scales and int32 bias diverged');
+  const axisQ=await app.runPhase11Example('per-axis-uint8-negative-axis');
+  assert(axisQ.normalizedAxis===0,'Per-axis negative axis normalization incorrect');
+  assert(JSON.stringify(axisQ.quantized.values)===JSON.stringify([0,129,255,3,19,0]),
+    'Browser per-axis uint8 Q intermediate diverged');
+  assert(app.$outputBody.textContent.includes('MODEL-ONLY') &&
+         app.$outputBody.textContent.includes('Not estimated'),
+    'Phase 11 browser wrongly reported external or physical validation');
+  assert(axisQ.realWorldBuildSuccessPercent===null,
+    'Per-axis QDQ browser calculated an unjustified hardware manufacturing probability');
   app.switchLab('logic');
 
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — 3D nested modules, RV32IM, ONNX float32 and int8/uint8 quantized browser inference with no invented physical validation';
+  output.textContent='PASS — 3D nested modules, RV32IM, ONNX f32/int8 per-tensor and per-axis convolution with no fabricated silicon validation';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
