@@ -59,8 +59,40 @@ try{
   app.switchLab('logic');
   app.switchOutputTab('evidence');
   assert(app.$outputBody.textContent.includes('Not estimated'),'build probability must be explicitly unavailable');
+
+  // Phase 5: real browser interactions with the reusable assembly shelf,
+  // canonical netlist instantiation, 3D drill-in and undo/redo.
+  const grouped = app.createAssembly({name:'Reusable inverter group',blockIds:[a.id,b.id]});
+  assert(grouped.template.blocks.length===2,'module capture did not retain two real components');
+  assert(app.moduleLibrary.some(t=>t.id===grouped.template.id),'captured module not saved in library');
+  const beforePlace=app.diagrams.logic.blocks.length;
+  const instance=app.placeModule(grouped.template.id);
+  assert(app.diagrams.logic.blocks.length===beforePlace+2,'placing module did not create real blocks');
+  assert(instance.createdWireIds.length===1,'module did not preserve original internal connection');
+  const afterPlace=app.diagrams.logic.blocks.length;
+  app.undo();
+  assert(app.diagrams.logic.blocks.length===afterPlace-2,'undo did not remove placed module');
+  app.redo();
+  assert(app.diagrams.logic.blocks.length===afterPlace,'redo did not restore placed module');
+
+  app.focusAssembly(grouped.assembly.id);
+  assert(app.scene3d.focusIds?.size===2,'3D assembly focus did not select group members');
+  assert(app.scene3d.scene().blocks.length===2,'assembly drill-in failed to hide external components');
+  app.scene3d.render();
+  assert(app.scene3d.gl.getError()===app.scene3d.gl.NO_ERROR,'3D assembly rendering produced an error');
+  app.focusAssembly(null);
+  assert(app.scene3d.scene().blocks.length===afterPlace,'exit assembly did not restore full design');
+  app.$assembliesButton.click();
+  assert(app.assemblyShelf.open,'assemblies button did not open the editor panel');
+  assert(app.assemblyShelf.root.textContent.includes('Reusable inverter group'),'assembly is missing in the panel');
+  app.$assembliesButton.click();
+  assert(!app.assemblyShelf.open,'assemblies panel could not be closed');
+  app.ungroup(grouped.assembly.id);
+  assert(app.diagrams.logic.blocks.length===afterPlace,'ungroup removed simulated components');
+  app.switchOutputTab('evidence');
+  assert(app.$outputBody.textContent.includes('Not estimated'),'assembly editing fabricated a build-success percentage');
   output.dataset.smokeResult='pass';
-  output.textContent='PASS — WebGL, canonical component editing and typed 3D port wiring, lab switching, evidence panel';
+  output.textContent='PASS — WebGL, typed 3D wiring, module capture/instantiation, assembly drill-in, undo/redo and evidence panel';
 }catch(err){
   output.dataset.smokeResult='fail';
   output.textContent='FAIL — '+String(err.stack||err.message||err);
