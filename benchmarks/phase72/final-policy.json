@@ -1,0 +1,22 @@
+{
+  "format": "invention-lab/phase72-research-candidate-final-audit/1",
+  "target": "research-source-release-candidate",
+  "plannedDevelopmentPhases": 72,
+  "sourcePackageReproducibleInCI": true,
+  "allDevelopmentPRsMergedIntoMain": false,
+  "realRepresentativeUserUATComplete": false,
+  "independentSecurityPenTestComplete": false,
+  "independentScientificReviewComplete": false,
+  "independentSupplierLicenseAuditComplete": false,
+  "independentlyVerifiedCleanHostInstallerTests": 0,
+  "signedReleaseTagCreated": false,
+  "qualifiedFanSpecimens": 0,
+  "authenticatedALUDies": 0,
+  "physicallyQualifiedQuantumProcessors": 0,
+  "physicallyCalibratedAccelerators": 0,
+  "foundryTapeoutApproved": false,
+  "realHardwareBuildSuccessProbability": null,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
