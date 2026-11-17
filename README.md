@@ -543,3 +543,7 @@ migrated before integration of original open development PRs.
 ## Phase 49 — Identifiability before calibration
 
 [Phase49 structural identifiability and synthetic train/holdout](docs/PHASE49-IDENTIFIABILITY-AND-CALIBRATION.md) proves that a fixed-source stopped-motor current equation with only total series voltage/current identifies only aggregate resistance (Jacobian rank 1), **not** separate battery, harness, and motor resistances. Its ideal train/holdout data are marked entirely synthetic; no matching actual fan hardware or physically calibrated parameters are inferred.
+
+## Phase 50 — Assumption-defined uncertainty interval and physical holdout validation gate
+
+[Phase50 deterministic parameter interval calculations](docs/PHASE50-UNCERTAINTY-AND-HOLDOUT.md) propagate *hypothetical* source resistance bounds to current/terminal-voltage ranges with strict independent mathematics. No statistical distribution, physical prediction interval or hardware success percentage is inferred. Device-level holdout label overlap is detected, but claimed hardware IDs and instrument data remain unverified; no physical fan has been validated.
