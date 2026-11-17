@@ -1,0 +1,31 @@
+name: External laboratory qualification handoff — source-only NO-GO
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  source-locked-unmeasured-lab-request:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/external-qualification-kit.test.mjs
+      - run: |
+          node scripts/external-qualification-run.mjs
+          node scripts/external-qualification-strict.mjs
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unmeasured-lab-and-reviewer-handoff-not-physical-approval
+          path: |
+            benchmarks/evidence/external-qualification/qualification-request.json
+            benchmarks/evidence/external-qualification/lab-and-reviewer-request.md
+          if-no-files-found: error

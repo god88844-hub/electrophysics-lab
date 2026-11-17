@@ -563,3 +563,7 @@ migrated before integration of original open development PRs.
 ## Phase 54 — Prospective source-locked ALU lab acquisition handoff
 
 [Phase54 blind physical ALU input-only lab bundle](docs/PHASE54-PHYSICAL-ALU-PROTOTYPE-ACQUISITION.md) reproduces the original 1,024 source-aligned stimulus vectors and 48 planned blind-study sessions (8 prospective dies and 49,152 planned reads), while separating the expected-output answer key from lab-facing inputs. No fabricated silicon, foundry source/mask approval, raw calibrated physical observations, or manufacturing-success percentage exists: unreviewed lab data remains quarantined.
+
+## External physical validation and independent review handoff
+
+The integrated research software has passed source CI, but **physical validation and independent certification are not complete**. To generate a traceable request for qualified external labs and reviewers (without fabricated results), run `node scripts/external-qualification-run.mjs` and `node scripts/external-qualification-strict.mjs`. Review the fan's 12 safety/measurement gates, original ALU 8-die/48-session prospective study, and external review roles in [External Qualification Handoff](docs/EXTERNAL-QUALIFICATION-HANDOFF.md). Physical experiments must not begin without independent safety approval; success probability remains unknown.

@@ -156,6 +156,11 @@ const approvedChangedPath=(p)=>(
  (p==='docs/PHASE3-INTEGRITY-BOUNDARIES.md'&&git('rev-parse','HEAD:'+p)==='63d49c089b3339bf02da0c04d3ebbdac43c87b59')||
  (p==='docs/PHASE3-PLAN.md'&&git('rev-parse','HEAD:'+p)==='dde6312cbc3aa696b6c2af396eb175887825cd7f')||
  (p==='tests/phase3-integrity.test.mjs'&&git('rev-parse','HEAD:'+p)==='681c93d415785bd6a5466b1b902e2266fd311630')||
+ p.startsWith('js/release/external-qualification-')||
+ p.startsWith('scripts/external-qualification-')||
+ p.startsWith('tests/external-qualification-')||
+ p.startsWith('docs/EXTERNAL-QUALIFICATION-')||
+ p.startsWith('.github/workflows/external-qualification-')||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
  p==='README.md'||p==='package.json');
 const unexpectedChanges=changes.filter(p=>!approvedChangedPath(p));
