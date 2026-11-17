@@ -1,0 +1,12 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {blankCampaign,screenCandidate} from '../js/evidence/phase62-quantum-hardware.js';
+const raw=await readFile('benchmarks/phase62/quantum-study-policy.json'),p=JSON.parse(raw);
+const r=JSON.parse(await readFile('benchmarks/evidence/phase62/phase62.json'));
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.policySha256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(r.campaign,blankCampaign(p));assert.deepEqual(r.screen,screenCandidate(p));
+assert.equal(r.externallyAuthenticatedQuantumReadouts,0);assert.equal(r.realWorldBuildSuccessPercent,null);
+console.log('PH62 STRICT PASS: source digest replay and no physical quantum evidence');

@@ -1,0 +1,32 @@
+name: Phase 62 quantum hardware acquisition and train-only noise calibration quarantine
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  source-bounded-quantum-acquisition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase62-quantum-hardware.test.mjs
+      - run: |
+          node scripts/phase62-run.mjs
+          node scripts/phase62-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase62-unverified-quantum-hardware-metrics
+          path: |
+            benchmarks/phase62/quantum-study-policy.json
+            benchmarks/evidence/phase62/phase62.json
+          if-no-files-found: warn
