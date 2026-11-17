@@ -1,0 +1,49 @@
+# Real native detailed-route OpenDB, OpenRCX SPEF and OpenSTA TT maximum timing.
+# Router's internal DRC is not foundry signoff. No physical yield claim.
+name: Phase 19 SKY130 actual detailed routing extracted RC and postroute timing
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  real-detailed-routing-and-rc:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject simulated gate passes and false silicon validation
+        run: node --test tests/phase19-route-rc.test.mjs
+      - name: Run source-pinned real OpenROAD detailed router, OpenRCX and STA
+        run: bash scripts/phase19-run.sh
+      - name: Reopen and hash original native ODB, extracted RC and STA reports
+        run: node scripts/phase19-strict.mjs
+      - name: Record evidence summary without foundry signoff claim
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase19/phase19-summary.json; then
+            cat benchmarks/evidence/phase19/phase19-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Detailed-route / RC model has not been verified; physical UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase19-actual-sky130-detailroute-openrcx-extracted-spef
+          path: |
+            benchmarks/evidence/phase19/phase19.json
+            benchmarks/evidence/phase19/phase19-summary.json
+            benchmarks/evidence/phase19/image-digest.txt
+            benchmarks/evidence/phase19/post-route.spef
+            benchmarks/evidence/phase19/tool-logs/*.log
+            benchmarks/evidence/phase19/orfs/results/sky130hd/alu8/base/5_1_grt.odb
+            benchmarks/evidence/phase19/orfs/results/sky130hd/alu8/base/5_2_route.odb
+            benchmarks/evidence/phase19/orfs/results/sky130hd/alu8/base/5_route.odb
+            benchmarks/evidence/phase19/orfs/results/sky130hd/alu8/base/5_route.sdc
+            benchmarks/evidence/phase19/orfs/reports/sky130hd/alu8/base/5_route_drc.rpt
+            benchmarks/evidence/phase19/orfs/logs/sky130hd/alu8/base/5_2_route.log
+          if-no-files-found: warn
