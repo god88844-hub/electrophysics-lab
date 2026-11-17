@@ -519,3 +519,7 @@ migrated before integration of original open development PRs.
 ## Phase 43 — Source-backed two-cell E91 conditional battery model
 
 [Phase43 published-manufacturer conditional battery calculations](docs/PHASE43-E91-BATTERY-CONDITIONAL-MODEL.md) implement and independently check hypothetical two-series-cell voltage drop, electrical terminal power and internal dissipation across a fixed current sweep. Manufacturer fresh-cell ratings are not measured pack OCV, load feasibility, runtime, aging or calibration; Phase42 submitted files remain quarantined. Actual physically qualified battery specimens and matching fan readings = **zero**.
+
+## Phase 44 — Conditional copper wire loop and connector loss model
+
+[Phase44 two-wire source geometry and resistance calculations](docs/PHASE44-COPPER-WIRE-CONTACT-LOSSES.md) bound illustrative copper temperature-dependent resistance, AWG24 area, round-trip harness voltage drop, Joule heating and assumed contacts, with independent arithmetic tests. Actual conductor length/part, terminal contact resistance, insulation temperature rating, safe ampacity and real hardware measurements are **unknown** and cannot be inferred from formulas alone.
