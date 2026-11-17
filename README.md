@@ -547,3 +547,7 @@ migrated before integration of original open development PRs.
 ## Phase 50 — Assumption-defined uncertainty interval and physical holdout validation gate
 
 [Phase50 deterministic parameter interval calculations](docs/PHASE50-UNCERTAINTY-AND-HOLDOUT.md) propagate *hypothetical* source resistance bounds to current/terminal-voltage ranges with strict independent mathematics. No statistical distribution, physical prediction interval or hardware success percentage is inferred. Device-level holdout label overlap is detected, but claimed hardware IDs and instrument data remain unverified; no physical fan has been validated.
+
+## Phase 51 — Conditional correlated-fault logic without invented hardware reliability
+
+[Phase51 eight-case failure-mode and correlation audit](docs/PHASE51-RELIABILITY-FAULT-ANALYSIS.md) checks ideal open circuits, stopped rotor, hypothetical degraded contacts, stuck sensors and impeller hazards, with symbolic OR/AND/common-cause dependencies. Fault-injection results come from conditional mathematics and declared scenarios only; **no real fault frequency, qualified sensor detection, safe RPM, operating lifetime, manufacturing yield or physical build-success probability** is available without actual source-matched hardware tests.
