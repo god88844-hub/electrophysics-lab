@@ -45,7 +45,9 @@ export function runWorkflow(plan){
  if(!Number.isFinite(p00)||p00<0||p00>1)fail('Invalid quantum probability');
  intermediates.push({id:stages[0].id,kind:'quantum',outputType:'probability',value:p00,
   semantic:'exact conditional density-matrix probability'});
- const byte=quantize(p00,{min:0,max:1,levels:stages[1].config.levels});
+ // Normalize accumulated floating-point roundoff before the exact 1/2 ADC tie.
+ const normalizedP00=Math.round(p00*1e12)/1e12;
+ const byte=quantize(normalizedP00,{min:0,max:1,levels:stages[1].config.levels});
  if(!Number.isInteger(byte)||byte<0||byte>255)fail('ADC produced an invalid byte');
  intermediates.push({id:stages[1].id,kind:'adc',inputType:'probability',outputType:'byte',
   value:byte,semantic:'explicit unitless 8-bit quantization'});
