@@ -11,7 +11,7 @@ mkdir -p "$OUT" "$OUT/orfs" "$OUT/tool-logs" \
 IMAGE="openroad/orfs:26Q4-430-g2272e787c"
 docker pull "$IMAGE" | tee "$OUT/tool-logs/image-pull.log"
 docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}' > "$OUT/image-digest.txt"
-grep -Eq '^openroad/orfs@sha256:[0-9a-f]{64}$' "$OUT/image-digest.txt"
+grep -Fxq 'openroad/orfs@sha256:7490fc3602b76ddcb7befe66974be989e34f95664f8c175f4c9b25df6cb89e71' "$OUT/image-digest.txt"
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" \
   -w /OpenROAD-flow-scripts/flow "$IMAGE" \
   bash -lc 'source /OpenROAD-flow-scripts/env.sh && \

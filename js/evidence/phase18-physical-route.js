@@ -1,6 +1,7 @@
 // True placed OpenDB + global-route guide evidence, explicitly not detail routing/DRC/LVS.
 export const FORMAT='invention-lab/phase18-real-openroad-global-route/1';
 export const IMAGE='openroad/orfs:26Q4-430-g2272e787c';
+export const IMAGE_DIGEST='openroad/orfs@sha256:7490fc3602b76ddcb7befe66974be989e34f95664f8c175f4c9b25df6cb89e71';
 export const SOURCES=Object.freeze({
  rtl:'benchmarks/phase13/rtl/alu8.v',
  sdc:'benchmarks/phase14/alu8-tt.sdc',
@@ -48,7 +49,7 @@ export function evaluatePhase18(report,actual){
    report?.lvsPassed!==false||report?.siliconMeasurements!==false||
    report?.kind!=='placed-open-db-and-global-route-guide')
    errors.push('Incorrect scope or fabricated manufacturing claim');
- if(!/^openroad\/orfs@sha256:[0-9a-f]{64}$/.test(report?.imageDigest)||report.imageDigest!==actual?.imageDigest)
+ if(!/^openroad\/orfs@sha256:[0-9a-f]{64}$/.test(report?.imageDigest)||report.imageDigest!==actual?.imageDigest||report.imageDigest!==IMAGE_DIGEST)
    errors.push('Unverified OpenROAD container image digest');
  const keys=[...Object.keys(SOURCES),...Object.keys(OUTPUTS)];
  for(const k of keys){

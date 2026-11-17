@@ -1,11 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {FORMAT,IMAGE,SOURCES,OUTPUTS,parseGeometry,evaluatePhase18} from '../js/evidence/phase18-physical-route.js';
+import {FORMAT,IMAGE,IMAGE_DIGEST,SOURCES,OUTPUTS,parseGeometry,evaluatePhase18} from '../js/evidence/phase18-physical-route.js';
 const H='a'.repeat(64),C='b'.repeat(40);
 function geo(){return 'OpenROAD synthetic TEST ONLY\nPH18_GEOMETRY_BEGIN\nPH18_DIE_DBUNITS 100 120\nPH18_INSTANCES 12\nPH18_PLACED 12\nPH18_NETS 8\nPH18_BTERMS 28\nPH18_GEOMETRY_END\n';}
 function fixture(){
  const sha256={};for(const k of Object.keys({...SOURCES,...OUTPUTS}))sha256[k]=H;
- return {format:FORMAT,imageTag:IMAGE,imageDigest:'openroad/orfs@sha256:'+H,commitSha:C,
+ return {format:FORMAT,imageTag:IMAGE,imageDigest:IMAGE_DIGEST,commitSha:C,
  kind:'placed-open-db-and-global-route-guide',sha256,geometry:parseGeometry(geo()),
  routeGuideBytes:123,flowLogStageEvidence:'globalroute-executed',
  detailedRoute:false,drcPassed:false,lvsPassed:false,siliconMeasurements:false,

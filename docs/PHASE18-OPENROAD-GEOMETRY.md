@@ -18,4 +18,4 @@ open experimental PDK is not an accredited foundry signoff flow.
 
 To run: `bash scripts/phase18-run.sh` with Docker, Node 22+, and Git.
 Image version: `openroad/orfs:26Q4-430-g2272e787c`; full SHA digest
-must be preserved in each evidence archive, not silently treated as latest.
+is frozen to `7490fc3602b76ddcb7befe66974be989e34f95664f8c175f4c9b25df6cb89e71`,\nnot silently treated as latest.

@@ -1,7 +1,8 @@
 # Independently inspect an actual produced OpenDB, not self-reported flow JSON.
 if {![info exists env(PH18_ODB)]} { error "Missing routed OpenDB" }
 read_db $env(PH18_ODB)
-set chip [ord::get_db_chip]
+set db [ord::get_db]
+set chip [$db getChip]
 if {$chip eq "NULL"} { error "No OpenDB chip" }
 set block [$chip getBlock]
 if {$block eq "NULL"} { error "No OpenDB block" }
