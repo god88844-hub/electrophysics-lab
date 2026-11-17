@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {FORMAT,FILES,DRC_BLOB,LIB_BLOB,IMAGE_DIGEST,exactFeolPatch,inspectDrc,evaluatePhase22} from '../js/evidence/phase22-feol-final-gates.js';
 const SHA='a'.repeat(64),COMMIT='b'.repeat(40);
 const source='FEOL    = false # front-end-of-line checks\nBEOL    = true # back-end-of-line checks\nOFFGRID = true # manufacturing grid/angle checks\n';
-const xml='<?xml version="1.0"?><report-database><top-cell>alu8</top-cell><categories><category><name>nwell.1</name></category></categories><items></items></report-database>\n';
+const xml='<?xml version="1.0"?><report-database><top-cell>alu8</top-cell><categories><category><name>nwell.1</name><description>'+'.'.repeat(140)+'</description></category></categories><items></items></report-database>\n';
 const log='KLayout real physical tool UNIT TEST FAKE, no executed hardware validation; '.repeat(5);
 function fixture(){
  const hashes={};for(const k of Object.keys(FILES))hashes[k]=SHA;
