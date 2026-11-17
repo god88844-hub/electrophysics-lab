@@ -1,0 +1,25 @@
+{
+  "format": "invention-lab/phase70-source-security-policy/1",
+  "target": "loopback-research-web-server",
+  "publicAssetPrefixes": [
+    "js",
+    "css",
+    "docs",
+    "benchmarks"
+  ],
+  "publicIndividualFiles": [
+    "index.html",
+    "LICENSE",
+    "README.md",
+    "tests/browser-3d.html"
+  ],
+  "allowHiddenGitFiles": false,
+  "allowServerSourceDownload": false,
+  "allowArbitraryTestSourceDownloads": false,
+  "independentPentestPerformed": false,
+  "packageNativeInstallersQualified": false,
+  "fullFoundrySignoff": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
