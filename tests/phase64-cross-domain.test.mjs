@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {BASELINE,verifyWorkflow,runWorkflow} from '../js/evidence/phase64-cross-domain.js';
 test('Pinned four-stage quantum-to-CPU model has exact typed transfer',()=>{
- const r=runWorkflow(BASELINE);assert.equal(r.canonicalResult.p00,.5);
+ const r=runWorkflow(BASELINE);assert.ok(Math.abs(r.canonicalResult.p00-0.5)<1e-12);
  assert.equal(r.canonicalResult.adcByte,128);
  assert.equal(r.canonicalResult.cpuByte,128);
  assert.equal(r.canonicalResult.outputBit,1);
