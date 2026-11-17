@@ -9,7 +9,7 @@ export const SUBSYSTEMS=Object.freeze([
   missing:'capacity, temperature, transient sag, protection, aging and chemistry'},
  {id:'wires',law:'Vdrop = I * wire resistance; copper loss = I^2 R',
   missing:'contact defects, connector heating and tolerance correlations'},
- {id:'motor',law:'back EMF = Ke * omega; torque = Kt * current',
+ {id:'motor',law:'ideal energy-conserving SI constant Kt=Ke: back EMF=K*omega; torque=K*current',
   missing:'brush commutation or BLDC controller, saturation, torque ripple and efficiency map'},
  {id:'fan',law:'load torque = running friction + k * angular speed^2',
   missing:'aerodynamic blade map, speed-dependent flow, stall, obstructions and bearing wear'},
@@ -20,10 +20,10 @@ export const SUBSYSTEMS=Object.freeze([
 ]);
 const required=[
  'voltageV','sourceResistanceOhm','wireResistanceOhm','motorResistanceOhm',
- 'torqueConstantNmPerA','backEmfVsPerRad',
+ 'motorConstantSI',
  'staticFrictionTorqueNm','runningFrictionTorqueNm','dragCoefficientNmPerRad2'
 ];
-const positive=['voltageV','motorResistanceOhm','torqueConstantNmPerA','backEmfVsPerRad'];
+const positive=['voltageV','motorResistanceOhm','motorConstantSI'];
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 function valid(p){
  if(!p||typeof p!=='object')throw Error('A complete physical parameter vector is required');
@@ -42,13 +42,13 @@ export function predictFan(p){
  const R=p.sourceResistanceOhm+p.wireResistanceOhm+p.motorResistanceOhm;
  if(!(R>0))throw Error('Nonphysical series electrical resistance');
  const stallCurrentA=p.voltageV/R;
- const startingTorqueMarginNm=p.torqueConstantNmPerA*stallCurrentA-p.staticFrictionTorqueNm;
- const f=w=>p.torqueConstantNmPerA*(p.voltageV-p.backEmfVsPerRad*w)/R-
+ const startingTorqueMarginNm=p.motorConstantSI*stallCurrentA-p.staticFrictionTorqueNm;
+ const f=w=>p.motorConstantSI*(p.voltageV-p.motorConstantSI*w)/R-
    p.runningFrictionTorqueNm-p.dragCoefficientNmPerRad2*w*w;
  const started=startingTorqueMarginNm>0&&f(0)>0;
  let speedRadPerS=0;
  if(started){
-  let lo=0,hi=p.voltageV/p.backEmfVsPerRad;
+  let lo=0,hi=p.voltageV/p.motorConstantSI;
   // Torque balance strictly decreasing in angular velocity for valid inputs.
   for(let k=0;k<68;k++){
    const mid=(lo+hi)/2;
@@ -57,7 +57,7 @@ export function predictFan(p){
   speedRadPerS=(lo+hi)/2;
  }
  const motorCurrentA=started?
-   Math.max(0,(p.voltageV-p.backEmfVsPerRad*speedRadPerS)/R):stallCurrentA;
+   Math.max(0,(p.voltageV-p.motorConstantSI*speedRadPerS)/R):stallCurrentA;
  const motorVoltageV=p.voltageV-motorCurrentA*(p.sourceResistanceOhm+p.wireResistanceOhm);
  const motorCopperLossW=motorCurrentA*motorCurrentA*p.motorResistanceOhm;
  const wireCopperLossW=motorCurrentA*motorCurrentA*p.wireResistanceOhm;
@@ -70,7 +70,7 @@ export function predictFan(p){
   sourceCopperLossW,
   totalCopperLossW:motorCopperLossW+wireCopperLossW+sourceCopperLossW,
   electricalSourcePowerW:p.voltageV*motorCurrentA,
-  electromechanicalOutputW:started?p.torqueConstantNmPerA*motorCurrentA*speedRadPerS:0,
+  electromechanicalOutputW:started?p.motorConstantSI*motorCurrentA*speedRadPerS:0,
   steadyStateModelOnly:true,
   designValidatedByPhysicalTest:false
  });
@@ -174,8 +174,7 @@ export function fanIllustrativeScenario({
   {name:'sourceResistanceOhm',mean:0.25,sd:0.025},
   {name:'wireResistanceOhm',mean:0.15,sd:0.015},
   {name:'motorResistanceOhm',mean:5,sd:0.25},
-  {name:'torqueConstantNmPerA',mean:0.012,sd:0.0006},
-  {name:'backEmfVsPerRad',mean:0.012,sd:0.0006},
+  {name:'motorConstantSI',mean:0.012,sd:0.0006},
   {name:'staticFrictionTorqueNm',mean:0.0006,sd:0.00005},
   {name:'runningFrictionTorqueNm',mean:0.0004,sd:0.00004},
   {name:'dragCoefficientNmPerRad2',mean:2e-7,sd:2e-8}
