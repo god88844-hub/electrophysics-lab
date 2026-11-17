@@ -66,7 +66,7 @@ export function calculateConditionalUncertainty(input,models){
  statisticalCoverageProbability:null,
  confidenceLevel:null,
  correlationEffectsUnmeasured:true,
- physicallyQualified:true===false,
+ physicallyQualified:false,
  physicalValidation:'none',physicalVerdict:'unknown',
  realWorldBuildSuccessPercent:null
  });
