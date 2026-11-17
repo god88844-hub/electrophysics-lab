@@ -1,1 +1,13 @@
-import assert from 'node:assert/strict';import {verifyPackage} from '../js/release/phase69-package.js';import {readFile} from 'node:fs/promises';import {createHash} from 'node:crypto';const x=await verifyPackage();assert.equal(x.appEntrypointsPresent,true);assert.ok(x.verifiedFiles>20);assert.equal(x.productionQualified,false);assert.equal(x.installedExecutableSmoke,'STATIC_EXTRACT_VERIFIED_ONLY');const a=await readFile('benchmarks/evidence/phase69/invention-lab-web.tar');assert.equal(createHash('sha256').update(a).digest('hex'),x.archiveSHA256);console.log('PH69 STATIC ARCHIVE VERIFIED; independent web/desktop installer acceptance pending');
+import assert from 'node:assert/strict';
+import {verifyPackage} from '../js/release/phase69-package.js';
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+const x=await verifyPackage();
+assert.equal(x.appEntrypointsPresent,true);
+assert.ok(x.verifiedFiles>20);
+assert.equal(x.productionQualified,false);
+assert.equal(x.extractedNodeESMImportVerified,true);
+assert.equal(x.installedExecutableSmoke,'EXTRACTED_NODE_MODULE_IMPORT_ONLY');
+const a=await readFile('benchmarks/evidence/phase69/invention-lab-web.tar');
+assert.equal(createHash('sha256').update(a).digest('hex'),x.archiveSHA256);
+console.log('PH69 STRICT PASS: exact tracked-file inventory, extracted ESM import; full installer acceptance pending');
