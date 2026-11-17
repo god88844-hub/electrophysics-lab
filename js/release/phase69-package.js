@@ -138,7 +138,7 @@ async function smokeExtractedHttpServer(dir){
     throw Error('Extracted response lacks source-restricted CSP');
    const body=await response.text();
    if(c.method==='HEAD'&&body!=='')throw Error('HEAD unexpectedly returned a body');
-   if(c.uri==='/'&&!body.includes('js/main.js'))throw Error('Extracted app HTML missing JS entrypoint: status='+response.status+' length='+body.length+' first='+JSON.stringify(body.slice(0,240))+' serverStdout='+JSON.stringify(out.slice(0,240))+' serverStderr='+JSON.stringify(stderr.slice(0,240)));
+   if(c.method==='GET'&&c.uri==='/'&&!body.includes('js/main.js'))throw Error('Extracted app HTML missing JS entrypoint');
    if(c.uri==='/js/main.js'&&!body.includes('import'))throw Error('Extracted browser module missing imports');
   }
   return {isolatedLoopbackHttpSmoke:true,httpCasesVerified:cases.length};
