@@ -436,3 +436,15 @@ tachometer PG signal is stuck HIGH throughout the file, so **the
 500 RPM setpoint is not an observed RPM**. The software reports
 speed unknown rather than guessing. This is another 24 V motor, **not**
 the current hypothetical 3 V fan or any physically measured ALU.
+
+
+## Phase 35 — independent physical motor-unit holdout, same operating point
+
+[Phase35 original healthy BLDC dataset cross-device holdout](docs/PHASE35-HEALTHY-BLDC-DEVICES.md)
+builds **on top of the completed Phase34 healthy speed validation**.
+Three source-locked original healthy 24 V BLDC recordings are checked:
+training specimens from motor unit 2 (2,000 and 2,500 RPM settings)
+and a **physically separate motor unit 3** held out at the same
+2,500 RPM setting. This yields actual measured-tach cross-motor
+difference, **not** a calibrated real-world success rate for the
+unmeasured 3 V brushed battery–wires–fan invention.

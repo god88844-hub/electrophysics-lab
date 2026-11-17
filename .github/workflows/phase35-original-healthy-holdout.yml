@@ -1,0 +1,58 @@
+# Real publisher-recorded healthy BLDC motor data from TWO independent
+# motor units. Accuracy here is NOT a physical qualification of the
+# unrelated 3 V brushed motor + fan invention or a manufacturing yield.
+name: Phase 34 original healthy BLDC independent motor unit source holdout
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  exact-publisher-healthy-raw-holdout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Refuse forged source identities, spoofed physical yield and leaked motor holdouts
+        run: node --test tests/phase35-independent-holdout.test.mjs
+      - name: Fetch exact three ORIGINAL healthy public motor recordings and independently verify publisher Git SHA1
+        run: bash scripts/phase35-download.sh
+      - name: Reconstruct actual tach RPM and sensor current without using the speed-setpoint label
+        run: node scripts/phase35-run.mjs
+      - name: Replay independent real different-device source holdout against original Git objects
+        run: node scripts/phase35-strict.mjs
+      - name: All original Invention Lab scientific tests and source scope safeguards
+        run: npm test
+      - name: Real browser/WebGL evidence scope remains correctly labeled model-only for current 3V fan
+        run: node scripts/browser-smoke.mjs
+      - name: Original 24V motor with failed tachometer is still not a physical model of this fan
+        run: |
+          bash scripts/phase33-download.sh
+          node scripts/phase33-run.mjs
+          node scripts/phase33-strict.mjs
+      - name: Publish exact 2-motor source holdout and physical limitation
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase35/phase35-summary.json; then
+            cat benchmarks/evidence/phase35/phase35-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Original independent motor holdout NOT verified; no 3V fan physical success data" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase35-publisher-source-verified-healthy-different-BLDC-motor-holdout
+          path: |
+            benchmarks/phase35/acceptance.json
+            benchmarks/evidence/phase35/analize_healthy11_2500rpm_96mA_mait.csv
+            benchmarks/evidence/phase35/analize_healthy20_2500rpm_96mA_mait.csv
+            benchmarks/evidence/phase35/analize_healthy11_2000rpm_96mA_mait.csv
+            benchmarks/evidence/phase35/phase35.json
+            benchmarks/evidence/phase35/phase35-summary.json
+          if-no-files-found: warn
