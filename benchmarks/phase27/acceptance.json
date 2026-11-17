@@ -1,0 +1,41 @@
+{
+  "format": "invention-lab/phase27-blind-study-plan/1",
+  "target": "sky130-alu8",
+  "rtlBlob": "3a41d0163a473a00b17a7c4b1893169961519f54",
+  "vectorsSha256": "c41a51ffcb1ffbbdc92e5668c98de176746b21ece709f9a235aee4484b23ab26",
+  "dieCount": 8,
+  "lots": 2,
+  "wafersPerLot": 2,
+  "diesPerWafer": 2,
+  "plannedCorners": [
+    {
+      "id": "tt",
+      "tempC": 25,
+      "voltageV": 1.8
+    },
+    {
+      "id": "ss",
+      "tempC": 100,
+      "voltageV": 1.6
+    },
+    {
+      "id": "ff",
+      "tempC": -40,
+      "voltageV": 1.95
+    }
+  ],
+  "repeatsPerCorner": 2,
+  "vectorsPerSession": 1024,
+  "sessions": 48,
+  "plannedMeasurements": 49152,
+  "wholeLotHoldout": true,
+  "maxDigitalErrors": 0,
+  "exploratoryMaxPropagationDelayS": 2e-8,
+  "perVectorTimingPredictionsAvailable": false,
+  "independentInstrumentAuthenticationAvailable": false,
+  "realALUMeasurements": 0,
+  "qualifiedFoundrySignoff": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
