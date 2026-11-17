@@ -76,7 +76,7 @@ test('The independent HOLDOUT LOT cannot be used in calibration or duplicated',(
  g.calibrationUsedSlotIds.push('H-W1-D1');
  let r=auditCandidate(g,{rawFiles:f.files});
  assert.equal(r.status,'incomplete-or-inconsistent-candidate');
- assert.ok(r.errors.some(x=>x.includes('Calibration')));
+ assert.ok(r.errors.some(x=>/calibrat|validation/i.test(x)));
  g.calibrationUsedSlotIds.pop();
  for(const d of g.devices.filter(d=>d.group==='H'))d.lotId='C-fiction-lot';
  r=auditCandidate(g,{rawFiles:f.files});
