@@ -1,0 +1,5 @@
+# Phase 66 — Data-only simulation-engine plugin admission
+
+Implements an explicit allowlisted JSON manifest format with an externally supplied SHA-256 pin, fixed API version and a built-in ideal Ohm's-law evaluator. Unknown or unsafe host capabilities, executable-code fields, unsupported engine names, spoofed original file content and duplicate IDs are refused before calculations. SI dimensional assumptions are explicit and results do not imply measured hardware.
+
+**Security boundary:** no third-party JavaScript, native code or WASM is executed at all. This avoids executing untrusted code, but is not a general secure plugin sandbox. The existing `js/plugins/index.js` static source-import mechanism remains outside this new data-only admission gate; it is not sandboxed by this phase. SHA-256 pinning proves byte identity to a supplied hash, not trusted publisher identity. Actual secure runtime-isolated third-party plugin loading needs an independent threat model, isolation and permission mediation; it is not complete here.

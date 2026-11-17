@@ -1,0 +1,15 @@
+{
+  "format": "invention-lab/phase66-plugin-admission-policy/1",
+  "acceptedApiVersion": 1,
+  "admissibleEngine": "built-in-ohms-law-v1",
+  "untrustedJavaScriptExecuted": false,
+  "untrustedWasmExecuted": false,
+  "trustedOutOfBandPublisherRegistry": false,
+  "externalNetworkAndFilesystemPermissions": false,
+  "actualIsolationOfArbitraryCodeAvailable": false,
+  "supportedMode": "data-only built-in operation",
+  "qualifiedHardwareMeasurements": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
