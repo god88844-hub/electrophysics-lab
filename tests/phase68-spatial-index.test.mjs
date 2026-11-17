@@ -1,0 +1,6 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {buildIndex,queryIndex,bruteQuery,benchmarkScene} from '../js/evidence/phase68-spatial-index.js';
+test('Indexed culling matches brute force for inclusive viewport bounds',()=>{const b=[{id:'a',x:0,y:0},{id:'b',x:10,y:10},{id:'c',x:50,y:50}],w=[{id:'w',from:{block:'a'},to:{block:'b'}}],q={x0:0,y0:0,x1:10,y1:10};const i=buildIndex(b,w,{cellSize:8});assert.deepEqual(queryIndex(i,q),bruteQuery(b,w,q));});
+test('20k deterministic blocks: exact indexed visibility and wire conservation',()=>{const r=benchmarkScene({rows:100,columns:200});assert.equal(r.blocks,20000);assert.equal(r.wires,19999);assert.equal(r.functionalConsistency,true);assert.equal(r.p95FrameTimeMeasured,null);});
+test('Invalid geometry, dangling edges, size overrun and impossible windows rejected',()=>{assert.throws(()=>buildIndex([{id:'a',x:Infinity,y:0}],[]));assert.throws(()=>buildIndex([{id:'a',x:0,y:0}],[{id:'x',from:{block:'a'},to:{block:'missing'}}]));const idx=buildIndex([],[]);assert.throws(()=>queryIndex(idx,{x0:1,x1:0,y0:0,y1:1}));assert.throws(()=>benchmarkScene({rows:200,columns:200}));});
+test('No made-up hardware speedup or physical qualification',()=>{const x=benchmarkScene();assert.equal(x.hardwareRenderingAccelerationQualified,false);assert.equal(x.realWorldBuildSuccessPercent,null);});

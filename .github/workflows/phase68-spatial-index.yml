@@ -1,0 +1,24 @@
+name: Phase 68 bounded spatial index and scene scalability
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  exact-bounded-scene-index:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase68-spatial-index.test.mjs
+      - run: |
+          node scripts/phase68-run.mjs
+          node scripts/phase68-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
