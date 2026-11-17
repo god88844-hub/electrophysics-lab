@@ -1,0 +1,36 @@
+name: Phase 50 deterministic uncertainty and independent physical holdout gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  source-conditional-interval-not-physical-statistics:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test interval bounds and group-level data leakage refusal
+        run: node --test tests/phase50-uncertainty.test.mjs
+      - name: Rebuild and independently audit strictly conditional ranges
+        run: |
+          node scripts/phase50-run.mjs
+          node scripts/phase50-strict.mjs
+      - name: Full scientific regression suite
+        run: npm test
+      - name: Browser research scope
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase50-resistance-uncertainty-not-physical-prediction
+          path: |
+            benchmarks/phase50/uncertainty-envelope.json
+            benchmarks/evidence/phase50/phase50.json
+          if-no-files-found: warn
