@@ -101,6 +101,9 @@ export function analyzeBLDCHealthy(csv,policy,pin,{sourceGitBlobVerified=false}=
   n++;lastT=time;lastSequence=seq;
  }
  if(n<4||lastT===firstT)throw Error('Insufficient actual original motor recording');
+ if(nonMonotone||sequenceGap||dtInconsistent)
+  throw Error('Corrupt original acquisition timing or sequence cannot support physical source validation: '+
+   JSON.stringify({nonMonotone,sequenceGap,dtInconsistent}));
  const elapsed=(lastT-firstT)/1e6;
  const issue=(nonMonotone||sequenceGap||dtInconsistent||rising<12||
    high===0||low===0||elapsed<2);
