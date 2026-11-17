@@ -402,3 +402,24 @@ model-only success percentages from observed hardware success, and allows a
 hypothetical speed-model discrepancy range. This generic probability engine
 supports controlled model-uncertainty experiments without claiming physical
 or manufacturing validation. See [Phase 31](docs/PHASE31-FIRST-PRINCIPLES-DECISIONS.md).
+
+
+## Phase 32 — researched public physical data and missing-parameter audit
+
+The [public physical-data research and validation report](docs/PHASE32-RESEARCH-PHYSICAL-DATA.md)
+and [23-field source-requirements inventory](benchmarks/phase32/public-source-catalog.json)
+cover actual physical sources needed to make the conditional battery–two-wire–
+motor–fan simulations decision-grade: battery SOC/impedance and aging,
+wire/contact/thermal variation, motor control and torque constants,
+actual fan pressure/flow, correlated manufacturing populations, source
+authenticity, uncertainty and independent holdouts.
+
+Twelve exact research-source URLs include original public motor data
+repositories, NASA battery evidence, original manufacturer 3 V motor
+ratings and ASME/NASA/NIST validation methods. A different motor's
+manufacturer figures may inform a bounded hypothesis, but they **do
+not** validate the current fan design. The Chip Lab evidence panel
+shows this distinction explicitly, including **0/23 physically
+validated target-system requirements**. Original public raw motor
+files have not been ingested; a CSV shape check alone is not proof
+of source identity or physical model accuracy.
