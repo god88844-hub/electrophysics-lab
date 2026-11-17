@@ -1323,7 +1323,7 @@ export class App {
     section.className='scenario-demo phase32-source-research';
     section.dataset.sourceCoverage='phase32';
     const header=document.createElement('h4');
-    header.textContent='Source research • What's missing for near-physical evidence?';
+    header.textContent='Source research • Missing data for near-physical evidence';
     const lead=document.createElement('p');
     lead.className='muted';
     lead.textContent='Public measurements from DIFFERENT motors and cells cannot validate this specific battery, wires, motor and fan. Read the 23-item gap checklist before estimating physical success.';
