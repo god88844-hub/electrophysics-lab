@@ -7,7 +7,7 @@ const protocol=JSON.parse(readFileSync(new URL('../benchmarks/phase42/physical-c
 const header=COLUMNS.join(',');
 function synthetic(n=10){
  const rows=[header];
- for(let i=0;i<n;i++)rows.push([i*0.005,3.05-i*0.001,2.85-i*0.002,
+ for(let i=0;i<n;i++)rows.push([i*0.005,3.05-i*0.001,2.85-i*0.0002,
   0.12+i*0.0005,2000+i*2,24.0+i*0.001,23].join(','));
  return rows.join('\n')+'\n';
 }
