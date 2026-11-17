@@ -57,7 +57,7 @@ test('Tampered manufacturer conditions or case labels cannot pass',()=>{
   r=>r.referenceDesignId='unknown-fan'
  ];
  for(const change of mutants){
-  const original=numericalReport();change(original);
+  const original=structuredClone(numericalReport());change(original);
   assert.throws(()=>evaluateWholeSystemNumericalReadiness(gate,models,original));
  }
 });
