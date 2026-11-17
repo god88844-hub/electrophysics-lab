@@ -1,0 +1,44 @@
+# Genuine publicly measured SKY130 device data is NOT measured ALU silicon.
+name: Phase 23 source-locked public SKY130 device measurements and provenance
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  source-verified-third-party-silicon-measurements:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate imported Phase3 measurement, UQ, calibration and split framework
+        run: node --test tests/measure.test.mjs
+      - name: Refuse fake measurements, corrupted sweeps, and synthetic validation claims
+        run: node --test tests/phase23-sky130-mdm.test.mjs
+      - name: Obtain authentic immutable published test-tile raw MDM files and compare heldout specimen
+        run: bash scripts/phase23-run.sh
+      - name: Independently replay original measured data and all evidence SHA checks
+        run: node scripts/phase23-strict.mjs
+      - name: Publish observed experimental gap without assuming chip validation
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase23/phase23-summary.json; then
+            cat benchmarks/evidence/phase23/phase23-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Public real-device evidence NOT replayed; this ALU remains physically UNKNOWN." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase23-original-published-sky130-resistor-mdm-holdout-evidence
+          path: |
+            benchmarks/evidence/phase23/raw/*.mdm
+            benchmarks/evidence/phase23/raw/README.rst
+            benchmarks/evidence/phase23/phase23.json
+            benchmarks/evidence/phase23/phase23-summary.json
+            benchmarks/phase23/acceptance.json
+          if-no-files-found: warn
