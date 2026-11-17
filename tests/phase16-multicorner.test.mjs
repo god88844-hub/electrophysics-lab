@@ -11,6 +11,7 @@ const SHA='a'.repeat(64),COMMIT='b'.repeat(40);
 function fakeLog(c){
  return [
   'OpenSTA synthetic TEST DATA - no actual third party proof',
+  'Warning: benchmarks/evidence/phase16/libs/sky130_fd_sc_hd__'+c.corner+'.lib, line '+(c.id==='ss'?32:31)+' default_operating_condition '+c.corner+' not found.',
   'PHASE16_CORNER_BEGIN '+c.id+' '+c.corner,
   ...OUTPUT_PORTS.flatMap((port,i)=>[
     'Startpoint: b[1] (input port clocked by vclk)',
@@ -73,6 +74,9 @@ test('Parser fails closed on missing, duplicated, renamed, switched or unbounded
    x=>x.replace('12.80 slack (MET)','NaN slack (MET)'),
    x=>x.replace('12.80 slack (MET)','slack UNCONSTRAINED'),
    x=>x.replace('Path Group: vclk','Warning: fake'),
+   x=>x.replace('Warning: benchmarks/evidence','Error: benchmarks/evidence'),
+   x=>x.replace('default_operating_condition','unresolved_characterization'),
+   x=>x.replace('Warning: benchmarks/evidence','Warning: spoofed/source'),
    x=>x.replace('Path Group: vclk','no paths found')
   ]){
    assert.throws(()=>parseCornerLog(change(base),c));
