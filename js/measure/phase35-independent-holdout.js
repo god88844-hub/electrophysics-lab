@@ -63,7 +63,7 @@ export function analyzeBLDCHealthy(csv,policy,pin,{sourceGitBlobVerified=false}=
   throw Error('Original source bytes or acquisition count mismatch with publisher Git blob');
  let n=0,firstT=null,lastT=null,lastSequence=null,pulsePrevious=null,
   rising=0,high=0,low=0,missingFirstDt=0,dtInconsistent=0,
-  nonMonotone=0,sequenceGap=0,jitterMax=0;
+  nonMonotone=0,sequenceGap=0,sequenceWrapCount=0,firstSequenceGap=null,jitterMax=0;
  let meanV=0,meanC=0,meanW=0,minV=Infinity,maxV=-Infinity,minC=Infinity,maxC=-Infinity;
  const pulseTimes=[],windows=new Map();
  for(const [index,line] of lines.entries()){
@@ -80,7 +80,14 @@ export function analyzeBLDCHealthy(csv,policy,pin,{sourceGitBlobVerified=false}=
   if(firstT===null)firstT=time;
   if(lastT!==null){
    if(time<=lastT)nonMonotone++;
-   if(seq!==lastSequence+1)sequenceGap++;
+   if(seq!==lastSequence+1){
+    if(lastSequence===65535&&seq===0)sequenceWrapCount++;
+    else{
+     sequenceGap++;
+     if(firstSequenceGap===null)firstSequenceGap={row:index,lastSequence,sequence:seq,
+       step:seq-lastSequence,timeDeltaUs:time-lastT};
+    }
+   }
    const computed=(time-lastT)/1e6;
    if(dt===null||Math.abs(dt-computed)>1e-6)dtInconsistent++;
    jitterMax=Math.max(jitterMax,Math.abs(computed-.001));
@@ -103,7 +110,7 @@ export function analyzeBLDCHealthy(csv,policy,pin,{sourceGitBlobVerified=false}=
  if(n<4||lastT===firstT)throw Error('Insufficient actual original motor recording');
  if(nonMonotone||sequenceGap||dtInconsistent)
   throw Error('Corrupt original acquisition timing or sequence cannot support physical source validation: '+
-   JSON.stringify({nonMonotone,sequenceGap,dtInconsistent}));
+   JSON.stringify({nonMonotone,sequenceGap,firstSequenceGap,sequenceWrapCount,dtInconsistent}));
  const elapsed=(lastT-firstT)/1e6;
  const issue=(nonMonotone||sequenceGap||dtInconsistent||rising<12||
    high===0||low===0||elapsed<2);
@@ -138,6 +145,7 @@ export function analyzeBLDCHealthy(csv,policy,pin,{sourceGitBlobVerified=false}=
   tachAcquisitionUsable:inferredRpm!==null,
   acquisitionQuality:{
    timeNonmonotone:nonMonotone,sequenceGaps:sequenceGap,
+   documented16BitCounterWraps:sequenceWrapCount,firstUnexpectedSequenceGap:firstSequenceGap,
    inconsistentReportedDt:dtInconsistent,missingInitialDt:missingFirstDt,
    maxAbsJitterFrom1msS:jitterMax
   },
