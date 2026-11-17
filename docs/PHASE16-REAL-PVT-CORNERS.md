@@ -22,7 +22,18 @@ prespecified in `benchmarks/phase16/acceptance.json`, corroborated against
 
 This experiment downloads those exact files, verifies full contents *before*
 using them, and saves each real source Liberty + original external OpenSTA
-stdout/stderr. It uses one mapped netlist built by Yosys in Phase 14 from
+stdout/stderr.
+
+**Known source-quality diagnostic, preserved rather than silently ignored:** the
+upstream merged FOSSi Liberty files emit exactly one OpenSTA 2.0.17 warning
+per source: `default_operating_condition <corner> not found` (TT and FF
+header line 31, SS line 32). This warns that a header default operating
+condition is not resolvable by the installed parser. The numeric timing
+tables still execute, but the warning means the results **must not be
+mistaken for corner-qualified foundry signoff**. The strict validator records
+and requires the exact original warning for each pinned source; *any other*
+warning or error causes immediate rejection. These OpenSTA model results are
+reported separately from physical validation. It uses one mapped netlist built by Yosys in Phase 14 from
 the same 8-bit ALU and the original **20 ns virtual-clock combinational
 timing budget**; the assumed input/output delays, slew and output load
 remain as in the Phase 14 frozen SDC. Each library is loaded into a fresh
