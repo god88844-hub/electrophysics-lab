@@ -1,0 +1,44 @@
+name: Phase 44 source-referenced copper loop and connector losses
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  two-wire-harness-conditional-resistance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: AWG-24 copper and contact thermal-uncertainty adversarial cases
+        run: node --test tests/phase44-wire-loop.test.mjs
+      - name: Generate numerical evidence and independently replay source assumptions
+        run: |
+          node scripts/phase44-run.mjs
+          node scripts/phase44-strict.mjs
+      - name: Full regression suite
+        run: npm test
+      - name: Browser scope and WebGL smoke
+        run: node scripts/browser-smoke.mjs
+      - name: Surface conditional source and unavailable actual ampacity
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase44/phase44.json; then
+            cat benchmarks/evidence/phase44/phase44.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No physical wire evidence; resistance validation UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase44-conditional-copper-two-wire-no-contact-calibration
+          path: |
+            benchmarks/phase44/copper-harness-assumptions.json
+            benchmarks/evidence/phase44/phase44.json
+          if-no-files-found: warn
