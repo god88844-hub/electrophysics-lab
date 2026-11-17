@@ -29,6 +29,9 @@ const approvedChangedPath=(p)=>(
  p.startsWith('scripts/phase31-')||p.startsWith('benchmarks/phase31/')||
  p.startsWith('tests/phase31-')||p.startsWith('docs/PHASE31-')||
  p.startsWith('.github/workflows/phase31-')||
+ p.startsWith('js/evidence/phase32-')||p.startsWith('scripts/phase32-')||
+ p.startsWith('benchmarks/phase32/')||p.startsWith('tests/phase32-')||
+ p.startsWith('docs/PHASE32-')||p.startsWith('.github/workflows/phase32-')||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
  p==='README.md'||p==='package.json');
 const unexpectedChanges=changes.filter(p=>!approvedChangedPath(p));
