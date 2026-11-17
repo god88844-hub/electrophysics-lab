@@ -1,0 +1,17 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import '../js/labs/logic/components.js';
+import {Diagram} from '../js/core/diagram.js';
+import {makeHierarchy,proposeMove} from '../js/evidence/phase63-multiscale-3d.js';
+const r=JSON.parse(await readFile('benchmarks/evidence/phase63/phase63.json'));
+const raw=await readFile('benchmarks/phase63/hierarchy-scope.json');
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.scopeSHA256,createHash('sha256').update(raw).digest('hex'));
+const d=Diagram.fromJSON(r.sourceDiagram);
+assert.deepEqual(r.fullHierarchy,makeHierarchy(d,{detail:'port'}));
+assert.deepEqual(r.focused,makeHierarchy(d,{detail:'component',focusAssemblyId:'sub'}));
+assert.deepEqual(r.transactionalMove,proposeMove(d,{assemblyId:'sub',deltaWorldX:1}));
+assert.equal(r.physicalValidation,'none');assert.equal(r.realWorldBuildSuccessPercent,null);
+console.log('PH63 STRICT PASS: immutable canonical topology and evidence-bound scene replay');

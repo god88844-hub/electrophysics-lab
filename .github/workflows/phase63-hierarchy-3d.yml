@@ -1,0 +1,32 @@
+name: Phase 63 hierarchical 3D engineering scene with canonical netlist preservation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  hierarchical-scene-integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase63-multiscale-3d.test.mjs
+      - run: |
+          node scripts/phase63-run.mjs
+          node scripts/phase63-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase63-hierarchy-no-physical-cad-metric
+          path: |
+            benchmarks/phase63/hierarchy-scope.json
+            benchmarks/evidence/phase63/phase63.json
+          if-no-files-found: warn

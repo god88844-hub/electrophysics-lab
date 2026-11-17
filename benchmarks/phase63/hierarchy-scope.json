@@ -1,0 +1,22 @@
+{
+  "format": "invention-lab/phase63-hierarchical-3d-scope/1",
+  "canonicalDesignFormat": "invention-lab/1",
+  "supportedLabScopes": [
+    "logic",
+    "chip",
+    "quantum"
+  ],
+  "hierarchicalLevels": [
+    "assembly",
+    "component",
+    "port"
+  ],
+  "geometryCoordinateScope": "presentation-only",
+  "physicalCADDimensionsEstablished": false,
+  "canonicalConnectivityMustRemainIdenticalOnMove": true,
+  "external3dSolverIntegration": false,
+  "independentlyManufacturedPhysicalGeometries": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
