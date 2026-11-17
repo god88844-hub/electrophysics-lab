@@ -462,3 +462,20 @@ Strict replay and adverse-provenance tests preserve independent test-unit
 separation and record both empirical model error and the naive setpoint
 baseline. This is **not** a physical qualification or success-rate
 measurement for the unrelated 3 V brushed motor and fan.
+
+## Phase 37 — Independent original physical-source replay and frozen model audit
+
+[Phase37 independent Python physical-source audit](docs/PHASE37-INDEPENDENT-PHYSICAL-AUDIT.md)
+recomputes Phase36's original **425,925 real source sensor readings** entirely
+outside the JavaScript analyzer. It checks all four original publisher Git blob
+SHA1s and original byte lengths, shaft tach pulse timing, raw upstream current,
+two-point **motor2-only training**, **motor3-only holdout** at two matched
+controller settings, model prediction errors and uncalibrated setpoint baseline.
+A frozen Phase36 source head prevents changing previous implementation under
+the guise of revalidation. GitHub CI runs adversarial Python tests, the full
+original-source replay, Node regressions and browser/WebGL smoke.
+
+Even an independently reproduced source-device error remains an empirical
+check of another manufacturer's **24 V BLDC test bench**, not a calibrated
+physical prediction interval, defect probability or real 3 V battery/fan
+success percentage. No matched target fan observations exist.
