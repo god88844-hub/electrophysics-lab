@@ -1,0 +1,55 @@
+name: Phase 48 independent Python whole-system numerical validation versus unmeasured hardware
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  source-locked-physical-gate-and-cross-language-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fail-closed physical evidence and original numerical acceptance policy tests
+        run: node --test tests/phase48-whole-system-gate.test.mjs
+      - name: Independently test Python numerical fourth-order reference implementation
+        run: python3 scripts/phase48-independent-rk4.py --self-test
+      - name: Recompute Phase47 and strict numerical energy audit on current source head
+        run: |
+          node scripts/phase47-run.mjs
+          node scripts/phase47-strict.mjs
+      - name: Run five-case source-scoped coupled numerical replay
+        run: node scripts/phase48-run.mjs
+      - name: Independent Python numerical equations, original source hash, and physical gate replay
+        run: python3 scripts/phase48-independent-rk4.py
+      - name: All scientific project regression tests
+        run: npm test
+      - name: Browser and WebGL evidence scope
+        run: node scripts/browser-smoke.mjs
+      - name: Display independent source and true physical readiness
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase48/phase48-python-audit.json; then
+            cat benchmarks/evidence/phase48/phase48-python-audit.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No verified cross-language replay; no physical fan qualification" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase48-independent-rk4-vs-midpoint-mathematical-not-hardware-validation
+          path: |
+            benchmarks/phase48/whole-system-readiness.json
+            benchmarks/evidence/phase48/phase48.json
+            benchmarks/evidence/phase48/phase48-python-audit.json
+            benchmarks/evidence/phase47/phase47.json
+          if-no-files-found: warn
