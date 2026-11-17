@@ -4,7 +4,8 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {resolveServablePath,securityHeaders} from './js/release/phase70-security.js';
-const PORT=Number(process.argv[2])||8080;
+const PORT=Number(process.argv[2] ?? 8080);
+if(!Number.isInteger(PORT)||PORT<0||PORT>65535)throw Error('Invalid local server port');
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8',
  '.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
  '.json':'application/json; charset=utf-8','.svg':'image/svg+xml',
@@ -27,4 +28,4 @@ const server=http.createServer(async(req,res)=>{
   res.end(status===403?'403 Forbidden':status===400?'400 Bad Request':'404 Not Found');
  }
 });
-server.listen(PORT,'127.0.0.1',()=>console.log('Invention Lab local research server http://127.0.0.1:'+PORT+'/'));
+server.listen(PORT,'127.0.0.1',()=>console.log('Invention Lab local research server http://127.0.0.1:'+server.address().port+'/'));

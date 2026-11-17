@@ -14,7 +14,9 @@ test('GNU USTAR contains exactly tracked regular sources and a runnable ESM modu
  assert.ok(manifest.files.some(x=>x.path==='package.json'));
  assert.ok(manifest.files.some(x=>x.path==='README.md'));
  assert.equal(r.extractedNodeESMImportVerified,true);
- assert.equal(r.installedExecutableSmoke,'EXTRACTED_NODE_MODULE_IMPORT_ONLY');
+ assert.equal(r.installedExecutableSmoke,'EXTRACTED_LOOPBACK_HTTP_SMOKE_ONLY');
+ assert.equal(r.isolatedLoopbackHttpSmoke,true);
+ assert.equal(r.httpCasesVerified,10);
  assert.equal(r.productionQualified,false);
 });
 test('Reproducible archive digest is stable across identical tracked source',async()=>{

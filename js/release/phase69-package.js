@@ -1,7 +1,7 @@
 // Phase 69: reproducible *tracked-file-only* GNU/USTAR local web-source bundle.
 // A checksum establishes bytes, not trusted publisher identity or physical approval.
 import {readFile,writeFile,lstat,mkdir,mkdtemp,rm} from 'node:fs/promises';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -86,6 +86,74 @@ export async function makePackage(output='benchmarks/evidence/phase69'){
  await writeFile(path.join(output,'phase69.json'),JSON.stringify(manifest,null,2)+'\n');
  return manifest;
 }
+
+async function smokeExtractedHttpServer(dir){
+ // The process is launched from the extracted archive only, with an ephemeral
+ // loopback port, not the developer's working-tree server or fixed CI port.
+ const child=spawn(process.execPath,['serve.mjs','0'],{
+  cwd:dir,stdio:['ignore','pipe','pipe']
+ });
+ let stderr='',out='';
+ child.stderr.on('data',b=>{stderr=(stderr+b.toString()).slice(-3000)});
+ try{
+  const address=await new Promise((resolve,reject)=>{
+   let settled=false;
+   const finish=(err,value)=>{
+    if(settled)return;
+    settled=true;clearTimeout(timer);if(err)reject(err);else resolve(value);
+   };
+   const timer=setTimeout(()=>finish(Error('Extracted local server did not report a listening address')),12000);
+   child.on('error',e=>finish(e));
+   child.on('exit',code=>finish(Error('Extracted local server exited before listen: '+code+' '+stderr)));
+   child.stdout.on('data',b=>{
+    out+=b.toString();
+    if(out.length>8192)return finish(Error('Excessive local server startup output'));
+    const match=out.match(/http:\/\/127\.0\.0\.1:(\d+)\//);
+    if(match)finish(null,'http://127.0.0.1:'+match[1]);
+   });
+  });
+  const cases=[
+   {method:'GET',uri:'/',status:200,type:'text/html'},
+   {method:'GET',uri:'/js/main.js',status:200,type:'text/javascript'},
+   {method:'GET',uri:'/css/style.css',status:200,type:'text/css'},
+   {method:'GET',uri:'/js/release/phase70-security.js',status:200,type:'text/javascript'},
+   {method:'HEAD',uri:'/index.html',status:200,type:'text/html'},
+   {method:'POST',uri:'/',status:405},
+   {method:'GET',uri:'/package.json',status:403},
+   {method:'GET',uri:'/serve.mjs',status:403},
+   {method:'GET',uri:'/.git/config',status:403},
+   {method:'GET',uri:'/tests/browser-3d.html',status:404}
+  ];
+  for(const c of cases){
+   const response=await fetch(address+c.uri,{
+    method:c.method,signal:AbortSignal.timeout(5000),redirect:'manual'
+   });
+   if(response.status!==c.status)throw Error(
+    'Extracted HTTP '+c.method+' '+c.uri+' expected '+c.status+' but received '+response.status);
+   if(c.type&&!response.headers.get('content-type')?.startsWith(c.type))
+    throw Error('Incorrect content type for '+c.uri);
+   if(response.headers.get('x-content-type-options')!=='nosniff')
+    throw Error('Extracted response lacks nosniff');
+   if(!response.headers.get('content-security-policy')?.includes("default-src 'self'"))
+    throw Error('Extracted response lacks source-restricted CSP');
+   const body=await response.text();
+   if(c.method==='HEAD'&&body!=='')throw Error('HEAD unexpectedly returned a body');
+   if(c.uri==='/'&&!body.includes('js/main.js'))throw Error('Extracted app HTML missing JS entrypoint');
+   if(c.uri==='/js/main.js'&&!body.includes('import'))throw Error('Extracted browser module missing imports');
+  }
+  return {isolatedLoopbackHttpSmoke:true,httpCasesVerified:cases.length};
+ }finally{
+  const done=new Promise(resolve=>{
+   if(child.exitCode!==null||child.signalCode!==null)return resolve();
+   const t=setTimeout(resolve,2000);
+   child.once('exit',()=>{clearTimeout(t);resolve()});
+  });
+  child.kill('SIGTERM');
+  await done;
+  if(child.exitCode===null&&child.signalCode===null)child.kill('SIGKILL');
+ }
+}
+
 export async function verifyPackage(output='benchmarks/evidence/phase69'){
  const archive=await readFile(path.join(output,'invention-lab-web.tar'));
  const m=JSON.parse(await readFile(path.join(output,'phase69.json'),'utf8'));
@@ -123,10 +191,13 @@ export async function verifyPackage(output='benchmarks/evidence/phase69'){
   // Syntax/import smoke runs in the extracted directory, not the developer repo.
   execFileSync(process.execPath,['--input-type=module','-e',
    "await import('./js/release/phase70-security.js')"],{cwd:dir,timeout:10000});
+  const http=await smokeExtractedHttpServer(dir);
   return {archiveSHA256:m.archiveSHA256,verifiedFiles:files.size,
    appEntrypointsPresent:true,extractedNodeESMImportVerified:true,
+   isolatedLoopbackHttpSmoke:http.isolatedLoopbackHttpSmoke,
+   httpCasesVerified:http.httpCasesVerified,
    sourcePackageReproducibleWithinGNUtar:true,
-   installedExecutableSmoke:'EXTRACTED_NODE_MODULE_IMPORT_ONLY',
+   installedExecutableSmoke:'EXTRACTED_LOOPBACK_HTTP_SMOKE_ONLY',
    physicalValidation:'none',productionQualified:false};
  }finally{await rm(dir,{recursive:true,force:true});}
 }
