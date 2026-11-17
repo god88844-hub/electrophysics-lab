@@ -1,0 +1,48 @@
+name: Phase 36 original two-regime BLDC independent motor model check
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify-original-heldout-motor3-recording:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Strict phase36 scope and adversarial tests
+        run: node --test tests/phase36-independent-model.test.mjs
+      - name: Download publisher originals and verify every Git blob SHA1
+        run: bash scripts/phase36-download.sh
+      - name: Fit motor2 only and predict held-out motor3 across two regimes
+        run: node scripts/phase36-run.mjs
+      - name: Independently reparse and replay original source without fitting heldout device
+        run: node scripts/phase36-strict.mjs
+      - name: Complete project regression suite
+        run: npm test
+      - name: Preserve correct browser scope and sensor-failure warnings
+        run: node scripts/browser-smoke.mjs
+      - name: Source-locked evidence and physical limitation
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase36/phase36-summary.json; then
+            cat benchmarks/evidence/phase36/phase36-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Phase36 unverified: NO physical qualification claim permitted" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase36-original-publisher-independent-motor-two-regime-model-check
+          path: |
+            benchmarks/phase36/acceptance.json
+            benchmarks/evidence/phase36/phase36.json
+            benchmarks/evidence/phase36/phase36-summary.json
+            benchmarks/evidence/phase36/analize_healthy20_2000rpm_96mA_mait.csv
+          if-no-files-found: warn
