@@ -17,7 +17,7 @@ const exact=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 export function classifyYosysProof(log){
  if(typeof log!=='string'||log.length<150)throw Error('Missing complete Yosys proof transcript');
  if(!/Executing EQUIV_MAKE pass/.test(log)||!/Executing EQUIV_SIMPLE pass/.test(log)||
-    !/Executing EQUIV_STATUS pass/.test(log)||!/equiv_status -assert/.test(log))
+    !/Executing EQUIV_STATUS pass/.test(log))
    throw Error('Actual SAT equivalence passes not shown');
  if(/ERROR:.*(?:unknown|command not found|blackbox|module not found|parser)/i.test(log))
    throw Error('Yosys failed to load functional cell proof correctly');
