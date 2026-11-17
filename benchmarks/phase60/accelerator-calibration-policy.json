@@ -1,0 +1,21 @@
+{
+  "format": "invention-lab/phase60-accelerator-calibration-gate/1",
+  "target": "phase59-systolic-int8-analytical-scheduler",
+  "frozenModelDigestSHA256": null,
+  "frozenBenchmarkCase": "phase59-SAMPLE",
+  "permittedCandidateOrigins": [
+    "synthetic-test-only",
+    "external-unverified"
+  ],
+  "originalExternallyAuthenticatedHardwareRows": 0,
+  "sourceMatchedPhysicalDevices": 0,
+  "preregisteredTrainMinimumDevices": 2,
+  "preregisteredHoldoutMinimumDevices": 2,
+  "holdoutCannotBeUsedForFit": true,
+  "independentReviewerConnectorAvailable": false,
+  "physicalPowerPredictionModelQualified": false,
+  "unmeasuredPhysicalEnergyPrediction": null,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
