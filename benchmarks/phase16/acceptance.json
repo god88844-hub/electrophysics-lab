@@ -1,0 +1,45 @@
+{
+  "format": "invention-lab/phase16-actual-multi-corner-acceptance/1",
+  "source": {
+    "repo": "https://github.com/fossi-foundation/skywater-pdk-libs-sky130_fd_sc_hd",
+    "commit": "9cb2d7cb8ed4619094263614039a61b6b2d22a88",
+    "license": "Apache-2.0"
+  },
+  "design": "alu8",
+  "analysis": "pre-layout-combinational-three-corner-opensta-model",
+  "timingBudgetNs": 20,
+  "expectedPathsPerCorner": 10,
+  "sdc": "benchmarks/phase14/alu8-tt.sdc",
+  "corners": [
+    {
+      "id": "tt",
+      "corner": "tt_025C_1v80",
+      "temperatureC": 25,
+      "voltageV": 1.8,
+      "sha256": "8e78e14442062dba34d414fca6490b2f6b96038d4510d1438ca44fee31487135",
+      "gitBlobSha1": "1f086a1ae9064d48d36ff66a605491a18f6b5ed6",
+      "bytes": 12841637
+    },
+    {
+      "id": "ss",
+      "corner": "ss_100C_1v60",
+      "temperatureC": 100,
+      "voltageV": 1.6,
+      "sha256": "9b24f0db3967ac67b4cae1f74bb480fd47922d18d0ed577e3c121739b412c361",
+      "gitBlobSha1": "06e2c5b3274538a93be7d11464b0726ebc68dd54",
+      "bytes": 12845260
+    },
+    {
+      "id": "ff",
+      "corner": "ff_n40C_1v95",
+      "temperatureC": -40,
+      "voltageV": 1.95,
+      "sha256": "fb61d91c55a7f85b1989e8149d040b13ba5e7f5478f5bf0c3c16c5da30720139",
+      "gitBlobSha1": "31b614db0eecc7dce80d1849e4596ee337e72dc8",
+      "bytes": 12918504
+    }
+  ],
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
