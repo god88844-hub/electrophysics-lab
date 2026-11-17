@@ -98,7 +98,7 @@ test('No altered criteria, forged physical outcomes, or missing independent evid
   x=>x.toolVersion='fake'
  ];
  for(const edit of edits){
-  const r=make();edit(r);
+  const r=structuredClone(make());edit(r);
   assert.equal(evaluatePhase15Evidence(manifest,r,independent()).ok,false);
  }
  assert.equal(evaluatePhase15Evidence(manifest,make(),null).ok,false);
