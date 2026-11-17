@@ -1,0 +1,101 @@
+{
+  "format": "invention-lab/phase26-prospective-reliability-and-manufacturing-variation/1",
+  "sourceMeasurementCommit": "1f7214f2f81a0629303947a07e1ec00a28ae8a33",
+  "measuredDomain": "two-source-verified-sky130-poly-resistor-test-tile-specimens",
+  "targetDomain": "unfabricated-source-locked-sky130-alu8",
+  "resistorSpecimenIds": [
+    "specimen-6208-1-2",
+    "specimen-6208-1-3"
+  ],
+  "voltageEnvelopeV": [
+    -0.25,
+    0.25
+  ],
+  "diagnosticProbeVoltagesV": [
+    -0.25,
+    -0.1,
+    0,
+    0.1,
+    0.25
+  ],
+  "measuredResistorReadings": 102,
+  "resistorSpecimens": 2,
+  "actualALUSpecimens": 0,
+  "actualIndependentWaferGroups": 0,
+  "actualIndependentLotGroups": 0,
+  "reliabilityStressedDUTs": 0,
+  "targetCaptureVectors": 1024,
+  "instrumentCalibrationVerified": false,
+  "sourceManufacturingMetadataVerified": false,
+  "failureMechanismEvidenceVerified": false,
+  "allowBetweenLotVariationFit": false,
+  "allowResistorToALUGeneralization": false,
+  "allowStatisticalYieldEstimate": false,
+  "allowAcceleratedLifetimeEstimate": false,
+  "allowSpecimenBootstrapConfidence": false,
+  "failureModes": [
+    {
+      "id": "fab-identity",
+      "description": "Fabricated die, mask and provenance not independently established",
+      "requirement": "authenticated die/wafer/lot/package and mask-to-RTL chain"
+    },
+    {
+      "id": "defect-opens-shorts",
+      "description": "Physical conductor opens, shorts and latent defects",
+      "requirement": "qualified production DRC, wafer tests and fault-injection measurements"
+    },
+    {
+      "id": "process-drift",
+      "description": "Between-die and between-lot process variations unknown",
+      "requirement": "independent lot-wafer-die groups with PVT sweeps"
+    },
+    {
+      "id": "setup-hold",
+      "description": "On-silicon propagation, setup and hold not measured",
+      "requirement": "timing traces on a fabricated matching DUT and characterized IO loads"
+    },
+    {
+      "id": "supply-integrity",
+      "description": "Droop, IR drop and power integrity unverified",
+      "requirement": "calibrated power/voltage/temperature instrumentation"
+    },
+    {
+      "id": "thermal",
+      "description": "Thermal coefficients and hot/cold operating limits unknown",
+      "requirement": "environmental chamber controlled temperature sweeps"
+    },
+    {
+      "id": "aging-bti-hci",
+      "description": "Bias-temperature and hot-carrier aging untested",
+      "requirement": "stress experiments with controlled duration and repeat measurements"
+    },
+    {
+      "id": "metal-em-esd",
+      "description": "Electromigration, ESD and latch-up untested",
+      "requirement": "qualified accelerated stress/latch-up tests"
+    },
+    {
+      "id": "packaging",
+      "description": "Bonding, package parasitics and mechanical integrity unknown",
+      "requirement": "packaged silicon tests and failure inspection"
+    },
+    {
+      "id": "metrology",
+      "description": "Traceable uncertainty and calibration certificates absent",
+      "requirement": "raw instrument files, uncertainty budgets and independent certification"
+    },
+    {
+      "id": "functional-fault",
+      "description": "Fault rates and failure mechanisms of physical ALU unknown",
+      "requirement": "blinded 1024-vector physical test and repeated sample groups"
+    },
+    {
+      "id": "model-form",
+      "description": "Resistor I-V fit does not transfer to ALU timing or yield",
+      "requirement": "measured target ALU timing and independently held-out design groups"
+    }
+  ],
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
