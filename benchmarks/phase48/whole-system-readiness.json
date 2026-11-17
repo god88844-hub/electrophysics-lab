@@ -1,0 +1,93 @@
+{
+  "format": "invention-lab/phase48-whole-system-validation-readiness/1",
+  "referenceDesignId": "reference-3v-battery-2-wire-brushed-fan-candidate-001",
+  "scope": "independent-mathematical-replay-not-physical-assembly-validation",
+  "originalPhysicalSamples": 0,
+  "independentPhysicalAssembledDeviceSpecimens": 0,
+  "physicalOperatingEnvelopesQualified": 0,
+  "physicalPredictionInterval": null,
+  "physicalBuildProbability": null,
+  "hardwareFanMechanicalSafetyQualified": false,
+  "independentSourceHardwareHoldoutComplete": false,
+  "preregisteredCriteriaPhysicallyTested": false,
+  "requiredIndependentRealWorldGates": [
+    {
+      "id": "identified-purchased-bom-and-specimens",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "instrument-calibration-and-time-synchronization",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "mechanical-containment-and-shaft-retention-review",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "battery-and-wiring-current-thermal-protection-review",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "measured-motor-and-battery-parameter-maps",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "actual-fan-pressure-flow-and-load-torque-curves",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "source-matched-whole-system-thermal-traces",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "unseen-device-and-regime-holdout-samples",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "measurement-uncertainty-and-repeatability-budget",
+      "physicalStatus": "missing"
+    },
+    {
+      "id": "pre-registered-prediction-error-and-safety-acceptance",
+      "physicalStatus": "missing"
+    }
+  ],
+  "independentNumericalComparator": "python3-stdlib-fourth-order-runge-kutta-vs-node-implicit-midpoint",
+  "comparisonCases": [
+    {
+      "label": "no-fan-load",
+      "fanTorqueCoefficient": 0,
+      "batteryResistanceOhm": 0.45
+    },
+    {
+      "label": "mid-fan-load",
+      "fanTorqueCoefficient": 5e-10,
+      "batteryResistanceOhm": 0.45
+    },
+    {
+      "label": "heavy-fan-load",
+      "fanTorqueCoefficient": 1e-9,
+      "batteryResistanceOhm": 0.45
+    },
+    {
+      "label": "low-battery-resistance",
+      "fanTorqueCoefficient": 1e-9,
+      "batteryResistanceOhm": 0.3
+    },
+    {
+      "label": "high-battery-resistance",
+      "fanTorqueCoefficient": 1e-9,
+      "batteryResistanceOhm": 0.6
+    }
+  ],
+  "numericalComparisonToleranceRpm": 1,
+  "numericalComparisonToleranceMotorTempC": 0.02,
+  "numericalEnergyResidualToleranceJ": 1e-7,
+  "modelCompanionUncertaintyBounds": null,
+  "predictionModelValidatedAgainstRealHardware": false,
+  "phase48SoftwareEvidenceAuditReady": true,
+  "actualPhysicalWholeSystemValidationComplete": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
