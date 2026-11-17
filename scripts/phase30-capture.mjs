@@ -138,6 +138,7 @@ const approvedChangedPath=(p)=>(
  p.startsWith('benchmarks/phase67/')||p.startsWith('docs/PHASE67-')||p.startsWith('.github/workflows/phase67-')||
  p==='index.html'||p==='css/style.css'||
  p.startsWith('js/evidence/phase68-')||p.startsWith('scripts/phase68-')||p.startsWith('tests/phase68-')||p.startsWith('benchmarks/phase68/')||p.startsWith('docs/PHASE68-')||p.startsWith('.github/workflows/phase68-')||
+ p.startsWith('js/release/phase69-')||p.startsWith('scripts/phase69-')||p.startsWith('tests/phase69-')||p.startsWith('benchmarks/phase69/')||p.startsWith('docs/PHASE69-')||p.startsWith('.github/workflows/phase69-')||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
  p==='README.md'||p==='package.json');
 const unexpectedChanges=changes.filter(p=>!approvedChangedPath(p));

@@ -1,0 +1,3 @@
+# Phase 69 — Portable research web bundle
+
+Create a deterministic GNU tar archive containing the static Invention Lab browser application and local Node server, normalize owner/group/time, SHA-256 hash source and archive, extract into a new temporary folder and replay all included file hashes. This is an independently verifiable source package for a local web research application, **not** a signed Windows/macOS/Linux native installer or a production-approved release. A clean-host installation acceptance matrix, license inventory, vulnerability audit and full browser launch from the unpacked artifact remain additional release requirements.
