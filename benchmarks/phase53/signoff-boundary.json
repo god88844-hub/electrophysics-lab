@@ -1,0 +1,86 @@
+{
+  "format": "invention-lab/phase53-sky130-openflow-signoff-boundary/1",
+  "designId": "sky130-alu8",
+  "originalRtlBlobSHA1": "3a41d0163a473a00b17a7c4b1893169961519f54",
+  "originalVectorSuiteSHA256": "c41a51ffcb1ffbbdc92e5668c98de176746b21ece709f9a235aee4484b23ab26",
+  "sourcePDKNoticeURL": "https://skywater-pdk.readthedocs.io/en/main/status.html",
+  "sourcePDKNotice": "experimental-preview-not-intended-for-production",
+  "sourceOpenFlowScripts": [
+    "scripts/phase21-run.sh",
+    "scripts/phase22-run.sh",
+    "scripts/phase22-enable-feol.mjs",
+    "scripts/phase22-proof.ys",
+    "benchmarks/phase13/rtl/alu8.v"
+  ],
+  "expectedDockerImageTag": "openroad/orfs:26Q4-430-g2272e787c",
+  "expectedDockerDigest": "openroad/orfs@sha256:7490fc3602b76ddcb7befe66974be989e34f95664f8c175f4c9b25df6cb89e71",
+  "originalRuleDeckDRCGitBlobSHA1": "e1a1bbb4721bd02bac42c2cb92ec2d24b25db8b6",
+  "originalRuleDeckLVSGitBlobSHA1": "12eb8bf51a404b7a7cc149b00e93c302d39f7108",
+  "demonstratedOpenFlowScope": [
+    "source-pinned-model-routing-gds",
+    "open-klayout-drc-and-lvs",
+    "feol-reenabled-experimental-drc",
+    "source-to-final-gate-boolean-sat"
+  ],
+  "requiredIndependentFoundrySignoff": [
+    {
+      "id": "foundry-qualified-complete-DRC-rule-coverage",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "independently-accepted-LVS-device-and-net-coverage",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "post-extraction-SI-and-multicorner-timing-coverage",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "onchip-power-grid-IRdrop-and-EM-signoff",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "antenna-ESD-latchup-and-PDN-reliability-review",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "padframe-IO-package-and-die-assembly-contract",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "source-to-mask-revision-and-fabrication-identity",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "qualified-foundry-process-and-licensed-PDK-release",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "manufacturing-test-DFT-and-silicon-testability-plan",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    },
+    {
+      "id": "independent-foundry-approval-record",
+      "foundryQualified": false,
+      "independentApprovalRecord": null
+    }
+  ],
+  "signedReleaseCandidate": false,
+  "originalSignedGDSArtifact": null,
+  "fabMaskAuthorized": false,
+  "dieIdentitiesMeasured": 0,
+  "actualManufacturedALUMeasurements": 0,
+  "fullPhysicalYield": null,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
