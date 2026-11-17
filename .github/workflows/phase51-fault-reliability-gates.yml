@@ -1,0 +1,36 @@
+name: Phase 51 correlated fault taxonomy and physically unknown reliability
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  hypothetical-fault-injection-no-manufacturing-probability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Adversarial component faults and unknown source probabilities
+        run: node --test tests/phase51-fault-analysis.test.mjs
+      - name: Reproduce fault taxonomy and independent fail-closed status
+        run: |
+          node scripts/phase51-run.mjs
+          node scripts/phase51-strict.mjs
+      - name: Full scientific regression suite
+        run: npm test
+      - name: Browser research status
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase51-conditional-fault-analysis-no-real-reliability-rate
+          path: |
+            benchmarks/phase51/fault-model-scope.json
+            benchmarks/evidence/phase51/phase51.json
+          if-no-files-found: warn
