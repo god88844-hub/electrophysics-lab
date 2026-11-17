@@ -19,6 +19,7 @@ import {
 } from '../assembly/composites.js';
 import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/feasibility.js';
 import { PHYSICAL_STAGES } from '../evidence/physical-readiness.js';
+import { buildEvidencePassport } from '../evidence/phase29-atlas.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
 import { assemble, disassemble } from '../labs/cpu/assembler.js';
 import { runOnnxSubset } from '../labs/ai/onnx-subset.js';
@@ -76,6 +77,7 @@ export class App {
               <button data-tab="scope" class="active">Scope</button>
               <button data-tab="report">Report</button>
               <button data-tab="evidence">Build Evidence</button>
+              <button data-tab="atlas">Evidence Atlas</button>
               <button data-tab="console">Console</button>
             </div>
             <div id="output-body"></div>
@@ -210,6 +212,12 @@ export class App {
     this.$sceneButton.setAttribute('aria-pressed', 'false');
     this.$sceneButton.addEventListener('click', () => this.set3D(this.viewMode !== '3d'));
     this.$editorToolbar.appendChild(this.$sceneButton);
+    const atlasButton=document.createElement('button');
+    atlasButton.className='small'; atlasButton.type='button';
+    atlasButton.textContent='Evidence Atlas';atlasButton.id='btn-view-evidence-atlas';
+    atlasButton.title='Inspect selected 2D/3D component model provenance and independent historical source references';
+    atlasButton.addEventListener('click',()=>this.switchOutputTab('atlas'));
+    this.$editorToolbar.appendChild(atlasButton);
     this.$assembliesButton = document.createElement('button');
     this.$assembliesButton.className = 'small';
     this.$assembliesButton.type = 'button';
@@ -254,6 +262,7 @@ export class App {
       ['json', 'Project JSON'],
       ['spice', 'SPICE deck (Chip Lab)'],
       ['report', 'Validation report (HTML)'],
+      ['passport', 'Evidence passport (JSON)'], 
       ['asm', 'CPU assembly (CPU Lab)'],
     ];
     for (const [v, label] of exports) {
@@ -306,6 +315,7 @@ export class App {
       this._showCrosslabPanel();
       this.palette.show('none', allComponents());
       this.inspector.showMessage('Cross-lab demos run pipelines across labs. Load them from the Examples menu.');
+      if(this._activeOutputTab==='atlas')this._renderEvidenceAtlas();
       return;
     }
 
@@ -335,6 +345,7 @@ export class App {
     this.assemblyShelf.setData(diagram,this.moduleLibrary,this.editor.selection?.id);
     this._refreshInspector();
     this.requestRenderReport();
+    if(this._activeOutputTab==='atlas')this._renderEvidenceAtlas();
   }
 
   set3D(enabled) {
@@ -957,6 +968,7 @@ export class App {
     }
     this.editor.requestRender();
     this.scene3d.sync();
+    if(this._activeOutputTab==='atlas')this._renderEvidenceAtlas();
   }
 
   // ------------------------------------------------------------------- run --
@@ -1001,6 +1013,7 @@ export class App {
     if (this._activeOutputTab === 'report') this.scope.renderReport(report);
     this._setVerdict(report.verdict);
     if (this._activeOutputTab === 'evidence') this._renderEvidence();
+    if (this._activeOutputTab === 'atlas') this._renderEvidenceAtlas();
   }
 
   _renderEvidence() {
@@ -1033,8 +1046,85 @@ export class App {
     note.className = 'muted'; note.textContent = data.rationale +
       ' A conditional Monte Carlo rate can only be reported with explicit parameter distributions, an uncertainty model, and stated acceptance criteria.';
     body.append(heading, caption, stats, note);
+    const atlasOpen=document.createElement('button');
+    atlasOpen.className='small'; atlasOpen.textContent='Explore evidence across labs';
+    atlasOpen.setAttribute('data-action','open-evidence-atlas');
+    atlasOpen.addEventListener('click',()=>this.switchOutputTab('atlas'));
+    body.appendChild(atlasOpen);
     this._renderDesignPhysicalLadder(body);
     this._renderScenarioDemo(body);
+  }
+
+  currentEvidencePassport(){
+    const labId=this.state.labId;
+    const selection=this.editor.selection;
+    const diagram=labId==='crosslab'?null:(this.diagrams[labId]??null);
+    return buildEvidencePassport({
+      labId,diagram,report:labId==='crosslab'?null:(this.lastReport??null),
+      viewMode:this.viewMode,
+      selectedBlockId:labId!=='crosslab'&&selection?.kind==='block'?
+        selection.id:null
+    });
+  }
+
+  _renderEvidenceAtlas(){
+    const passport=this.currentEvidencePassport(),container=this.$outputBody;
+    container.replaceChildren();
+    const add=(parent,tag,content,css='')=>{
+      const e=document.createElement(tag);
+      if(css)e.className=css;
+      e.textContent=String(content);
+      parent.appendChild(e);
+      return e;
+    };
+    const panel=document.createElement('section');
+    panel.className='atlas-panel';
+    add(panel,'h3','Evidence Atlas — '+passport.labId);
+    add(panel,'p','Historical tool and numerical benchmarks are separate fixed examples. No proof transfers automatically to this design.','muted');
+    const current=document.createElement('section');
+    current.className='atlas-active';
+    add(current,'h4','Current workspace • MODEL ONLY');
+    if(passport.currentDesign){
+      const d=passport.currentDesign;
+      add(current,'p',d.name+' · '+passport.viewMode.toUpperCase()+
+        ' view · '+d.blockCount+' components · '+d.wireCount+' connections');
+      add(current,'p','Software report: '+d.simulationReportVerdict+
+        ' · '+d.simulationCounts.pass+' passing checks, '+
+        d.simulationCounts.warn+' warnings, '+d.simulationCounts.fail+' failed checks');
+      if(passport.currentComponent){
+        const selected=passport.currentComponent;
+        add(current,'p','Selected 2D/3D component: '+selected.label+' ('+selected.id+')');
+        add(current,'p','Model provenance: '+(selected.modelProvenance||'Unknown / not declared'),'muted');
+      }else{
+        add(current,'p','Select a component in 2D or 3D to inspect its model provenance.','muted');
+      }
+    }else add(current,'p','Cross-lab adapters have no single canonical design; outputs remain software only.');
+    add(current,'p','DESIGN PHYSICAL STATUS: UNKNOWN — no verified hardware measurements; build-success probability not estimated.','atlas-unknown');
+    panel.appendChild(current);
+    const references=document.createElement('section');
+    references.className='atlas-references';
+    add(references,'h4','Source-linked historical references ('+passport.atlas.historicalReferences.length+')');
+    if(!passport.atlas.historicalReferences.length){
+      add(references,'p','No independent historical external benchmark is registered for this lab.','muted');
+    }
+    for(const ref of passport.atlas.historicalReferences){
+      const card=document.createElement('article');
+      card.className='atlas-reference';
+      const link=document.createElement('a');
+      link.textContent=ref.title;
+      link.href=ref.url;link.target='_blank';link.rel='noopener noreferrer';
+      card.appendChild(link);
+      add(card,'p',ref.summary);
+      add(card,'p',ref.kind+' · historical reference · NOT linked to this current design','muted');
+      references.appendChild(card);
+    }
+    panel.appendChild(references);
+    const button=add(panel,'button','Export evidence passport (JSON)');
+    button.className='small';
+    button.setAttribute('data-action','export-evidence-passport');
+    button.addEventListener('click',()=>this.exportAs('passport'));
+    add(panel,'p','Export includes the exact canonical design snapshot and model-only report. It is not a signed hardware certificate.','muted');
+    container.appendChild(panel);
   }
 
   // The reference ALU's external CI evidence belongs to that example ONLY.
@@ -1164,6 +1254,8 @@ export class App {
       this.scope.renderReport(this.lastReport);
     } else if (tab === 'evidence') {
       this._renderEvidence();
+    } else if (tab === 'atlas') {
+      this._renderEvidenceAtlas();
     } else if (tab === 'console') {
       this.scope.container.innerHTML = '';
       const pre = document.createElement('div');
@@ -1241,6 +1333,14 @@ export class App {
   }
 
   exportAs(kind) {
+    if(kind==='passport'){
+      const passport=this.currentEvidencePassport();
+      const name=passport.currentDesign?.name||this.state.labId||'crosslab';
+      download(name.replace(/[^a-z0-9_-]+/gi,'_')+'.evidence-passport.json',
+        JSON.stringify(passport,null,2),'application/json');
+      this.log('Exported exact design snapshot and scoped reference evidence; hardware status remains UNKNOWN.');
+      return;
+    }
     const d = this.diagrams[this.state.labId];
     if (!d) return;
     if (kind === 'json') return this.saveProject();
