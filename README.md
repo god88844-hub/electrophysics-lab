@@ -523,3 +523,7 @@ migrated before integration of original open development PRs.
 ## Phase 44 — Conditional copper wire loop and connector loss model
 
 [Phase44 two-wire source geometry and resistance calculations](docs/PHASE44-COPPER-WIRE-CONTACT-LOSSES.md) bound illustrative copper temperature-dependent resistance, AWG24 area, round-trip harness voltage drop, Joule heating and assumed contacts, with independent arithmetic tests. Actual conductor length/part, terminal contact resistance, insulation temperature rating, safe ampacity and real hardware measurements are **unknown** and cannot be inferred from formulas alone.
+
+## Phase 45 — Published brushed motor endpoints and coupled stopped-rotor load hypothesis
+
+[Phase45 Pololu 1592 conditional motor and source circuit](docs/PHASE45-MOTOR-SOURCE-CHARACTERIZATION.md) interpolates two approximate manufacturer motor speed/torque/current endpoints at fixed 3 V, then computes a strictly hypothetical stopped-rotor current through an E91 battery-pair, AWG24 wire loop and assumed contacts. Independent Kirchhoff checks verify voltage balance. **No real motor, wiring harness, battery, fan torque curve, startup behavior or physical safety has been measured or approved.** Neither manufacturer data nor the modeled current is a physical build success rate.
