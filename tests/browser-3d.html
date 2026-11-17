@@ -283,6 +283,27 @@ try{
   // physical evidence for the user's unverified chip/circuit design.
   app.switchLab('chip');
   app.switchOutputTab('evidence');
+  // Phase32: open source-locked JSON catalog in the real browser after
+  // inspecting the existing 3D workspace. No supplier source is a pass for
+  // the editable diagram or a manufactured fan without target evidence.
+  assert(app._sourceResearchPromise,'source-research catalog was not requested');
+  const realResearch=await app._sourceResearchPromise;
+  assert(realResearch?.sourceReferenceCount===12,
+    'source research failed to load and check twelve public references');
+  assert(realResearch.totalExplicitEvidenceRequirements===23,
+    'missing physical input and uncertainty breakdown not rendered');
+  assert(realResearch.fullyPhysicallySatisfiedRequirements===0,
+    'nonmatching reference motor measurements promoted into actual fan evidence');
+  assert(realResearch.realWorldBuildSuccessPercent===null,
+    'external research metadata invented a physical success rate');
+  const sourceUi=app.$outputBody.querySelector('[data-source-coverage="phase32"]');
+  assert(sourceUi && sourceUi.textContent.includes('23 requirements') &&
+    sourceUi.textContent.includes('physical measurements: 0'),
+    'transparent source data gap summary not shown in browser');
+  assert(sourceUi.querySelectorAll('a[target="_blank"]').length===12,
+    'not all verified public reference links are shown');
+  assert(sourceUi.textContent.includes('NOT a calibrated fan model error'),
+    'other motor supplier data was incorrectly promoted to physical model accuracy');
   const chipEvidence=app.$outputBody.textContent;
   assert(app.$outputBody.querySelectorAll('.physical-readiness-ladder li').length===10,
     'Design-specific physical evidence ladder must enumerate every gate');
