@@ -6,10 +6,10 @@ export const FORMAT='invention-lab/phase23-third-party-sky130-device-measurement
 export const ACCEPTANCE='invention-lab/phase23-sky130-public-measurement-acceptance/1';
 export const UPSTREAM='google/skywater-pdk-sky130-raw-data';
 export const UPSTREAM_COMMIT='1f7214f2f81a0629303947a07e1ec00a28ae8a33';
-export const README={path:'README.rst',gitBlobSha1:'92c6648d707251f1fb62fb662257aef2a85a33a3',bytes:3889};
+export const README={path:'README.rst',gitBlobSha1:'92c6648d707251f1fb62fb662257aef2a85a33a3',bytes:3889,sha256:'e29c7fa8961b9638872ecb60be63bcb1c0ed4a23db44b025152eff83ec619efd'};
 export const DATASETS=[
- {id:'specimen-6208-1-2',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_2).mdm',gitBlobSha1:'e82a49007f61006913a8d9cd5bee50288a836d87',bytes:3100,samples:51,purpose:'training-only'},
- {id:'specimen-6208-1-3',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_3).mdm',gitBlobSha1:'f0b9986ccdceaa3f01b12dacff58125c32cb6a73',bytes:3100,samples:51,purpose:'held-out-validation-only'}
+ {id:'specimen-6208-1-2',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_2).mdm',gitBlobSha1:'e82a49007f61006913a8d9cd5bee50288a836d87',bytes:3100,sha256:'8661a7a54edf089eee9c976963abd97e3fa95aa9ff4ec7155061a0e3693bfe82',samples:51,purpose:'training-only'},
+ {id:'specimen-6208-1-3',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_3).mdm',gitBlobSha1:'f0b9986ccdceaa3f01b12dacff58125c32cb6a73',bytes:3100,sha256:'aef6ae6ebf8202bf93e8a33458c81e2c56b0697a52d6aae4fc8a178a87172e8e',samples:51,purpose:'held-out-validation-only'}
 ];
 const equal=(x,y)=>JSON.stringify(x)===JSON.stringify(y);
 export const sha256=x=>createHash('sha256').update(x).digest('hex');
@@ -21,7 +21,8 @@ export function verifySourceFile(bytes,source){
  if(typeof source?.path!=='string'||!/^([0-9a-f]{40})$/.test(source.gitBlobSha1))
   throw Error('Unpinned upstream measurement source');
  const b=Buffer.isBuffer(bytes)?bytes:Buffer.from(bytes,'utf8');
- if(source.bytes!==b.length||gitBlob(b)!==source.gitBlobSha1)
+ if(source.bytes!==b.length||gitBlob(b)!==source.gitBlobSha1||
+    !/^[0-9a-f]{64}$/.test(source.sha256)||sha256(b)!==source.sha256)
   throw Error('Real upstream measurement raw bytes mismatch frozen source Git blob');
  return {path:source.path,bytes:b.length,gitBlobSha1:source.gitBlobSha1,sha256:sha256(b)};
 }
@@ -156,7 +157,7 @@ export function verifyPhase23(record,computed,metadata){
   errors.push('Third-party resistor measurement was incorrectly promoted into ALU hardware validation');
  return {ok:errors.length===0,errors,
   sourceArchiveReplayed:errors.length===0,
-  measuredDataAreRealExternalPublishedReadings:true,
+  measuredDataAreRealExternalPublishedReadings:errors.length===0,
   thisAluPhysicallyValidated:false,
   realWorldBuildSuccessPercent:null};
 }

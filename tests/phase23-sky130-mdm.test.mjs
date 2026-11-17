@@ -30,6 +30,8 @@ test('Phase23 exact public measured-data manifest is frozen and domain-scoped',(
  assert.equal(manifest.datasets[0].gitBlobSha1,DATASETS[0].gitBlobSha1);
  assert.equal(manifest.datasets[1].gitBlobSha1,DATASETS[1].gitBlobSha1);
  assert.equal(manifest.documentation.gitBlobSha1,README.gitBlobSha1);
+ assert.equal(manifest.documentation.sha256,README.sha256);
+ assert.equal(manifest.datasets[0].sha256,DATASETS[0].sha256);
  assert.equal(manifest.qualifications.sameDeviceAsPhase22Alu,false);
  assert.equal(manifest.qualifications.realWorldBuildSuccessPercent,null);
 });
@@ -92,6 +94,7 @@ test('Policy edits cannot silently re-label external resistor readings as valida
   m=>m.qualifications.realWorldBuildSuccessPercent=100,
   m=>m.qualifications.instrumentCalibrationChainVerified=true,
   m=>m.datasets[0].gitBlobSha1='f'.repeat(40),
+  m=>m.datasets[1].sha256='f'.repeat(64),
   m=>m.expectedColumns=['I1','I2','V1']
  ]){
   const changed=structuredClone(manifest);change(changed);
