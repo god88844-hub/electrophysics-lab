@@ -527,3 +527,7 @@ migrated before integration of original open development PRs.
 ## Phase 45 — Published brushed motor endpoints and coupled stopped-rotor load hypothesis
 
 [Phase45 Pololu 1592 conditional motor and source circuit](docs/PHASE45-MOTOR-SOURCE-CHARACTERIZATION.md) interpolates two approximate manufacturer motor speed/torque/current endpoints at fixed 3 V, then computes a strictly hypothetical stopped-rotor current through an E91 battery-pair, AWG24 wire loop and assumed contacts. Independent Kirchhoff checks verify voltage balance. **No real motor, wiring harness, battery, fan torque curve, startup behavior or physical safety has been measured or approved.** Neither manufacturer data nor the modeled current is a physical build success rate.
+
+## Phase 46 — dimensionless fan-load similarity, no fabricated impeller
+
+[Source-bound ideal fan affinity ratios](docs/PHASE46-DIMENSIONLESS-FAN-AFFINITY.md) compute *normalized* flow, pressure, power and torque ratios for assumed dynamically similar operating conditions. No selected impeller, pressure-flow curve, measured torque coefficient, safe shaft speed, containment, or actual airflow is known. Fan hardware physical qualification remains UNKNOWN.
