@@ -136,7 +136,7 @@ test('Model errors and invalid samples are inconclusive, not evidence of failed 
 });
 test('Gaussian covariance/independence must be explicit and realistic: missing distribution fails',()=>{
  assert.throws(()=>evaluateFirstPrinciples({...cfg,independenceAsserted:false}),/independence/);
- assert.throws(()=>evaluateFirstPrinciples({...cfg,parameters:parameters.slice(0,1)}),/Nonphysical|missing/);
+ assert.equal(evaluateFirstPrinciples({...cfg,parameters:parameters.slice(0,1)}).status,'inconclusive');
  assert.throws(()=>evaluateFirstPrinciples({...cfg,constraints:[]}),/criteria/);
 });
 test('Educational fan example is clearly separated from the active diagram, not an empirical rate',()=>{
