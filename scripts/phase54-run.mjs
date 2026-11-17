@@ -7,7 +7,7 @@ const sources=['benchmarks/phase54/prototype-acquisition-policy.json',
  'benchmarks/phase53/signoff-boundary.json','benchmarks/phase13/rtl/alu8.v',
  'benchmarks/phase27/acceptance.json'];
 const bytes=await Promise.all(sources.map(p=>readFile(p)));
-const [policy,signoff]=bytes.map(b=>JSON.parse(b));
+const [policy,signoff]=bytes.slice(0,2).map(b=>JSON.parse(b));
 const lab=makeLabHandoff(policy,signoff);
 const receipt=inspectUntrustedLabReturn(policy,signoff);
 const rtlBlob=execFileSync('git',['hash-object','benchmarks/phase13/rtl/alu8.v'],{encoding:'utf8'}).trim();
