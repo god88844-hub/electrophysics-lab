@@ -373,3 +373,22 @@ SPICE decks; reports export as standalone HTML.
 ## License
 
 MIT. Physics constants from NIST/CODATA (2019 SI).
+
+
+## Phase 30 — research software integration and release limits
+
+The current 30-phase computing research programme includes a reproducible
+[Phase 30 full-stack release audit](docs/PHASE30-RESEARCH-SOFTWARE-RELEASE.md)
+and source-scoped 2D/3D Evidence Atlas. The release workflow independently
+replays the original reference datasets, multi-domain tests, full WebGL
+browser smoke, live unmerged PR dependency stack, and SHA256 for **every
+original Git-tracked source**. A deterministic complete-source ZIP is
+built and verified twice.
+
+**Status must be read accurately:** the software milestone is a RESEARCH
+CANDIDATE only after CI passes; it is *not* a foundry-qualified chip, a
+universal digital twin, a physical flight simulator or a manufacturing
+release. Authentic physical ALU observations = 0, real-world build success
+= not estimable. Hardware physical qualification, reliability tests,
+independent foundry signoff and final human PR merging remain unresolved.
+AeroForge is not in this repository or this release.

@@ -1,0 +1,74 @@
+# End-to-end RESEARCH source candidate only. No foundry signoff or merge.
+name: Phase 30 reproducible research source release and strict silicon no go
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  exact-stack-source-and-silicon-release-gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Full original multi-lab regression and all previous negative controls
+        run: npm test
+      - name: Negative controls for forged manufacturing success or silently merged PRs
+        run: node --test tests/phase30-release-gates.test.mjs
+      - name: Real headless Chromium WebGL and domain-scoped Evidence Atlas
+        run: node scripts/browser-smoke.mjs
+      - name: Original independent measured source and blank ALU capture replay
+        run: bash scripts/phase26-run.sh
+      - name: Reproduce frozen prospective blank ALU study and reject forged real tests
+        run: |
+          node scripts/phase27-run.mjs
+          node scripts/phase27-strict.mjs
+      - name: Recompute physical production NO-GO and null unknown manufacturing yield
+        run: |
+          node scripts/phase28-run.mjs
+          node scripts/phase28-strict.mjs
+      - name: Verify historical Git source for twelve scoped multi-domain reference cases
+        run: |
+          node scripts/phase29-capture.mjs
+          node scripts/phase29-strict.mjs
+      - name: Independently check all original SHA256 source bytes and LIVE unmerged PR stack
+        run: node scripts/phase30-capture.mjs
+      - name: Deterministic complete research source ZIP, twice, byte-identical
+        run: |
+          python3 scripts/phase30-package.py
+          first=$(sha256sum benchmarks/evidence/phase30/invention-lab-phase30-research-source.zip | cut -d' ' -f1)
+          python3 scripts/phase30-package.py
+          second=$(sha256sum benchmarks/evidence/phase30/invention-lab-phase30-research-source.zip | cut -d' ' -f1)
+          test "$first" = "$second"
+          python3 scripts/phase30-package.py --verify
+      - name: Independently re-query 27 original PRs and replay all original source/evidence results
+        run: node scripts/phase30-strict.mjs
+      - name: Declare final software research acceptance and physical hardware blockers
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase30/phase30-summary.json; then
+            cat benchmarks/evidence/phase30/phase30-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "RESEARCH INTEGRATION NOT VERIFIED; real-world silicon status UNKNOWN / product release NO-GO" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase30-complete-source-research-candidate-not-silicon-qualification
+          path: |
+            benchmarks/phase30/acceptance.json
+            benchmarks/evidence/phase30/phase30.json
+            benchmarks/evidence/phase30/phase30-source-manifest.json
+            benchmarks/evidence/phase30/phase30-summary.json
+            benchmarks/evidence/phase30/phase30-package.json
+            benchmarks/evidence/phase30/invention-lab-phase30-research-source.zip
+          if-no-files-found: warn
