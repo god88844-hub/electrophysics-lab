@@ -511,3 +511,7 @@ migrated before integration of original open development PRs.
 ## Phase 41 — Source-matched hardware candidate and blocking safety gates
 
 [Research hardware candidate and physical-readiness audit](docs/PHASE41-REFERENCE-HARDWARE-READINESS.md) identifies published **Energizer E91 AA alkaline x2** and **Pololu #1592 brushed DC 3 V motor** ratings, including the manufacturer's discontinuation notice and a potential stall-versus-battery voltage-sag incompatibility. Fan/impeller safety rating, exact wire/connector parts, purchased device specimens and original laboratory measurements **do not exist** in this candidate. It is explicitly NOT a frozen, assembled or physically qualified design; no unverified high-speed impeller experiment is authorized.
+
+## Phase 42 — Traceable physical capture planning without invented measurements
+
+[Phase42 original instrument data capture and strict source/approval gate](docs/PHASE42-INSTRUMENT-CAPTURE-PROTOCOL.md) provides the seven-channel raw CSV schema, source-file SHA256 and instrumentation/serial/provenance requirements, mechanical and electrical safety prerequisites, calibration and holdout design, and a quarantine importer. User-supplied or synthetic CSV can be internally checked but **cannot itself be independently authenticated as physical experiment evidence**. The report explicitly records zero real matched fan sensor measurements, no physical qualification, and no claim of a real-world build-success percentage.
