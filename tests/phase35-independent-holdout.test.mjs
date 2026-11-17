@@ -122,10 +122,11 @@ test('Original sensor time, digital speed samples and source data schema must no
   x.replace('0,2800','NaN,2800'),
   x.replace('1000,2800','-1000,2800'),
   x.replace(',100,1,',' ,100,9,'),
-  x.replace('19860','x'),
+  x.replace('20000,100,','x,100,'),
   x.replace('20000,100,','-30000,100,'),
   x.replace(',101,0.001',',9999,0.001')
  ]){
+  assert.notEqual(changed,x,'Every adversarial fixture must actually change source data');
   assert.throws(()=>analyzeBLDCHealthy(changed,p,'training-motor2-2500'));
  }
 });
