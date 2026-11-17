@@ -1,0 +1,29 @@
+{
+  "format": "invention-lab/phase31-first-principles-conditional-physics/1",
+  "illustrativeModel": "invention-lab/phase31-dc-battery-wires-motor-fan/1",
+  "purpose": "model-probability-with-explicit-dc-motor-assumptions-not-real-hardware-yield",
+  "nominalVoltageV": 3,
+  "nominalVariationStdPercent": 4,
+  "minModeledRpm": 900,
+  "maxMotorCurrentA": 0.8,
+  "assumedDiscrepancyRpm": 150,
+  "modelsTested": [
+    "battery-source-resistance",
+    "two-wire-ohmic-connection",
+    "brushed-dc-motor-conversion-Kt-equals-Ke",
+    "static-startup-torque",
+    "fan-quadratic-drag",
+    "steady-state-torque-balance",
+    "probability-by-specified-input-variation",
+    "hypothesized-model-discrepancy-bound"
+  ],
+  "experimentalFanMeasurements": 0,
+  "physicalFanValidation": false,
+  "independentHardwareDataAvailable": false,
+  "fanManufacturingYieldEstimate": null,
+  "actualPhysicalFanSuccessPercent": null,
+  "phase30RealALUHardwareEvidenceUnchanged": true,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
