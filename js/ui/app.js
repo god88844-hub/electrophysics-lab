@@ -5,6 +5,7 @@ import { allLabs, getLab, allExamples, getExample, allComponents } from '../core
 import { Diagram } from '../core/diagram.js';
 import { CanvasEditor } from './canvas.js';
 import { createGuideUI } from './phase67-guided-workflow.js';
+import { renderSafeReportHTML, safeReportFilename } from '../release/integration-safe-report.js';
 import { Palette } from './palette.js';
 import { Inspector } from './inspector.js';
 import { Scope } from './scope.js';
@@ -1444,7 +1445,7 @@ export class App {
       this.scope.container.innerHTML = '';
       const pre = document.createElement('div');
       pre.id = 'console-out';
-      pre.innerHTML = this.consoleLines.map((l) => `<span class="${l.cls || ''}"><span class="t">${l.t}</span> ${escape(l.msg)}</span>`).join('\n');
+      pre.innerHTML = this.consoleLines.map((l) => `<span class="${safeConsoleClass(l.cls)}"><span class="t">${escape(l.t)}</span> ${escape(l.msg)}</span>`).join('\n');
       this.scope.container.appendChild(pre);
       this.scope.container.scrollTop = this.scope.container.scrollHeight;
     }
@@ -1537,17 +1538,8 @@ export class App {
     if (kind === 'report') {
       const report = this.lastReport;
       if (!report) { this.log('Run a design first to produce a report.', 'warn'); return; }
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invention Lab report — ${escape(report.title || report.diagramName)}</title>
-<style>body{font-family:system-ui;max-width:900px;margin:2rem auto;padding:0 1rem;color:#1c2430}
-table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:4px 8px;font-size:14px}
-.pass{color:#167a3d;font-weight:700}.warn{color:#9a6a10;font-weight:700}.fail{color:#a8281f;font-weight:700}.unknown{color:#55606e;font-weight:700}</style></head><body>
-<h1>Invention Lab — validation report</h1><p><b>${escape(report.title || report.diagramName)}</b> — verdict: <b class="${report.verdict}">${report.verdict.toUpperCase()}</b> (${new Date(report.generatedAt).toLocaleString()})</p>
-<p><i>“All models are wrong; the practical question is how wrong do they have to be to not be useful.” — G. E. P. Box</i></p>
-<h2>Checks</h2><table><tr><th>Check</th><th>Verdict</th><th>Actual</th><th>Expected</th><th>Tolerance</th><th>Note</th></tr>
-${report.checks.map((c) => `<tr><td>${escape(c.name)}</td><td class="${c.verdict}">${c.verdict.toUpperCase()}</td><td>${c.actual ?? '—'}</td><td>${c.expected ?? '—'}</td><td>${c.tolerance ?? '—'}</td><td>${escape(c.note || '')}</td></tr>`).join('')}
-</table><h2>Assumptions &amp; unknowns</h2><ul>${report.assumptions.map((a) => `<li>${escape(a)}</li>`).join('') || '<li>none recorded</li>'}</ul>
-<h2>Model provenance</h2><ul>${report.provenance.map((p) => `<li>${escape(p)}</li>`).join('') || '<li>none</li>'}</ul></body></html>`;
-      download(`${(report.title || 'report').replace(/\s+/g, '_')}.report.html`, html, 'text/html');
+      const html = renderSafeReportHTML(report);
+      download(safeReportFilename(report.title || report.diagramName), html, 'text/html');
       this.log('Exported validation report (HTML).');
       return;
     }
@@ -1566,8 +1558,8 @@ ${report.checks.map((c) => `<tr><td>${escape(c.name)}</td><td class="${c.verdict
     const steps = TUTORIALS[this.state.labId] || TUTORIALS.default;
     overlay.innerHTML = `
       <div class="card" role="dialog" aria-modal="true" aria-label="Help">
-        <h2>⚗ Beginner mode — ${lab ? lab.label : 'Cross-Lab'}</h2>
-        <p class="muted">${lab?.blurb || 'Run pipelines that couple two labs and verify data consistency.'}</p>
+        <h2>⚗ Beginner mode — ${lab ? escape(lab.label) : 'Cross-Lab'}</h2>
+        <p class="muted">${escape(lab?.blurb || 'Run pipelines that couple two labs and verify data consistency.')}</p>
         <ol class="steps">${steps.map((s) => `<li>${s}</li>`).join('')}</ol>
         <h3>Shortcuts</h3>
         <ul>
@@ -1673,6 +1665,10 @@ function download(filename, text, mime) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+function safeConsoleClass(value) {
+  return value === 'err' || value === 'warn' ? value : '';
 }
 
 function escape(s) {
