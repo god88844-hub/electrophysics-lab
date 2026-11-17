@@ -23,7 +23,8 @@ function fixture(){
   physicalValidation:'none',physicalVerdict:'unknown',physicalQualified:false,
   postLayout:false,siliconMeasurements:false,realWorldBuildSuccessPercent:null};
 }
-const check=(r,m=manifest,a=null)=>evaluatePhase17(m,r,a||{...structuredClone(r),mappedCellTypesPresent:true});
+const reference=fixture();
+const check=(r,m=manifest,a=null)=>evaluatePhase17(m,r,a||{...structuredClone(reference),mappedCellTypesPresent:true});
 test('Positive SAT and negative XOR/OR control have disjoint classifications',()=>{
  assert.equal(classifyYosysProof(log(true)),'proven');
  assert.equal(classifyYosysProof(log(false)),'rejected-unproven');
