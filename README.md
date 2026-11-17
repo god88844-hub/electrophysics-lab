@@ -423,3 +423,16 @@ shows this distinction explicitly, including **0/23 physically
 validated target-system requirements**. Original public raw motor
 files have not been ingested; a CSV shape check alone is not proof
 of source identity or physical model accuracy.
+
+
+## Phase 33 — real original published BLDC measurements, including sensor failure
+
+The [Phase33 data provenance and measured-source audit](docs/PHASE33-ORIGINAL-BLDC-RAW-ANALYSIS.md)
+downloads and pins an **original 421,672-byte, 5,073-row 2026 real
+BLDC motor test-bench recording** (Robertas Ūselis, CC BY 4.0), verifies
+its original Git object ID and measures bus voltage/current and acquisition
+timing. Crucially, the publisher marks the sensor as failed and the
+tachometer PG signal is stuck HIGH throughout the file, so **the
+500 RPM setpoint is not an observed RPM**. The software reports
+speed unknown rather than guessing. This is another 24 V motor, **not**
+the current hypothetical 3 V fan or any physically measured ALU.
