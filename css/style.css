@@ -303,3 +303,14 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
 .atlas-reference a:focus-visible { outline:2px solid var(--accent); }
 .atlas-reference .muted { font-size:11px; overflow-wrap:anywhere; }
 .atlas-panel > button { align-self:flex-start; }
+
+/* Phase67 keyboard-accessible workflow pane */
+#workspace-guide{position:fixed;z-index:40;top:65px;right:12px;padding:16px;width:min(360px,calc(100vw - 24px));max-height:80vh;overflow:auto;border:2px solid #8babca;border-radius:10px;color:#e9f4fc;background:#182d40;box-shadow:0 6px 30px #0008}
+#workspace-guide[hidden]{display:none!important}
+#workspace-guide h2{margin:0 0 10px}
+#workspace-guide button{margin:5px;padding:6px}
+#workspace-guide select{padding:6px;margin:6px;max-width:100%}
+:where(button,select,a,input,textarea):focus-visible{outline:3px solid #92deff;outline-offset:2px}
+.skip-link{position:absolute;top:-90px;left:8px;z-index:1000;background:#142b47;color:white;padding:10px}
+.skip-link:focus{top:6px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}}

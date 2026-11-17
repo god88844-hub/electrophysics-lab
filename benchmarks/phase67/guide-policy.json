@@ -1,0 +1,12 @@
+{
+  "format": "invention-lab/phase67-guided-workspaces/1",
+  "labs": 7,
+  "modes": [
+    "beginner",
+    "advanced"
+  ],
+  "realUserTrials": 0,
+  "independentAccessibilityAudit": false,
+  "physicalValidation": "none",
+  "realWorldBuildSuccessPercent": null
+}

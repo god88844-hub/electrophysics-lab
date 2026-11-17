@@ -4,6 +4,7 @@
 import { allLabs, getLab, allExamples, getExample, allComponents } from '../core/registry.js';
 import { Diagram } from '../core/diagram.js';
 import { CanvasEditor } from './canvas.js';
+import { createGuideUI } from './phase67-guided-workflow.js';
 import { Palette } from './palette.js';
 import { Inspector } from './inspector.js';
 import { Scope } from './scope.js';
@@ -63,6 +64,7 @@ export class App {
         <button id="btn-redo" class="small" title="Redo (Ctrl+Y)">↷</button>
         <button id="btn-run" class="primary" title="Run (Ctrl+Enter)">▶ Run</button>
         <div id="verdict-badge" data-v="unknown" title="Validation verdict">? UNKNOWN</div>
+        <button id="btn-guide" class="small" aria-label="Open guided workflow">Guide</button>
         <button id="btn-help" class="small" title="Beginner mode & shortcuts (?)">?</button>
         <input id="file-input" type="file" accept=".json" style="display:none">
       </header>
@@ -100,6 +102,7 @@ export class App {
     this.$examples = $('#examples');
     this.$exportMenu = $('#export-menu');
     this.$fileInput = $('#file-input');
+    this.guide = createGuideUI(this.root);
 
     this.consoleLines = [];
     this.scope.container = this.$outputBody;
@@ -198,6 +201,7 @@ export class App {
     $('#btn-undo').addEventListener('click', () => this.undo());
     $('#btn-redo').addEventListener('click', () => this.redo());
     $('#btn-help').addEventListener('click', () => this.showHelp());
+    $('#btn-guide').addEventListener('click', () => this.guide.toggle());
     this.$fileInput.addEventListener('change', (e) => this.loadProject(e.target.files[0]));
 
     // canvas toolbar
@@ -301,6 +305,7 @@ export class App {
 
   switchLab(labId) {
     this.state.labId = labId;
+    this.guide.setLab(labId);
     this.root.querySelectorAll('#labtabs button').forEach((b) => {
       b.classList.toggle('active', b.dataset.lab === labId);
     });
@@ -1607,6 +1612,7 @@ ${report.checks.map((c) => `<tr><td>${escape(c.name)}</td><td class="${c.verdict
     if (e.key === '?') { this.showHelp(); return; }
     if (e.key === 'Escape') {
       document.getElementById('overlay')?.remove();
+      this.guide.hide();
       if(this.assemblyShelf.open){
         this.assemblyShelf.toggle(false);
         this.$assembliesButton.setAttribute('aria-expanded','false');
