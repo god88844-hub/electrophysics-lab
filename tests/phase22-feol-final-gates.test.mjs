@@ -13,8 +13,8 @@ function fixture(){
   foundrySignoff:false,measuredSilicon:false,qualifiedFoundryDrc:false,
   physicalValidation:'none',physicalVerdict:'unknown',realWorldBuildSuccessPercent:null};
 }
-const check=(r,actual=fixture())=>evaluatePhase22(r,{...actual,
- sameFinalLayoutAsPhase21:true,sameFinalNetlistAsPhase21:true});
+const check=(r,actual=fixture())=>evaluatePhase22(r,{
+ sameFinalLayoutAsPhase21:true,sameFinalNetlistAsPhase21:true,...actual});
 test('Strict model only: correct FEOL toggle and no physical fabrication inference',()=>{
  assert.equal(exactFeolPatch(source,source.replace('FEOL    = false','FEOL    = true')),true);
  const r=fixture(),v=check(r);
