@@ -531,3 +531,7 @@ migrated before integration of original open development PRs.
 ## Phase 46 — dimensionless fan-load similarity, no fabricated impeller
 
 [Source-bound ideal fan affinity ratios](docs/PHASE46-DIMENSIONLESS-FAN-AFFINITY.md) compute *normalized* flow, pressure, power and torque ratios for assumed dynamically similar operating conditions. No selected impeller, pressure-flow curve, measured torque coefficient, safe shaft speed, containment, or actual airflow is known. Fan hardware physical qualification remains UNKNOWN.
+
+## Phase 47 — Conditional coupled electrical, rotational and thermal energy
+
+[Phase47 source-locked implicit midpoint reference](docs/PHASE47-COUPLED-ENERGY-CONSERVATION.md) combines an assumed battery, copper wire/contact loss, a manufacturer endpoint-derived ideal brushed DC motor and **hypothetical** quadratic fan load. Strict numerical tests require energy conservation and expose disagreement among approximate manufacturer motor points. Actual rotor inertia, fan torque coefficient, thermal constants, safety/containment and physical whole-system qualification remain UNKNOWN.
