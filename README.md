@@ -448,3 +448,17 @@ and a **physically separate motor unit 3** held out at the same
 2,500 RPM setting. This yields actual measured-tach cross-motor
 difference, **not** a calibrated real-world success rate for the
 unmeasured 3 V brushed battery–wires–fan invention.
+
+## Phase 36 — Two-regime independently held-out BLDC motor model
+
+[Phase36 original-source independent-device evaluation](docs/PHASE36-BLDC-TWO-REGIME-MODEL.md)
+trains a **two-point descriptive** speed and upstream-current model on
+motor unit 2's original 2,000/2,500 RPM recordings and evaluates it on
+motor unit 3's separately recorded matching operating regimes. The new
+2,000 RPM held-out motor3 publisher file is Git-blob-pinned to the
+original 23,964,792-byte source. Original PG tachometer data are analyzed
+instead of assuming controller speed setpoints equal measured speeds.
+Strict replay and adverse-provenance tests preserve independent test-unit
+separation and record both empirical model error and the naive setpoint
+baseline. This is **not** a physical qualification or success-rate
+measurement for the unrelated 3 V brushed motor and fan.
