@@ -1,0 +1,22 @@
+name: Phase 40 fail-closed scientific model applicability
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify-model-passport-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check original hardware model identities, real-data provenance and refusal tests
+        run: node --test tests/phase40-model-applicability.test.mjs
+      - name: Full prior scientific regression suite
+        run: npm test
+      - name: Browser regression
+        run: node scripts/browser-smoke.mjs
