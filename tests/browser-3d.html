@@ -300,8 +300,11 @@ try{
   assert(sourceUi && sourceUi.textContent.includes('23 requirements') &&
     sourceUi.textContent.includes('physical measurements: 0'),
     'transparent source data gap summary not shown in browser');
-  assert(sourceUi.querySelectorAll('a[target="_blank"]').length===13,
+  assert(sourceUi.querySelectorAll('a[target="_blank"]').length===14,
     'not all verified public reference links are shown');
+  assert(sourceUi.textContent.includes('263,305 original sensor rows') &&
+    sourceUi.textContent.includes('515.37 RPM versus 500 RPM source setpoint'),
+    'Verified healthy source pulse-based measured speed absent from evidence UI');
   assert(sourceUi.textContent.includes('PG tach stuck HIGH') &&
     sourceUi.textContent.includes('500 RPM is the controller setting'),
     'Original faulty tachometer was promoted to validated motor RPM');
