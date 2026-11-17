@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {verifyFinalPolicy,reviewResearchCandidate} from '../js/evidence/phase72-final-audit.js';
+import {verifyFinalPolicy,reviewResearchCandidate,researchSourceIntegrationStatus,softwareDisposition} from '../js/evidence/phase72-final-audit.js';
 const policy=JSON.parse(readFileSync(new URL('../benchmarks/phase72/final-policy.json',import.meta.url),'utf8'));
 test('Final policy fail-closed on forged silicon, fan, UAT or signed product approval',()=>{
  assert.equal(verifyFinalPolicy(policy),true);
@@ -17,7 +17,12 @@ test('Actual package + six engine paths yield source-candidate-only, NO product/
  assert.equal(r.researchSourceCandidate.status,'SOURCE_CHECKS_PASS');
  assert.equal(r.researchSourceCandidate.acceptanceCaseCount,6);
  assert.equal(r.decision,'DRAFT_RESEARCH_SOURCE_CANDIDATE_ONLY');
- assert.equal(r.integratedMainSoftwareRelease,false);
+ assert.equal(r.integratedMainSoftwareRelease,false); // not an approved product release
+ assert.equal(r.researchSourceCandidate.sourceIntegrationStatus,researchSourceIntegrationStatus());
+ assert.equal(r.researchSourceCandidate.developmentSourceIntegratedIntoMain,researchSourceIntegrationStatus()==='VERIFIED_IN_GIT_ANCESTRY');
+ assert.equal(softwareDisposition('VERIFIED_IN_GIT_ANCESTRY'),'INTEGRATED_RESEARCH_SOURCE_NOT_PRODUCT_RELEASE');
+ assert.ok(!r.blockers.includes('STACKED_DRAFT_PRS_NOT_INTEGRATED_TO_MAIN'));
+ assert.ok(r.blockers.includes('NO_INDEPENDENT_REVIEW_OF_MERGED_SOURCE_AND_PROVENANCE'));
  assert.equal(r.manufacturingReleaseAuthorized,false);
  assert.equal(r.publicSignedProductReleaseAuthorized,false);
  assert.equal(r.physicalQualification.productionBuildSuccessProbability,null);
