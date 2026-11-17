@@ -47,6 +47,50 @@ try{
   assert(d.wires.length===count+1,'3D click-to-wire did not update real Diagram');
   assert(d.wires.at(-1).from.block===a.id && d.wires.at(-1).to.block===b.id,
     '3D connection endpoints did not match canonical ports');
+
+  // Phase29: the SAME editable 3D component exposes only bounded, truthful
+  // model provenance. Historical references NEVER validate this diagram.
+  app.editor.selection={kind:'block',id:a.id};
+  app._refreshInspector();
+  app.switchOutputTab('atlas');
+  const passport=app.currentEvidencePassport();
+  assert(passport.viewMode==='3d','3D view provenance was not reflected in evidence passport');
+  assert(passport.currentComponent?.id===a.id,'3D selected block did not bind to original diagram');
+  assert(passport.currentDesign.blockCount===d.blocks.length,'passport lost current live netlist');
+  assert(passport.currentDesign.wireCount===d.wires.length,'passport lost 3D wire');
+  assert(passport.referenceCasesLinkedToCurrentDesign===0,
+    'historical formal proof was falsely linked to the active user design');
+  assert(passport.physicalVerdict==='unknown' && passport.realWorldBuildSuccessPercent===null,
+    '3D component editing invented real silicon validation');
+  assert(app.$outputBody.textContent.includes('MODEL ONLY'),
+    'atlas omitted explicit software-only current diagram label');
+  assert(app.$outputBody.textContent.includes('Final ALU mapped-gate Boolean proof'),
+    'lab-linked historical formal reference absent');
+  assert(app.$outputBody.querySelector('[data-action="export-evidence-passport"]'),
+    'there is no usable evidence passport export action');
+  assert(app.$exportMenu.querySelector('option[value="passport"]'),
+    'evidence passport export missing from main workspace menu');
+  assert(app.$editorToolbar.querySelector('#btn-view-evidence-atlas'),
+    '3D editor toolbar lacks evidence provenance shortcut');
+
+  app.switchLab('chip');
+  app.switchOutputTab('atlas');
+  assert(app.$outputBody.textContent.includes('Experimental GDS DRC'),
+    'chip-specific physical model reference missing');
+  assert(!app.$outputBody.textContent.includes('Iris public dataset model holdout'),
+    'AI training evidence leaked into unrelated chip validation');
+
+  app.switchLab('crosslab');
+  app.switchOutputTab('atlas');
+  assert(app.currentEvidencePassport().currentDesign===null,
+    'cross-lab adapters incorrectly invented one canonical design');
+  assert(app.$outputBody.textContent.includes('no single canonical design'),
+    'cross-lab scope limitation missing');
+
+  app.switchLab('logic');
+  app.switchOutputTab('atlas');
+  assert(app.currentEvidencePassport().realWorldBuildSuccessPercent===null,
+    'switching domains invented manufacturing success');
   app.set3D(false);
   assert(viewer.root.style.display==='none','3D overlay not hidden in 2D mode');
   assert(app.editor.canvas.style.display!=='none','2D editor was not restored');
