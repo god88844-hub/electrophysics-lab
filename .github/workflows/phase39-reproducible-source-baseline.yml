@@ -1,0 +1,50 @@
+name: Phase 39 independently verified reproducible research source baseline
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  exact-git-tree-research-archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test deterministic ZIP rules and adversarial archive tampering
+        run: python3 scripts/phase39-source-baseline.py --self-test
+      - name: Run all available Invention Lab scientific regression tests
+        run: npm test
+      - name: Verify real browser and 3D evidence presentation
+        run: node scripts/browser-smoke.mjs
+      - name: Build canonical reproducible source research ZIP from exact Git originals
+        run: python3 scripts/phase39-source-baseline.py --build
+      - name: Verify a full independent second source ZIP regeneration
+        run: python3 scripts/phase39-source-baseline.py --verify
+      - name: Independently check every ZIP entry against immutable Git original object bytes
+        run: python3 scripts/phase39-strict-audit.py
+      - name: Publish source provenance and physical research-only boundary
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase39/phase39-strict-summary.json; then
+            cat benchmarks/evidence/phase39/phase39-strict-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Phase39 source archive NOT VERIFIED; no model or hardware qualification claimed" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase39-deterministic-original-git-tree-research-source-release
+          path: |
+            benchmarks/evidence/phase39/invention-lab-phase39-source.zip
+            benchmarks/evidence/phase39/phase39-release.json
+            benchmarks/evidence/phase39/phase39-strict-summary.json
+          if-no-files-found: warn
