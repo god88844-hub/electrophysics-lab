@@ -1,0 +1,36 @@
+name: Phase 49 structural identifiability and calibration-source quarantine
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  synthetic-source-only-identifiability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Reject unidentifiable component parameter and fake physical calibration
+        run: node --test tests/phase49-identifiability.test.mjs
+      - name: Rebuild and independently verify source-bound calibration example
+        run: |
+          node scripts/phase49-run.mjs
+          node scripts/phase49-strict.mjs
+      - name: Full software regression
+        run: npm test
+      - name: Browser and source scope smoke
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase49-synthetic-rank-one-unidentifiable-not-physically-calibrated
+          path: |
+            benchmarks/phase49/synthetic-identifiability.json
+            benchmarks/evidence/phase49/phase49.json
+          if-no-files-found: warn
