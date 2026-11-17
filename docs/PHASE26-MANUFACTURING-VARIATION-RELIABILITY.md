@@ -1,0 +1,13 @@
+# Phase 26 — physical manufacturing variation and failure-analysis evidence
+
+The only source-authenticated **measured-device inputs** are two public SKY130 poly-resistor specimens with **51 I-V readings each**, sourced from Google/SkyWater/CoolCAD raw-data commit 1f7214f2f81a0629303947a07e1ec00a28ae8a33. SHA256, Git blob IDs, license attribution, and original raw measurements are verified through Phase23's independent replay.
+
+The pipeline independently computes retrospective zero-intercept conductance fits **for description only**, checks the measured difference between the two specimens and derives five deterministic current probes **inside the original [-0.25,+0.25] V range**. The second specimen was held out in Phases 23/25: Phase26's descriptive slope is **not** used to retune, select or replace the frozen training-only model, and Phase25's original holdout residual is checked byte-for-byte against the source-derived recomputation.
+
+**There is no measured process distribution or qualified reliability inference:** these two devices have unknown lot and wafer membership and lack a traceable calibration uncertainty budget. Fifty-one correlated sweep rows are not fifty-one physically independent devices. Observed two-point conductance difference is NOT a confidence interval, population variance or manufacturing sigma. Do not estimate production yield, accelerated lifetime hours, FIT failures per billion device-hours, reliability or process coverage from these readings.
+
+The prospective failure-mode register has **12 distinct blocked ALU-specific mechanisms**, including manufacturing provenance, opens and shorts, process drift, setup/hold, supply integrity, thermal drift, aging, ESD/electromigration, packaging, metrology, functional faults and model-form mismatch. Their status is explicitly **not-tested-on-target-alu**. Good Boolean formal checks and partial open PDK design-rule evidence from prior phases do not establish fabricated silicon reliability.
+
+The independent replay reopens authentic raw MDM source, frozen acceptance policy, Phase25 calibration residuals and Phase24's empty 1024-vector ALU physical capture. The existing ALU hardware has **0 authentic physical measurements**; no manufacturing yield or hardware validation is accepted. Status stays physicalValidation=none, physicalVerdict=unknown, realWorldBuildSuccessPercent=null.
+
+**Next:** obtain a manufactured, source- and mask-matched ALU, authenticated wafer/lot/package chain, calibrated original oscilloscope and logic traces, independently selected sample groups, thermal/supply/bias aging and wearout studies, predeclared failure categories, and real failure-time evidence. Until then, reliability is unknown and simulation cannot replace physical testing.
