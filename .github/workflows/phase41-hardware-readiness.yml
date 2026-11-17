@@ -1,0 +1,22 @@
+name: Phase 41 source-matched hardware candidate and physical readiness gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  reference-hardware-no-fake-qualification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Original motor/battery published specs and non-fabrication checks
+        run: node --test tests/phase41-hardware-readiness.test.mjs
+      - name: Full project test suite
+        run: npm test
+      - name: Browser regression
+        run: node scripts/browser-smoke.mjs
