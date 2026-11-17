@@ -1,0 +1,17 @@
+{
+  "format": "invention-lab/phase59-accelerator-scheduling-policy/1",
+  "supportedArchitectureStyles": [
+    "systolic",
+    "simt"
+  ],
+  "supportedDataType": "signed INT8 operands, exact scalar accumulator",
+  "functionalCrossReference": "existing independent f64 matrix multiplication",
+  "explicitNonOverlappedMemoryComputeModel": true,
+  "sourceMeasuredBandwidthAvailable": false,
+  "hardwarePowerModelValidated": false,
+  "measuredAcceleratorPerformanceSamples": 0,
+  "reportedChipArea": null,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
