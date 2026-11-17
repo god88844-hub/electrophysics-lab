@@ -1,0 +1,45 @@
+{
+  "format": "invention-lab/phase43-e91-conditional-battery-model/1",
+  "referenceDesignId": "reference-3v-battery-2-wire-brushed-fan-candidate-001",
+  "modelType": "nominal-voltage-series-ohmic-sensitivity-not-OCV-SOC-thermal-model",
+  "manufacturerPart": "E91",
+  "manufacturer": "Energizer",
+  "cellChemistry": "alkaline-Zn-MnO2",
+  "cellCountInSeries": 2,
+  "publishedNominalCellVoltageV": 1.5,
+  "publishedFreshCellInternalResistanceRangeOhm": [
+    0.15,
+    0.3
+  ],
+  "manufacturerDatasourceUrl": "https://energizer.com/apac/australia/wp-content/uploads/sites/3/2024/05/e91_max_na_AA.pdf",
+  "publishedOperatingTemperatureRangeC": [
+    -18,
+    55
+  ],
+  "referenceManufacturerDataNature": "typical-published-specification-not-digital-raw-discharge-curves",
+  "simulationReferenceTemperatureC": 21,
+  "scenarioCurrentRangeA": [
+    0,
+    4
+  ],
+  "currentLimitIsHypothesisOnly": true,
+  "nominalCellVoltageIsNotMeasuredOpenCircuitVoltage": true,
+  "freshCellResistanceNotGuaranteedAcrossCurrentTemperatureAge": true,
+  "experimentalCalibrationInputs": {
+    "actualBatteryPackSerials": [],
+    "calibratedOpenCircuitV": null,
+    "calibratedDynamicResistanceOhm": null,
+    "SOC_OCV_curve": null,
+    "temperatureResistanceSurface": null,
+    "capacityVsLoad": null,
+    "measuredCurrentWaveforms": 0,
+    "independentCalibrationReport": null
+  },
+  "batteryAgingModelQualified": false,
+  "runtimePredictionCertified": false,
+  "modelPopulationCalibrationVerified": false,
+  "physicalSampleCount": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
