@@ -3,7 +3,7 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
-import {resolveServablePath,securityHeaders} from './js/release/phase70-security.js';
+import {resolveServablePath,securityHeaders,securityHeadersFor} from './js/release/phase70-security.js';
 const PORT=Number(process.argv[2] ?? 8080);
 if(!Number.isInteger(PORT)||PORT<0||PORT>65535)throw Error('Invalid local server port');
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8',
@@ -20,7 +20,7 @@ const server=http.createServer(async(req,res)=>{
   const file=await resolveServablePath(req.url);
   const data=await readFile(file.path);
   const type=MIME[path.extname(file.path).toLowerCase()]||'application/octet-stream';
-  res.writeHead(200,{...headers,'Content-Type':type,'Content-Length':data.length});
+  res.writeHead(200,{...securityHeadersFor(file.relative,data),'Content-Type':type,'Content-Length':data.length});
   res.end(req.method==='HEAD'?undefined:data);
  }catch(error){
   const status=[400,403,404].includes(error?.status)?error.status:404;
