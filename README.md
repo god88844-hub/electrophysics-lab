@@ -515,3 +515,7 @@ migrated before integration of original open development PRs.
 ## Phase 42 — Traceable physical capture planning without invented measurements
 
 [Phase42 original instrument data capture and strict source/approval gate](docs/PHASE42-INSTRUMENT-CAPTURE-PROTOCOL.md) provides the seven-channel raw CSV schema, source-file SHA256 and instrumentation/serial/provenance requirements, mechanical and electrical safety prerequisites, calibration and holdout design, and a quarantine importer. User-supplied or synthetic CSV can be internally checked but **cannot itself be independently authenticated as physical experiment evidence**. The report explicitly records zero real matched fan sensor measurements, no physical qualification, and no claim of a real-world build-success percentage.
+
+## Phase 43 — Source-backed two-cell E91 conditional battery model
+
+[Phase43 published-manufacturer conditional battery calculations](docs/PHASE43-E91-BATTERY-CONDITIONAL-MODEL.md) implement and independently check hypothetical two-series-cell voltage drop, electrical terminal power and internal dissipation across a fixed current sweep. Manufacturer fresh-cell ratings are not measured pack OCV, load feasibility, runtime, aging or calibration; Phase42 submitted files remain quarantined. Actual physically qualified battery specimens and matching fan readings = **zero**.
