@@ -3,6 +3,7 @@
 import path from 'node:path';
 import {realpath,stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
 export const ROOT=path.dirname(fileURLToPath(new URL('../../serve.mjs',import.meta.url)));
 export const FORMAT='invention-lab/phase70-server-allowlist/1';
 const allowed=new Set(['index.html','LICENSE','README.md','tests/browser-3d.html']);
@@ -35,10 +36,26 @@ export const securityHeaders=Object.freeze({
  'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
  'Cross-Origin-Resource-Policy':'same-origin','X-Frame-Options':'DENY',
  'Cache-Control':'no-store',
- // inline script is restricted by the pre-existing test/browser-3d.html; this
- // developer policy is not a full CSP/security penetration audit.
- 'Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+ // Regular application pages prohibit inline scripts. Inline CSS is retained
+ // for the existing UI styles; independent CSP and penetration audits remain open.
+ 'Content-Security-Policy':"default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
 });
+
+// The legacy browser smoke fixture contains a single inline ESM module.
+// Admit only that exact module's SHA-256, never unsafe-inline for the whole app.
+export function securityHeadersFor(relative, data){
+ if(relative!=='tests/browser-3d.html')return securityHeaders;
+ if(!Buffer.isBuffer(data))throw Error('Browser fixture must be read as original bytes');
+ const html=data.toString('utf8');
+ const tags=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)];
+ if(tags.length!==1||!/^<script\s+type="module"\s*>/i.test(tags[0][0]))
+  throw Error('Unexpected inline script structure in legacy browser smoke fixture');
+ const digest=createHash('sha256').update(tags[0][1],'utf8').digest('base64');
+ const policy=securityHeaders['Content-Security-Policy'].replace(
+  "script-src 'self';","script-src 'self' 'sha256-"+digest+"';");
+ return {...securityHeaders,'Content-Security-Policy':policy};
+}
+
 export function sourceSecurityScreen(source){
  if(typeof source!=='string'||source.length>100000)throw Error('Invalid server source');
  const required=['resolveServablePath','securityHeaders',"'GET'","'HEAD'"];
