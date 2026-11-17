@@ -1385,6 +1385,17 @@ export class App {
         report.supplierCharacteristics.kRelativeInconsistencyPercent.toFixed(2)+
         '%, NOT a calibrated fan model error and NOT a physical success percentage.';
       details.appendChild(spec);
+      const newData=document.createElement('p');
+      newData.className='muted';
+      const bldcLink=document.createElement('a');
+      bldcLink.href='https://github.com/Atikas/OpenBLDCData/blob/1ce35456f83be8f36aec183ab19d6e6e46603023/data/analize_misalignment10_SF_500rpm_19mA_bat.csv';
+      bldcLink.textContent='Additional original 2026 open BLDC measured sensor-failure data (CC BY 4.0)';
+      bldcLink.target='_blank';bldcLink.rel='noopener noreferrer';
+      newData.appendChild(bldcLink);
+      const bldcScope=document.createElement('span');
+      bldcScope.textContent=' — 5,073 publisher-logged samples, different 24 V BLDC; PG tach stuck HIGH, so 500 RPM is the controller setting NOT a measured speed. These source rows do NOT measure this 3 V fan or justify build-success probability.';
+      newData.appendChild(bldcScope);
+      details.appendChild(newData);
       return report;
     }).catch(error=>{
       status.textContent='Cannot audit public sources: '+error.message+
