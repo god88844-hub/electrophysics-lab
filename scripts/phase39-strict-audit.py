@@ -11,6 +11,11 @@ import zipfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "benchmarks/evidence/phase39"
 FORMAT = "invention-lab/phase39-portable-source-only-research-baseline/1"
+INTEGRATION_MERGE = "e1c14e52b02c336bb05ac756de9091e069f30fc1"
+
+def research_source_integrated():
+    return subprocess.run(["git","merge-base","--is-ancestor",INTEGRATION_MERGE,"HEAD"],
+                          cwd=ROOT, capture_output=True, check=False).returncode == 0
 
 def require(check, message):
     if not check:
@@ -88,7 +93,7 @@ def independent_audit():
                     and row["sizeBytes"] == len(original_bytes),
                     "Git blob or SHA256 evidence falsified: " + path)
             total_bytes += len(original_bytes)
-    require(manifest["integrationState"] == "STAGED_NOT_MERGED_TO_MAIN"
+    require(manifest["integrationState"] == ("INTEGRATED_TO_MAIN_RESEARCH_SOURCE_ONLY" if research_source_integrated() else "STAGED_NOT_MERGED_TO_MAIN")
             and manifest["softwareEvidenceOnly"] is True
             and manifest["physicalValidation"] == "none"
             and manifest["physicalVerdict"] == "unknown"
@@ -101,7 +106,7 @@ def independent_audit():
             and scope["manufacturingReleaseAuthorized"] is False
             and scope["realWorldBuildSuccessPercent"] is None,
             "Physical reference data incorrectly promoted to a target qualification")
-    require(published["mergedToMain"] is False
+    require(published["mergedToMain"] is research_source_integrated()
             and published["independentlyCertifiedHardware"] is False
             and published["physicalValidation"] == "none"
             and published["physicalVerdict"] == "unknown"
@@ -115,8 +120,8 @@ def independent_audit():
         "archiveSHA256": sha(zip_bytes),
         "fullyIndependentGitObjectReplay": True,
         "allOriginalSourcesExactlyRepresented": True,
-        "researchBaseline": "STAGED_SOFTWARE_SOURCE_ONLY",
-        "integrationIntoMain": False,
+        "researchBaseline": ("INTEGRATED_RESEARCH_SOURCE_ONLY" if research_source_integrated() else "STAGED_SOFTWARE_SOURCE_ONLY"),
+        "integrationIntoMain": research_source_integrated(),
         "physicallyQualifiedHardware": False,
         "physicalValidation": "none",
         "physicalVerdict": "unknown",

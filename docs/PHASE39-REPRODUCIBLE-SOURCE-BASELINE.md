@@ -34,3 +34,8 @@ Do not confuse archived repository code with physically validated models. ZIP ha
 The required next integration gate is to version the historical live-PR gate as **historical snapshot audit** versus **live post-integration policy**, with explicit, independently verifiable provenance for each PR head and merge commit. Make that policy change and its adverse-case tests pass in CI before moving any legacy PR from OPEN to MERGED. After policy migration, use the Phase38 worktree-tested dependency order, re-run every test, and verify current main/branch status after each merge; do not force push or bypass review. This work belongs to the subsequent integration milestone.
 
 Phase39 is a staged, source-only research release baseline and not the final production or physical-qualification release. AeroForge remains outside this repository.
+
+
+## Main-branch integration provenance (17 November 2026)
+
+The research source integration merge was completed through PR #73 at `e1c14e52b02c336bb05ac756de9091e069f30fc1`. The source-only SHA-verified archive and independent Git blob verifier now report `INTEGRATED_TO_MAIN_RESEARCH_SOURCE_ONLY` and `mergedToMain: true` **only when the actual merge commit is an ancestor of HEAD**. Historical pre-integration commits continue to report `STAGED_NOT_MERGED_TO_MAIN`. This corrects obsolete staging metadata without claiming independent human review, signed product approval, authenticated hardware qualification or a real-world success probability.

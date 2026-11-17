@@ -22,6 +22,11 @@ SCOPE_NAME = "PHYSICAL-SCOPE.json"
 FORMAT = "invention-lab/phase39-portable-source-only-research-baseline/1"
 PARENT = "04ace607290021c60d017b4a5d115044b811abcd"
 ZIP_TIME = (1980, 1, 1, 0, 0, 0)
+INTEGRATION_MERGE = 'e1c14e52b02c336bb05ac756de9091e069f30fc1'
+
+def research_source_integrated():
+    return subprocess.run(['git','merge-base','--is-ancestor',INTEGRATION_MERGE,'HEAD'],
+                          cwd=ROOT, capture_output=True, check=False).returncode == 0
 
 def require(test, reason):
     if not test:
@@ -71,7 +76,8 @@ def manifest_and_sources():
                 "sourceTree": tree, "repository": "god88844-hub/invention-lab",
                 "includedFiles": len(rows), "sources": rows,
                 "baselineAncestorPhase38": PARENT,
-                "integrationState": "STAGED_NOT_MERGED_TO_MAIN",
+                "integrationState": ("INTEGRATED_TO_MAIN_RESEARCH_SOURCE_ONLY" if research_source_integrated()
+                                      else "STAGED_NOT_MERGED_TO_MAIN"),
                 "softwareEvidenceOnly": True,
                 "physicalValidation": "none",
                 "physicalVerdict": "unknown",
@@ -142,7 +148,7 @@ def expected_metadata(manifest, scope, zip_bytes):
         "trackedFilesVerified": manifest["includedFiles"],
         "deterministicBuild": True,
         "independentlyCertifiedHardware": False,
-        "mergedToMain": False,
+        "mergedToMain": research_source_integrated(),
         "physicalValidation": "none",
         "physicalVerdict": "unknown",
         "realWorldBuildSuccessPercent": None}
