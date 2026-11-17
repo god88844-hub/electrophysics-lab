@@ -25,6 +25,11 @@ const approvedChangedPath=(p)=>(
  p.startsWith('tests/phase30-')||
  p.startsWith('docs/PHASE30-')||
  p.startsWith('.github/workflows/phase30-')||
+ p.startsWith('js/evidence/phase31-')||
+ p.startsWith('scripts/phase31-')||p.startsWith('benchmarks/phase31/')||
+ p.startsWith('tests/phase31-')||p.startsWith('docs/PHASE31-')||
+ p.startsWith('.github/workflows/phase31-')||
+ p==='js/ui/app.js'||p==='tests/browser-3d.html'||
  p==='README.md'||p==='package.json');
 const unexpectedChanges=changes.filter(p=>!approvedChangedPath(p));
 const paths=execFileSync('git',['ls-files','-z']).toString('utf8').split('\0').filter(Boolean).sort();
