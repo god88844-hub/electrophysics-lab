@@ -1,0 +1,10 @@
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {auditNoise} from '../js/evidence/phase61-density-noise.js';
+const path='benchmarks/phase61/noise-scope.json',raw=await readFile(path),policy=JSON.parse(raw);
+if(policy.independentHardwareCalibrationRecords!==0||policy.physicalValidation!=='none')throw Error('Fabricated hardware evidence');
+const record={format:'invention-lab/phase61-source-replay/1',sourceCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),policySHA256:createHash('sha256').update(raw).digest('hex'),audit:auditNoise()};
+await mkdir('benchmarks/evidence/phase61',{recursive:true});
+await writeFile('benchmarks/evidence/phase61/phase61.json',JSON.stringify(record,null,2)+'\n');
+console.log('PH61 PASS: quantum density math without experimental hardware qualification');

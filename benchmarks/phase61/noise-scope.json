@@ -1,0 +1,14 @@
+{
+  "format": "invention-lab/phase61-noise-scope/1",
+  "maxQubits": 3,
+  "supportedChannels": [
+    "amplitude-damping",
+    "dephasing",
+    "depolarizing"
+  ],
+  "mathematicalQuantumChannelOnly": true,
+  "independentHardwareCalibrationRecords": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
