@@ -1,0 +1,22 @@
+{
+  "format": "invention-lab/phase55-independent-provenance/1",
+  "target": "sky130-alu8",
+  "rtlGitBlobSHA1": "3a41d0163a473a00b17a7c4b1893169961519f54",
+  "vectorSuiteSHA256": "c41a51ffcb1ffbbdc92e5668c98de176746b21ece709f9a235aee4484b23ab26",
+  "requiredAttestorRoles": [
+    "fabrication",
+    "metrology"
+  ],
+  "publicKeysBundledWithCandidateAreUntrusted": true,
+  "requireIndependentOutOfBandAuthorityTrust": true,
+  "requireRoleSeparation": true,
+  "requireRawByteIntegrity": true,
+  "expectedDieSlots": 8,
+  "expectedSessions": 48,
+  "expectedVectorsPerSession": 1024,
+  "externallyAuthenticatedDies": 0,
+  "externallyAuthenticatedSessions": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
