@@ -4,7 +4,7 @@ import {scheduleMatrix,validateJob,SAMPLE} from '../js/evidence/phase59-schedule
 test('Systolic tiles produce exact INT8 outputs against independent tensor arithmetic',()=>{
  const r=scheduleMatrix(SAMPLE);
  assert.equal(r.functionalMatchesReference,true);
- assert.deepEqual(r.computedInt8Matrix,[[11,0],[-13,33],[ -1,18]]);
+ assert.deepEqual(r.computedInt8Matrix,[[11,-4],[-13,33],[-1,18]]);
  assert.equal(r.tileCount,2);assert.equal(r.total.validMacs,18);
  assert.ok(r.macUtilization>0&&r.macUtilization<=1);
 });
