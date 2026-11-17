@@ -7,3 +7,7 @@ The final report is deliberately **DRAFT_RESEARCH_SOURCE_CANDIDATE_ONLY** while 
 Passing all development phase CI is meaningful engineering software evidence but is not proof of general simulation equivalence to real experiments. Physical reliability/yield/build-success probability remain null/unknown. Every new invention must undergo its own device-and-envelope-specific evidence qualification.
 
 For publication, require two independent dispositions: (1) integrated, reviewed and reproducible software release; (2) separate physical qualification passports for each tested reference invention. Do **not** conflate the two.
+
+## Post-integration software status
+
+The independently developed source histories were integrated into `main` at merge commit `e1c14e52b02c336bb05ac756de9091e069f30fc1`. Historical stacked PRs were closed as superseded, not individually merged. This audit now verifies actual Git ancestry rather than claiming the source is still unmerged; shallow checkouts are reported as unverified. Source integration is distinct from an independently reviewed signed product release. Security/scientific audit, representative-user UAT, independently reviewed multi-host acceptance, and matching physical experiments remain outstanding.

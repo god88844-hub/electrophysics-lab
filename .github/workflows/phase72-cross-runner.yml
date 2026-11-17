@@ -1,0 +1,48 @@
+name: Phase 72 Linux macOS Windows extracted research-source smoke
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build-one-source-archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase72-cross-runner.test.mjs
+      - run: |
+          node scripts/phase69-run.mjs
+          node scripts/phase69-strict.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: invention-lab-verified-source-archive
+          path: |
+            benchmarks/evidence/phase69/invention-lab-web.tar
+            benchmarks/evidence/phase69/phase69.json
+          if-no-files-found: error
+          retention-days: 14
+  independently-replay-one-archive-per-runner:
+    needs: build-one-source-archive
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: invention-lab-verified-source-archive
+          path: benchmarks/evidence/phase69
+      - run: node scripts/phase72-cross-runner.mjs
