@@ -1,0 +1,57 @@
+# Phase 11 independent ONNX Runtime CPU reference.
+# Real protobuf models and complete exact numerical evidence are REQUIRED.
+# All earlier CI workflows stay separately mandatory.
+name: Phase 11 per-axis QDQ and quantized convolution reference
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quantized-convolution-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install actual version-pinned ONNX Runtime CPU and ONNX
+        run: |
+          python3 -m pip install "numpy==2.4.6" "onnx==1.23.2" "onnxruntime==1.32.0"
+          python3 - <<'PY'
+          import numpy,onnx,onnxruntime
+          assert numpy.__version__=='2.4.6'
+          assert onnx.__version__=='1.23.2'
+          assert onnxruntime.__version__=='1.32.0'
+          assert 'CPUExecutionProvider' in onnxruntime.get_available_providers()
+          print('Actual ONNX Runtime CPU provider ready')
+          PY
+      - name: Run Phase 11 convolution, per-axis and evidence negative tests
+        run: node --test tests/phase11-per-axis-conv.test.mjs tests/phase11-acceptance.test.mjs
+      - name: Execute six real ONNX protobuf models under independent CPU provider
+        run: node scripts/phase11-differential.mjs
+      - name: Strict six-case source, binary, result, commit and numerical gate
+        run: node scripts/phase11-strict.mjs
+      - name: Publish independent reference verdict
+        if: always()
+        run: |
+          if [ -f benchmarks/evidence/phase11-summary.json ]; then
+            cat benchmarks/evidence/phase11-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Phase 11 mandatory ORT reference missing: FAIL" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase11-qconv-per-axis-onnx-independent-evidence
+          path: |
+            benchmarks/evidence/phase11-quantized.json
+            benchmarks/evidence/phase11-summary.json
+            benchmarks/evidence/phase11-models/*.onnx
+          if-no-files-found: error

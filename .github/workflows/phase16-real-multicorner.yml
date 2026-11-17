@@ -1,0 +1,49 @@
+# Real TT SS FF SKY130 timing views from source-pinned Apache-2.0 upstream.
+# Pre-layout modeled timing is NOT physical DRC/LVS or measured silicon.
+name: Phase 16 real SKY130 TT SS FF static timing
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verified-three-pvt-corners:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install genuine external Yosys and OpenSTA
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends yosys opensta
+          yosys -V
+          sta -version
+      - name: Reject forged corner, model or physical confidence in synthetic unit controls
+        run: node --test tests/phase16-multicorner.test.mjs
+      - name: Fetch and verify real TT SS FF Liberty files and run three actual OpenSTA processes
+        run: bash scripts/phase16-run.sh
+      - name: Independently re-open all real source, Liberty and timing evidence
+        run: node scripts/phase16-strict.mjs
+      - name: Publish stage-specific result without physical success probability
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase16/phase16-summary.json; then
+            cat benchmarks/evidence/phase16/phase16-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Three-corner timing has NOT been independently verified; physical UNKNOWN." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase16-authentic-tt-ss-ff-sky130-liberty-and-opensta
+          path: |
+            benchmarks/evidence/phase16/phase16.json
+            benchmarks/evidence/phase16/phase16-summary.json
+            benchmarks/evidence/phase16/libs/*.lib
+            benchmarks/evidence/phase16/tool-logs/*.log
+            benchmarks/evidence/phase14/alu8-sky130-mapped.v
+          if-no-files-found: warn

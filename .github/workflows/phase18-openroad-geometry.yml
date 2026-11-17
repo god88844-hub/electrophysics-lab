@@ -1,0 +1,46 @@
+# Phase18: actual OpenROAD-flow-scripts SKY130HD place and global-route.
+# Computational physical geometry, not detail-route/DRC/LVS or measured silicon.
+name: Phase 18 actual SKY130 OpenROAD placement and global routing
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  real-openroad-global-route:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject synthetic physical claims and missing routing evidence
+        run: node --test tests/phase18-route.test.mjs
+      - name: Real source-versioned Docker OpenROAD place and global route
+        run: bash scripts/phase18-run.sh
+      - name: Independently reopen authentic OpenDB and routing reports
+        run: node scripts/phase18-strict.mjs
+      - name: Publish physical evidence boundary
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase18/phase18-summary.json; then
+            cat benchmarks/evidence/phase18/phase18-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Physical placement/routing proof absent; physical verdict UNKNOWN." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase18-real-openroad-place-and-global-route
+          path: |
+            benchmarks/evidence/phase18/phase18.json
+            benchmarks/evidence/phase18/phase18-summary.json
+            benchmarks/evidence/phase18/image-digest.txt
+            benchmarks/evidence/phase18/tool-logs/*.log
+            benchmarks/evidence/phase18/orfs/results/sky130hd/alu8/base/3_place.odb
+            benchmarks/evidence/phase18/orfs/results/sky130hd/alu8/base/5_1_grt.odb
+            benchmarks/evidence/phase18/orfs/results/sky130hd/alu8/base/route.guide
+            benchmarks/evidence/phase18/orfs/logs/sky130hd/alu8/base/*.log
+          if-no-files-found: warn

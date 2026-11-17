@@ -1,0 +1,13 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {BASELINE,runWorkflow} from '../js/evidence/phase64-cross-domain.js';
+const r=JSON.parse(await readFile('benchmarks/evidence/phase64/phase64.json'));
+const raw=await readFile('benchmarks/phase64/coupling-policy.json');
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.policySHA256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(r.workflow,BASELINE);assert.deepEqual(r.observed,runWorkflow(BASELINE));
+assert.equal(r.observed.hardwareInterfaceExercised,false);
+assert.equal(r.observed.realWorldBuildSuccessPercent,null);
+console.log('PH64 STRICT PASS: canonical value-source reproduction and physical NO-GO');

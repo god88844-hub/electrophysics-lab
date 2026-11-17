@@ -1,0 +1,50 @@
+{
+  "format": "invention-lab/phase24-physical-alu-protocol/1",
+  "protocolId": "sky130-alu8-physical-experiment-v1",
+  "design": {
+    "rtlPath": "benchmarks/phase13/rtl/alu8.v",
+    "rtlGitBlob": "3a41d0163a473a00b17a7c4b1893169961519f54",
+    "designFrom": "Phase22 verified post-GDS Boolean design",
+    "manufacturedEquivalentProven": false
+  },
+  "stimulus": {
+    "format": "index-a-b-op-v1",
+    "count": 1024,
+    "seed": 615194662,
+    "directedOperandEdges": [
+      0,
+      1,
+      2,
+      7,
+      15,
+      16,
+      31,
+      63,
+      64,
+      127,
+      128,
+      129,
+      254,
+      255
+    ],
+    "sha256": "c41a51ffcb1ffbbdc92e5668c98de176746b21ece709f9a235aee4484b23ab26"
+  },
+  "acquisition": {
+    "minIndependentSpecimens": 6,
+    "minManufacturingLots": 2,
+    "minWafersPerLot": 2,
+    "repeatRunsPerSpecimen": 2,
+    "minDistinctPVTCorners": 3,
+    "independentReviewerRequired": true,
+    "instrumentCalibrationRequired": true,
+    "sourceRawFileSha256Required": true,
+    "independentPackageAndMaskTraceRequired": true
+  },
+  "fieldPolicy": {
+    "physicalValidation": "none",
+    "physicalVerdict": "unknown",
+    "realWorldBuildSuccessPercent": null,
+    "validationRequiresExternalAuthenticity": "independent signed acquisition and traceability review, not self-declaration"
+  },
+  "status": "experimental-protocol-only-not-executed-on-real-alu"
+}

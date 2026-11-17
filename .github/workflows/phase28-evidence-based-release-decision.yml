@@ -1,0 +1,50 @@
+# The go/no-go gate must fail closed on unmeasured ALU; model and other
+# resistor data are NOT evidence for physical chip success or manufacturing yield.
+name: Phase 28 real silicon evidence based go no go decision
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  physical-silicon-release-decision:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Adversarially reject forged 100 percent success and synthetic perfect results
+        run: node --test tests/phase28-decision-gate.test.mjs
+      - name: Independently reproduce prior public physical device data and zero ALU DUT capture
+        run: bash scripts/phase26-run.sh
+      - name: Recompute frozen blind protocol, full blank capture and premeasurement model
+        run: |
+          node scripts/phase27-run.mjs
+          node scripts/phase27-strict.mjs
+      - name: Generate true evidence-based release decision with null unknown success
+        run: node scripts/phase28-run.mjs
+      - name: Reopen raw provenance and independently replay manufacturing release verdict
+        run: node scripts/phase28-strict.mjs
+      - name: Publish honest missing-hardware status
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase28/phase28-summary.json; then
+            cat benchmarks/evidence/phase28/phase28-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Missing verified silicon evidence: manufacturing success UNKNOWN, RELEASE BLOCKED" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase28-strict-no-go-real-silicon-evidence-gate
+          path: |
+            benchmarks/phase28/acceptance.json
+            benchmarks/evidence/phase28/*.json
+            benchmarks/evidence/phase27/phase27-summary.json
+            benchmarks/evidence/phase27/phase27-preflight.json
+            benchmarks/evidence/phase24/phase24-summary.json
+            benchmarks/evidence/phase26/phase26-summary.json
+          if-no-files-found: warn

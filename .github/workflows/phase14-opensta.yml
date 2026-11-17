@@ -1,0 +1,49 @@
+# Separate draft-branch gate: real pre-layout STA, not physical signoff.
+name: Phase 14 real OpenSTA constrained pre-layout timing
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  opensta:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real OpenSTA and Yosys from Ubuntu repositories
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends opensta yosys
+          command -v sta
+          sta -version
+          yosys -V
+      - name: Run synthetic negative controls before external tool execution
+        run: node --test tests/phase14-sta.test.mjs
+      - name: Real pinned SKY130 Liberty mapping and real OpenSTA
+        run: bash scripts/phase14-run.sh
+      - name: Verify independent archived inputs and output integrity
+        run: node scripts/phase14-strict.mjs
+      - name: Publish strict evidence summary
+        if: always()
+        run: |
+          if [ -f benchmarks/evidence/phase14/phase14-summary.json ]; then
+            cat benchmarks/evidence/phase14/phase14-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Phase 14 real STA evidence unavailable; NOT PASSED" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase14-real-opensta-single-corner-prelayout-evidence
+          path: |
+            benchmarks/evidence/phase14/phase14.json
+            benchmarks/evidence/phase14/phase14-summary.json
+            benchmarks/evidence/phase14/tool-logs/*.log
+            benchmarks/evidence/phase14/source/*.lib
+            benchmarks/evidence/phase14/alu8-sky130-mapped.v
+          if-no-files-found: warn

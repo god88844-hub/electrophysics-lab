@@ -1,0 +1,44 @@
+name: Phase 45 Pololu brushed motor endpoints and coupled stopped-rotor hypothesis
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  manufacturer-fixed-3v-and-source-coupling:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test published motor endpoints and source battery-wire system equations
+        run: node --test tests/phase45-motor-characterization.test.mjs
+      - name: Replay manufacturer-source motor model and independent Kirchhoff audit
+        run: |
+          node scripts/phase45-run.mjs
+          node scripts/phase45-strict.mjs
+      - name: All earlier scientific regression tests
+        run: npm test
+      - name: Browser and evidence scope smoke
+        run: node scripts/browser-smoke.mjs
+      - name: Publish numerical source-limited comparison
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase45/phase45.json; then
+            cat benchmarks/evidence/phase45/phase45.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No qualified target motor/fan hardware data; empirical calibration remains unavailable" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase45-source-locked-3V-brushed-motor-and-battery-wire-hypothesis
+          path: |
+            benchmarks/phase45/pololu1592-endpoint-model.json
+            benchmarks/evidence/phase45/phase45.json
+          if-no-files-found: warn

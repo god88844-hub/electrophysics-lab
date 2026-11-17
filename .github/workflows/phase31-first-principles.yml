@@ -1,0 +1,44 @@
+name: Phase 31 first principles conditional fan probability and WebGL evidence
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  physics-probability-decision-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: First principles motor energy and conditional model negative controls
+        run: node --test tests/phase31-first-principles.test.mjs
+      - name: Full suite, no model uncertainty safeguards excluded
+        run: npm test
+      - name: Original reproducible conditional modeled success statistics
+        run: node scripts/phase31-run.mjs
+      - name: Independently recompute physics model and exact UI source hashes
+        run: node scripts/phase31-strict.mjs
+      - name: Actual Chromium/WebGL, fan scenario clicks and invalid voltage
+        run: node scripts/browser-smoke.mjs
+      - name: Publish scope and missing physical evidence
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase31/phase31-summary.json; then
+            cat benchmarks/evidence/phase31/phase31-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No independently verified fan hardware; build success UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase31-first-principles-conditional-fan-model-not-physical-measurement
+          path: |
+            benchmarks/phase31/acceptance.json
+            benchmarks/evidence/phase31/*.json
+          if-no-files-found: warn

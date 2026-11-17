@@ -299,7 +299,55 @@ export const Scope = {
     }
   },
 
+  render_rv32i(c, res) {
+    if (!res.cpu) {
+      c.appendChild(el('div',{class:'err',text:(res.problems||[]).join('\n')}));
+      return;
+    }
+    const cpu=res.cpu;
+    c.appendChild(el('div',{text:'RV32I 2.1 architectural execution: '+cpu.status+' ('+cpu.stopReason+')'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'This is a functional instruction-level model, not cycle timing or physical validation. An EBREAK is an architectural trap and only a teaching-harness stop.'}));
+    c.appendChild(el('div',{text:'Retired instructions: '+cpu.retired+', final PC: 0x'+cpu.pc.toString(16).padStart(8,'0')}));
+    const rows=Array.from({length:8},(_,r)=>
+      Array.from({length:4},(_,c)=>'x'+(r*4+c)+' = 0x'+cpu.regs[r*4+c].toString(16).padStart(8,'0')));
+    c.appendChild(table(['Registers 0–7','8–15','16–23','24–31'],rows));
+    if(cpu.traces.length) {
+      c.appendChild(el('div',{text:'Instruction trace (last 32 retired instructions):'}));
+      c.appendChild(table(['PC','Instruction','Mnemonic','Next PC'],
+        cpu.traces.slice(-32).map(t=>[
+          '0x'+t.pc.toString(16).padStart(8,'0'),
+          '0x'+t.word.toString(16).padStart(8,'0'),
+          t.mnemonic,
+          '0x'+t.nextPc.toString(16).padStart(8,'0'),
+        ])));
+    }
+    if(cpu.writes.length) {
+      c.appendChild(el('div',{text:'Memory writes (up to 32 shown):'}));
+      c.appendChild(table(['Address','Bytes','Value'],cpu.writes.slice(0,32).map(w=>[
+        '0x'+w.address.toString(16).padStart(8,'0'),w.size,'0x'+w.value.toString(16),
+      ])));
+    }
+    c.appendChild(el('div',{class:'muted',text:'Physical validation: NONE. Real-world fabrication success percentage: NOT ESTIMATED.'}));
+  },
+
   render_ai(c, res) {
+    if(res?.kind==='iris-model-benchmark'){
+      this.render_iris_holdout(c,res);
+      return;
+    }
+    if(res?.kind==='onnx-per-axis-conv'){
+      this.render_phase11_onnx(c,res);
+      return;
+    }
+    if(res?.kind==='onnx-quantized'){
+      this.render_onnx_quantized(c,res);
+      return;
+    }
+    if(res?.kind==='onnx-subset'){
+      this.render_onnx_subset(c,res);
+      return;
+    }
     const m = res.matmul;
     c.appendChild(el('div', { text: `Matmul ${m.dims.join('×')} in ${m.precision}: max |C−C_f64| = ${m.err.toExponential(3)}` }));
     c.appendChild(el('div', { text: 'C (computed):' }));
@@ -318,6 +366,92 @@ export const Scope = {
       res.mlp.targets.map((t, i) => [`[${[[0, 0], [0, 1], [1, 0], [1, 1]][i]}]`, t, res.mlp.predictions[i].toFixed(3)]),
       { numCols: [2] },
     ));
+  },
+
+  render_iris_holdout(c,res){
+    c.appendChild(el('div',{text:'UCI Iris classifier — real labeled holdout (CC BY 4.0)'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'MODEL-ONLY browser result. Trained only on 120 of 150 original UCI Iris rows. The remaining 30 labels were NOT used for fitting. Independent scikit-learn and ONNX Runtime comparisons run separately in CI.'}));
+    c.appendChild(table(['Observed holdout','Correct predictions','Accuracy','Macro-F1'],[[
+      res.samples,res.correct,(100*res.accuracy).toFixed(1)+'%',res.macroF1.toFixed(4)
+    ]]));
+    c.appendChild(el('div',{text:'Three-class confusion matrix (rows = true, columns = predicted)'}));
+    c.appendChild(table(['Actual class','Predicted setosa','Predicted versicolor','Predicted virginica'],
+      res.confusion.map((row,i)=>[res.classes[i],...row])));
+    c.appendChild(el('div',{text:'All 30 independent holdout predictions'}));
+    c.appendChild(table(['Source row','True class','Predicted class','Confidence','Correct?'],
+      res.predictions.map((predicted,i)=>[
+        i+1,res.classes[res.trueLabels[i]],res.classes[predicted],
+        (100*res.probabilities[i][predicted]).toFixed(2)+'%',
+        predicted===res.trueLabels[i]?'yes':'no'
+      ])));
+    c.appendChild(el('div',{class:'muted',text:
+      'Only 30 holdout examples: the observed accuracy is a small-sample estimate, NOT a guaranteed accuracy on future data and NOT a calibrated GPU/TPU, MLPerf, circuit, or silicon validation. Physical validation: NONE. Real-world chip build success: Not estimated.'}));
+  },
+
+  render_phase11_onnx(c,res){
+    c.appendChild(el('div',{text:'ONNX Phase 11 — '+res.caseId+' (opset 13)'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'MODEL-ONLY educational JS execution. Actual ONNX Runtime CPU reference executes separately in CI; no hardware timing, power, production qualification or fabricated success probability.'}));
+    c.appendChild(table(['Operation','Tensor dtype','Output shape'],
+      [[res.operations.join(' → '),res.output.dtype,res.output.shape.join('×')]]));
+    const showTensor=(label,t)=>{
+      c.appendChild(el('div',{text:label+' ('+t.dtype+', shape '+t.shape.join('×')+')'}));
+      if(t.shape.length===2){
+        const [rows,cols]=t.shape;
+        c.appendChild(table(Array.from({length:cols},(_,i)=>'C'+i),
+          Array.from({length:rows},(_,i)=>t.values.slice(i*cols,(i+1)*cols))));
+      }else if(t.shape.length===4){
+        const [batch,channels,h,w]=t.shape;
+        for(let n=0;n<batch;n++)for(let ch=0;ch<channels;ch++){
+          c.appendChild(el('div',{text:'Batch '+n+', channel '+ch}));
+          const offset=(n*channels+ch)*h*w;
+          c.appendChild(table(Array.from({length:w},(_,i)=>'X'+i),
+            Array.from({length:h},(_,y)=>t.values.slice(offset+y*w,offset+(y+1)*w))));
+        }
+      }
+    };
+    if(res.quantized)showTensor('Quantized intermediate Q',res.quantized);
+    showTensor('Output Y',res.output);
+    c.appendChild(el('div',{class:'muted',text:
+      'Physical validation: NONE. Real-world build success: Not estimated. Only bounded per-axis QDQ and NCHW QLinearConv arithmetic is modeled.'}));
+  },
+
+  render_onnx_quantized(c,res){
+    c.appendChild(el('div',{text:'ONNX quantization subset — '+res.caseId+' (opset 13)'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'MODEL-ONLY JS arithmetic. Real ONNX Runtime runs ONLY in CI; no measured GPU/TPU timing, silicon reliability or fabrication yield.'}));
+    c.appendChild(table(['Executed operations','Output dtype','Shape'],[[
+      res.operations.join(' → '),res.output.dtype,res.output.shape.join('×')
+    ]]));
+    const render=(label,t)=>{
+      c.appendChild(el('div',{text:label+' ('+t.dtype+')'}));
+      const [rows,cols]=t.shape;
+      c.appendChild(table(Array.from({length:cols},(_,i)=>'C'+i),
+        Array.from({length:rows},(_,i)=>t.values.slice(i*cols,(i+1)*cols).map(x=>
+          typeof x==='number'?Number(x.toPrecision(8)):x))));
+    };
+    if(res.quantized)render('Quantized intermediate',res.quantized);
+    render('Result',res.output);
+    c.appendChild(el('div',{class:'muted',text:
+      'Physical validation: NONE. Real-world build success: Not estimated. Supported only: bounded 2D per-tensor int8/uint8 QLinearMatMul, QuantizeLinear and DequantizeLinear.'}));
+  },
+
+  render_onnx_subset(c,res){
+    c.appendChild(el('div',{text:'ONNX subset — '+res.caseId+' (opset '+res.operatorSet+', '+res.dtype+')'}));
+    c.appendChild(el('div',{class:'muted',text:
+      'MODEL-ONLY result: ONNX Runtime is NOT executing in the browser. Independent ONNX Runtime CPU comparisons are performed separately in CI. No GPU/TPU timing or physical validation.'}));
+    c.appendChild(el('div',{text:'Graph execution trace:'}));
+    c.appendChild(table(['Node','Operator','Output','Shape'],
+      res.trace.map(t=>[t.node,t.op,t.output,t.shape.join('×')])));
+    for(const [name,t] of Object.entries(res.outputs)){
+      c.appendChild(el('div',{text:'Output '+name+' · '+t.shape.join('×')+' tensor'}));
+      const [rows,cols]=t.shape;
+      c.appendChild(table(Array.from({length:cols},(_,i)=>'C'+i),
+        Array.from({length:rows},(_,i)=>t.values.slice(i*cols,(i+1)*cols).map(x=>Number(x.toPrecision(7))))));
+    }
+    c.appendChild(el('div',{class:'muted',text:
+      'Real-world build success: Not estimated. Supported only: 2D float32 MatMul/Gemm/Add/Relu/Sigmoid/Softmax.'}));
   },
 
   render_quantum(c, res) {

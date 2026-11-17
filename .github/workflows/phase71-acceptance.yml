@@ -1,0 +1,32 @@
+name: Phase 71 end-to-end application acceptance and frozen public API
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  six-lab-application-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase71-acceptance.test.mjs
+      - run: |
+          node scripts/phase71-run.mjs
+          node scripts/phase71-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase71-six-source-workflows-not-representative-human-uat
+          path: |
+            benchmarks/phase71/acceptance-policy.json
+            benchmarks/evidence/phase71/phase71.json
+          if-no-files-found: warn

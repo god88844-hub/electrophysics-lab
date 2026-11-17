@@ -1,0 +1,54 @@
+name: Phase 37 independent Python physical-source and model audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  independent-raw-source-model-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Independently test source parser adversarial conditions
+        run: python3 scripts/phase37-independent-audit.py --self-test
+      - name: Acquire exact publisher originals and independently verify Git SHA1
+        run: bash scripts/phase36-download.sh
+      - name: Rebuild original Phase36 report from authenticated raw data
+        run: |
+          node scripts/phase36-run.mjs
+          node scripts/phase36-strict.mjs
+      - name: Cross-language full-source independent replay and audit source freeze
+        run: python3 scripts/phase37-independent-audit.py
+      - name: Complete scientific project regression tests
+        run: npm test
+      - name: Real Chromium/WebGL research scope verification
+        run: node scripts/browser-smoke.mjs
+      - name: Publish independent audit results
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase37/phase37-audit.json; then
+            cat benchmarks/evidence/phase37/phase37-audit.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No independent validation: original physical-source audit did not pass" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase37-python-independent-original-motor-source-model-audit
+          path: |
+            benchmarks/evidence/phase37/phase37-audit.json
+            benchmarks/evidence/phase36/phase36.json
+            benchmarks/evidence/phase36/phase36-summary.json
+            benchmarks/phase35/acceptance.json
+            benchmarks/phase36/acceptance.json
+          if-no-files-found: warn

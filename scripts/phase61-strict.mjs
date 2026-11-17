@@ -1,0 +1,12 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {auditNoise} from '../js/evidence/phase61-density-noise.js';
+const raw=await readFile('benchmarks/phase61/noise-scope.json');
+const r=JSON.parse(await readFile('benchmarks/evidence/phase61/phase61.json'));
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.policySHA256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(r.audit,auditNoise());assert.equal(r.audit.independentHardwareExperiments,0);
+assert.equal(r.audit.realWorldBuildSuccessPercent,null);
+console.log('PH61 STRICT PASS: independent replay and UNKNOWN physical performance');

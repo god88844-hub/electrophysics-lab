@@ -1,0 +1,25 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+const source=await readFile('benchmarks/phase49/synthetic-identifiability.json');
+const r=JSON.parse(await readFile('benchmarks/evidence/phase49/phase49.json'));
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.sourceSHA256,createHash('sha256').update(source).digest('hex'));
+assert.equal(r.format,'invention-lab/phase49-rank-one-synthetic-replay/1');
+const rows=JSON.parse(source).syntheticRecords;
+const train=rows.filter(x=>x.partition==='synthetic-training'),hold=rows.filter(x=>x.partition==='synthetic-holdout');
+assert.equal(train.length,3);assert.equal(hold.length,2);
+const slope=train.reduce((s,x)=>s+x.voltageV*x.currentA,0)/
+ train.reduce((s,x)=>s+x.voltageV*x.voltageV,0);
+assert.ok(Math.abs(1/slope-1.24)<1e-12);
+const errors=hold.map(x=>Math.abs(x.currentA-slope*x.voltageV));
+assert.ok(Math.abs(r.decision.syntheticHoldoutMaximumAbsoluteCurrentErrorA-Math.max(...errors))<1e-12);
+assert.ok(Math.abs(r.decision.syntheticHoldoutMeanAbsoluteCurrentErrorA-(errors[0]+errors[1])/2)<1e-12);
+assert.equal(r.decision.structuralJacobianRank,1);
+assert.equal(r.decision.individualResistancesIdentifiable,false);
+assert.equal(r.physicalIndependentCalibrationDevices,0);
+assert.equal(r.physicalQualificationReady,false);
+assert.equal(r.realWorldBuildSuccessPercent,null);
+assert.equal(r.physicalValidation,'none');
+console.log('PH49 STRICT PASS: independent train-only synthetic algebra and rank-one non-identifiability');

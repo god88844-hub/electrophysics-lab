@@ -1,0 +1,141 @@
+{
+  "format": "invention-lab/phase11-acceptance/1",
+  "opset": 13,
+  "fixture": "benchmarks/phase11/cases.json",
+  "oracle": "scripts/phase11-onnx-oracle.py",
+  "required": [
+    {
+      "id": "qconv-uint8-valid",
+      "op": "QLinearConv",
+      "dtype": "uint8",
+      "shape": [
+        1,
+        1,
+        2,
+        2
+      ],
+      "values": [
+        121,
+        110,
+        126,
+        135
+      ]
+    },
+    {
+      "id": "qconv-int8-pad-stride",
+      "op": "QLinearConv",
+      "dtype": "int8",
+      "shape": [
+        1,
+        1,
+        2,
+        2
+      ],
+      "values": [
+        -3,
+        25,
+        -1,
+        -16
+      ]
+    },
+    {
+      "id": "qconv-mixed-per-channel",
+      "op": "QLinearConv",
+      "dtype": "uint8",
+      "shape": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "values": [
+        192,
+        129,
+        178,
+        152,
+        255,
+        204,
+        34,
+        144
+      ]
+    },
+    {
+      "id": "qconv-int8-saturation",
+      "op": "QLinearConv",
+      "dtype": "int8",
+      "shape": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "values": [
+        127,
+        127,
+        127,
+        127,
+        -128,
+        -128,
+        -128,
+        -128
+      ]
+    },
+    {
+      "id": "per-axis-int8-axis1",
+      "op": "PerAxisQDQ",
+      "dtype": "float32",
+      "shape": [
+        2,
+        3
+      ],
+      "values": [
+        -1,
+        -0.75,
+        0,
+        0.5,
+        1.5,
+        8
+      ],
+      "quantized": [
+        -2,
+        -2,
+        -1,
+        1,
+        7,
+        7
+      ]
+    },
+    {
+      "id": "per-axis-uint8-negative-axis",
+      "op": "PerAxisQDQ",
+      "dtype": "float32",
+      "shape": [
+        2,
+        3
+      ],
+      "values": [
+        -32,
+        0.25,
+        31.75,
+        0,
+        8,
+        -1.5
+      ],
+      "quantized": [
+        0,
+        129,
+        255,
+        3,
+        19,
+        0
+      ]
+    }
+  ],
+  "tolerance": {
+    "integer": "exact",
+    "floatAbsolute": 0.000001,
+    "floatScaledRelative": 0.000001
+  },
+  "physicalValidation": "none",
+  "realWorldBuildSuccessPercent": null
+}

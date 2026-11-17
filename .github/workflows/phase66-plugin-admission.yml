@@ -1,0 +1,32 @@
+name: Phase 66 secure data-only simulation engine plugin admission
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  data-only-engine-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase66-plugin-admission.test.mjs
+      - run: |
+          node scripts/phase66-run.mjs
+          node scripts/phase66-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase66-source-pinned-data-only-not-runtime-sandbox
+          path: |
+            benchmarks/phase66/plugin-security-policy.json
+            benchmarks/evidence/phase66/phase66.json
+          if-no-files-found: warn

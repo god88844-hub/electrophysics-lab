@@ -1,0 +1,33 @@
+name: Phase 69 deterministic source package and clean extraction
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  reproducible-portable-web-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase69-package.test.mjs
+      - run: |
+          node scripts/phase69-run.mjs
+          node scripts/phase69-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase69-reproducible-web-source-not-production-installer
+          path: |
+            benchmarks/phase69/packaging-policy.json
+            benchmarks/evidence/phase69/phase69.json
+            benchmarks/evidence/phase69/invention-lab-web.tar
+          if-no-files-found: warn

@@ -211,3 +211,106 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+
+/* Interactive WebGL 3D design view. Shapes are visualization, not dimensional CAD. */
+.scene3d-root { position:absolute; inset:0; overflow:hidden; background:#0b1019; z-index:2; }
+.scene3d-surface, .scene3d-overlay { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.scene3d-surface { touch-action:none; cursor:grab; }
+.scene3d-surface:active { cursor:grabbing; }
+.scene3d-overlay { pointer-events:none; }
+.scene3d-help {
+  position:absolute; left:12px; bottom:12px; right:12px; width:max-content;
+  max-width:calc(100% - 24px); font-size:11px; color:#acc6db;
+  padding:6px 10px; border:1px solid #33455c;
+  border-radius:6px; background:rgba(7,15,25,.88); pointer-events:none;
+}
+#editor-toolbar { z-index:6; }
+#editor-toolbar button[aria-pressed="true"] { color:var(--pass); border-color:var(--pass); }
+.evidence-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:8px 0 12px; }
+.evidence-stats > div {
+  border:1px solid var(--border); border-radius:7px; padding:10px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.evidence-stats strong { font-size:13px; }
+@media (max-width:720px) { .evidence-stats { grid-template-columns:1fr; } }
+
+
+.scenario-demo {
+  margin-top:12px; padding:13px; border:1px solid var(--border);
+  border-radius:9px; background:var(--bg-raised);
+}
+.scenario-demo h4 { margin:0 0 5px; font-size:13px; }
+.scenario-demo p { margin:6px 0 12px; }
+.scenario-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin:11px 0; }
+.scenario-fields label { display:flex; flex-direction:column; gap:4px; color:var(--text-dim); font-size:11px; }
+.scenario-fields input { width:100%; }
+.scenario-result { font-weight:600; color:var(--text); line-height:1.6; }
+
+
+/* Phase 5: reusable computing assembly library, never a substitute netlist. */
+.assembly-shelf {
+  position:absolute; z-index:12; top:38px; right:8px; bottom:8px;
+  width:min(355px,calc(100% - 16px));
+  overflow:auto; padding:14px; display:flex; flex-direction:column; gap:12px;
+  border:1px solid #3c5970; border-radius:10px;
+  background:rgba(15,24,36,.98); color:#e7f0fa;
+  box-shadow:0 12px 36px rgba(0,0,0,.50);
+}
+.assembly-shelf[hidden] { display:none !important; }
+.assembly-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.assembly-header h3 { margin:0; font-size:15px; }
+.assembly-shelf .muted { color:#9fb4c8; font-size:11px; line-height:1.4; }
+.assembly-section { border-top:1px solid #304459; padding-top:12px; }
+.assembly-section h4 { margin:0 0 10px; font-size:12px; }
+.assembly-section > label {
+  display:flex; flex-direction:column; gap:6px; font-size:11px; color:#c5d7e7;
+}
+.assembly-section input[type="text"], .assembly-section input[type="file"] {
+  width:100%; min-width:0; border:1px solid #456078;
+  border-radius:5px; padding:7px; color:inherit; background:#1b2b3d;
+}
+.assembly-block-picker { margin:9px 0; max-height:136px; overflow:auto; border:1px solid #304459; border-radius:5px; }
+.assembly-checkbox { display:flex; align-items:center; gap:9px; padding:6px 8px; font-size:11px; border-bottom:1px solid #29394d; }
+.assembly-checkbox:last-child { border-bottom:0; }
+.assembly-checkbox input:disabled { opacity:.4; }
+.assembly-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+.assembly-actions button { padding:6px 8px; }
+.assembly-entry { margin:8px 0; padding:9px; border:1px solid #304459; border-radius:7px; background:#172638; }
+.assembly-entry strong { font-size:12px; }
+.assembly-entry p { margin:5px 0; }
+
+
+/* Phase 6: parametric nested-module inspector and assembly drill-in. */
+.assembly-param-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:9px; margin:10px 0; max-height:230px; overflow:auto; }
+.assembly-param-fields label { display:flex; flex-direction:column; gap:5px; font-size:11px; color:#c0d7e7; overflow-wrap:anywhere; }
+.assembly-param-fields input { width:100%; background:#192f42; color:#e8f0fa; border:1px solid #3a627e; border-radius:5px; padding:5px 7px; }
+.assembly-section details { margin:8px 0; padding:7px; border:1px solid #344d62; border-radius:7px; }
+.assembly-section details summary { cursor:pointer; color:#accde3; font-size:12px; }
+.assembly-section details button { margin:5px 4px 0 0; max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:left; }
+.assembly-interface-list { padding-left:19px; overflow-wrap:anywhere; font-size:11px; }
+
+/* Phase29: source-scoped validation references never imply hardware qualification. */
+.atlas-panel { display:flex; flex-direction:column; gap:10px; padding:2px 1px 14px; }
+.atlas-panel h3, .atlas-panel h4 { margin:0; }
+.atlas-panel p { margin:3px 0; }
+.atlas-active { padding:11px 12px; border:1px solid var(--border); border-radius:9px; background:var(--bg-raised); }
+.atlas-unknown { color:var(--warn); font-weight:650; }
+.atlas-references { display:grid; grid-template-columns:repeat(auto-fit,minmax(205px,1fr)); gap:9px; }
+.atlas-references h4 { grid-column:1/-1; }
+.atlas-reference { border:1px solid var(--border); border-radius:8px; padding:10px; background:var(--bg-panel); min-width:0; }
+.atlas-reference a { color:#a5cdff; font-weight:650; overflow-wrap:anywhere; }
+.atlas-reference a:focus-visible { outline:2px solid var(--accent); }
+.atlas-reference .muted { font-size:11px; overflow-wrap:anywhere; }
+.atlas-panel > button { align-self:flex-start; }
+
+/* Phase67 keyboard-accessible workflow pane */
+#workspace-guide{position:fixed;z-index:40;top:65px;right:12px;padding:16px;width:min(360px,calc(100vw - 24px));max-height:80vh;overflow:auto;border:2px solid #8babca;border-radius:10px;color:#e9f4fc;background:#182d40;box-shadow:0 6px 30px #0008}
+#workspace-guide[hidden]{display:none!important}
+#workspace-guide h2{margin:0 0 10px}
+#workspace-guide button{margin:5px;padding:6px}
+#workspace-guide select{padding:6px;margin:6px;max-width:100%}
+:where(button,select,a,input,textarea):focus-visible{outline:3px solid #92deff;outline-offset:2px}
+.skip-link{position:absolute;top:-90px;left:8px;z-index:1000;background:#142b47;color:white;padding:10px}
+.skip-link:focus{top:6px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}}

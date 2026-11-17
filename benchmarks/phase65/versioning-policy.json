@@ -1,0 +1,13 @@
+{
+  "format": "invention-lab/phase65-project-history-policy/1",
+  "formatVersion": 1,
+  "mutability": "content-addressed-snapshots",
+  "hash": "SHA-256",
+  "mergePolicy": "fast-forward-only",
+  "storeBackend": "in-memory-or-portable-json-bundle",
+  "durableRemoteBackup": false,
+  "cryptographicAuthorAttestation": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

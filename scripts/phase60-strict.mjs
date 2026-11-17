@@ -1,0 +1,14 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {blankCampaign,fitUntrustedCampaign} from '../js/evidence/phase60-calibration.js';
+const raw=await readFile('benchmarks/phase60/accelerator-calibration-policy.json'),p=JSON.parse(raw);
+const r=JSON.parse(await readFile('benchmarks/evidence/phase60/phase60.json'));
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.sourcePolicySha256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(r.prospectiveBench,blankCampaign(p));
+assert.deepEqual(r.unmeasuredVerdict,fitUntrustedCampaign(p));
+assert.equal(r.actualAuthenticatedHardwareMeasurements,0);
+assert.equal(r.realWorldBuildSuccessPercent,null);
+console.log('PH60 STRICT PASS: independent source replay, 0 hardware measurements, unknown success probability');

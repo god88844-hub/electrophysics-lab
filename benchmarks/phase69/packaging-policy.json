@@ -1,0 +1,12 @@
+{
+  "format": "invention-lab/phase69-packaging-policy/1",
+  "supportedDeliverable": "GNU tar portable local web source archive",
+  "windowsInstallerAvailable": false,
+  "macInstallerAvailable": false,
+  "linuxNativeInstallerAvailable": false,
+  "staticArchiveBuildReproducible": true,
+  "independentCleanMachineTests": 0,
+  "productionReleaseApproved": false,
+  "physicalValidation": "none",
+  "realWorldBuildSuccessPercent": null
+}

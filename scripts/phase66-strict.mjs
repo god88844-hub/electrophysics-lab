@@ -1,0 +1,14 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {auditPlugin} from '../js/evidence/phase66-plugin-admission.js';
+const r=JSON.parse(await readFile('benchmarks/evidence/phase66/phase66.json'));
+const raw=await readFile('benchmarks/phase66/plugin-security-policy.json');
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.policySHA256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(r.audit,auditPlugin());
+assert.equal(r.audit.untrustedCodeExecutionSupported,false);
+assert.equal(r.audit.trueRuntimeSandboxAvailable,false);
+assert.equal(r.realWorldBuildSuccessPercent,null);
+console.log('PH66 STRICT PASS: manifest/source replay and no arbitrary plugin runtime execution');

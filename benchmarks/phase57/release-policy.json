@@ -1,0 +1,27 @@
+{
+  "format": "invention-lab/phase57-unified-release-readiness/1",
+  "release": "invention-lab-research-software",
+  "targetDomains": [
+    "reference-3v-fan",
+    "sky130-alu8"
+  ],
+  "distinctDecisions": [
+    "scientific-software-integrity",
+    "fan-physical-qualification",
+    "alu-physical-qualification",
+    "semiconductor-foundry-signoff",
+    "production-authorization"
+  ],
+  "scientificSourceChecksDoNotProvePhysicalQualification": true,
+  "onlySourcePinnedPreviouslyVerifiedEvidenceCounts": true,
+  "noPhysicalGoWhenOriginalHardwareMissing": true,
+  "noProductionAuthorizationWithoutFoundrySignoff": true,
+  "requireDistinctSoftwareAndPhysicalVerdicts": true,
+  "mainBranchIntegrationRequiredForProductRelease": true,
+  "allDraftPRsMerged": false,
+  "actualFanMeasurementCount": 0,
+  "actualALUMeasurementCount": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

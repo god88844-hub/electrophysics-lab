@@ -1,0 +1,14 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {scheduleMatrix,SAMPLE} from '../js/evidence/phase59-scheduler.js';
+const r=JSON.parse(await readFile('benchmarks/evidence/phase59/phase59.json'));
+const raw=await readFile('benchmarks/phase59/accelerator-scheduler-policy.json');
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.sourcePolicySHA256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(r.systolic,scheduleMatrix(SAMPLE));
+assert.deepEqual(r.simt,scheduleMatrix({...SAMPLE,architecture:'simt',lanes:8}));
+assert.equal(r.systolic.physicalValidation,'none');
+assert.equal(r.systolic.measuredLatencyUs,null);
+console.log('PH59 STRICT PASS: source replay and independent arithmetic, measured physical performance UNKNOWN');

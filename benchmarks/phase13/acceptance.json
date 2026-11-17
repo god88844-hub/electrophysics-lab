@@ -1,0 +1,54 @@
+{
+  "format": "invention-lab/phase13-physical-evidence-acceptance/1",
+  "purpose": "Real open standard-cell technology mapping of one small synthesizable ALU; no place/route, physical signoff, or silicon measurements",
+  "example": {
+    "name": "alu8",
+    "width": 8,
+    "operations": [
+      "ADD",
+      "XOR",
+      "AND",
+      "SHIFT_LEFT_INSERT"
+    ],
+    "fullyEnumeratedInputs": 262144,
+    "rtl": "benchmarks/phase13/rtl/alu8.v",
+    "independentReference": "benchmarks/phase13/rtl/alu8_spec.v",
+    "testbench": "benchmarks/phase13/rtl/alu8_tb.v",
+    "negativeReference": "benchmarks/phase13/rtl/alu8_bad_spec.v"
+  },
+  "library": {
+    "name": "SkyWater SKY130 high density standard cells",
+    "node": "SKY130",
+    "technology": "130nm",
+    "corner": "tt_025C_1v80",
+    "license": "Apache-2.0",
+    "officialSource": "https://github.com/google/skywater-pdk",
+    "downstreamSource": "https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts",
+    "upstreamCommit": "7a57dddc8427845f75a14bd975328ee8717a1c8b",
+    "path": "flow/platforms/sky130hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib",
+    "gitBlobSha1": "5773657fe730d984ac06726d0addfdad80395b9b",
+    "bytes": 12800135,
+    "sourceUrl": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/7a57dddc8427845f75a14bd975328ee8717a1c8b/flow/platforms/sky130hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib",
+    "productionQualified": false,
+    "acknowledgeExperimentalPreview": true
+  },
+  "requiredStatus": {
+    "rtl-exhaustive": "pass",
+    "rtl-formal-equivalence": "pass",
+    "sky130-stdcell-mapping": "pass",
+    "sta": "unknown",
+    "pvt-corners": "unknown",
+    "place-route-parasitics": "unknown",
+    "drc": "unknown",
+    "lvs": "unknown",
+    "prototype-measurements": "unknown",
+    "measured-calibration": "unknown"
+  },
+  "minMappedCells": 1,
+  "maxMappedCells": 10000,
+  "physicalValidation": "none",
+  "realWorldBuildSuccessPercent": null,
+  "physicalVerdict": "unknown",
+  "workflow": ".github/workflows/phase13-sky130.yml",
+  "limits": "One educational 8-bit ALU at one nominal SKY130 Liberty corner. No placed or routed timing path, PVT, extraction, DRC, LVS, package or silicon test. No manufacturing success percentage."
+}

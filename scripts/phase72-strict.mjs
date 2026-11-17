@@ -1,0 +1,15 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {reviewResearchCandidate} from '../js/evidence/phase72-final-audit.js';
+const raw=await readFile('benchmarks/phase72/final-policy.json'),policy=JSON.parse(raw);
+const artifact=JSON.parse(await readFile('benchmarks/evidence/phase72/phase72.json'));
+assert.equal(artifact.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(artifact.policySHA256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(artifact.review,await reviewResearchCandidate(policy,{makeFreshPackage:false}));
+assert.equal(artifact.review.decision,'DRAFT_RESEARCH_SOURCE_CANDIDATE_ONLY');
+assert.equal(artifact.review.manufacturingReleaseAuthorized,false);
+assert.equal(artifact.review.physicalQualification.productionBuildSuccessProbability,null);
+assert.equal(artifact.softwareReleaseStatus,'UNMERGED_DRAFT_REVIEW_REQUIRED');
+console.log('PH72 STRICT PASS: reproducible candidate report with independent hardware and production NO-GO');

@@ -1,0 +1,25 @@
+{
+  "format": "invention-lab/phase56-physical-data-admission/1",
+  "target": "sky130-alu8",
+  "sourceRtlGitBlobSHA1": "3a41d0163a473a00b17a7c4b1893169961519f54",
+  "originalVectorSuiteSHA256": "c41a51ffcb1ffbbdc92e5668c98de176746b21ece709f9a235aee4484b23ab26",
+  "requiredIndependentReviewGates": [
+    "out-of-band-fab-authority-and-actual-mask-identity",
+    "out-of-band-instrument-metrology-and-calibration",
+    "byte-exact-original-raw-exports-per-session",
+    "per-die-lot-wafer-independent-identity",
+    "preacquisition-model-freeze-and-blind-holdout",
+    "complete-source-matched-observations",
+    "traceable-timing-uncertainty-and-PVT-conditions",
+    "independent-human-origin-and-results-review"
+  ],
+  "expectedDieCount": 8,
+  "expectedSessionCount": 48,
+  "expectedVectorReads": 49152,
+  "originalPhysicalMeasurementsReceived": 0,
+  "originalRawFilesReviewed": 0,
+  "independentlyVerifiedHardwareRecords": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

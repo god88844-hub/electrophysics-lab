@@ -1,0 +1,45 @@
+# Genuine gate-level SAT verification, no claim of successful silicon manufacture.
+name: Phase 17 actual SKY130 mapped-gate formal equivalence
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  functional-mapped-gate-proof:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install actual Yosys formal synthesis and OpenSTA prerequisite
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends yosys opensta
+          yosys -V
+          sta -version
+      - name: Execute strict synthetic negative controls
+        run: node --test tests/phase17-gate-equivalence.test.mjs
+      - name: Source-pin Liberty and synthesize then SAT-prove actual mapped cells
+        run: bash scripts/phase17-run.sh
+      - name: Independently replay original source, nets, Liberty and logs
+        run: node scripts/phase17-strict.mjs
+      - name: Publish proof or explicit failure
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase17/phase17-summary.json; then
+            cat benchmarks/evidence/phase17/phase17-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No genuine mapped-gate SAT proof verified; silicon UNKNOWN." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase17-actual-sky130-gate-level-sat-verification
+          path: |
+            benchmarks/evidence/phase17/
+            benchmarks/evidence/phase14/alu8-sky130-mapped.v
+          if-no-files-found: warn

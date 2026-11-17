@@ -1,0 +1,50 @@
+# Actual GDS streamed from ORFS and independent KLayout open SKY130HD DRC/LVS.
+name: Phase 21 real SKY130HD GDS KLayout DRC and LVS audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  real-gds-layout-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run negative-control physical qualification tests
+        run: node --test tests/phase21-drc-lvs.test.mjs
+      - name: Stream real GDS then run pinned KLayout DRC and LVS
+        run: bash scripts/phase21-run.sh
+      - name: Independently reopen layout, rule decks and original reports
+        run: node scripts/phase21-strict.mjs
+      - name: Publish physical limitations and genuine report
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase21/phase21-summary.json; then
+            cat benchmarks/evidence/phase21/phase21-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No independently verified physical-layout DRC/LVS; silicon UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase21-open-sky130-gds-klayout-drc-lvs-evidence
+          path: |
+            benchmarks/evidence/phase21/phase21.json
+            benchmarks/evidence/phase21/phase21-summary.json
+            benchmarks/evidence/phase21/image-digest.txt
+            benchmarks/evidence/phase21/decks/*
+            benchmarks/evidence/phase21/tool-logs/*.log
+            benchmarks/evidence/phase21/orfs/results/sky130hd/alu8/base/6_final.gds
+            benchmarks/evidence/phase21/orfs/results/sky130hd/alu8/base/6_final.cdl
+            benchmarks/evidence/phase21/orfs/results/sky130hd/alu8/base/6_final.v
+            benchmarks/evidence/phase21/orfs/results/sky130hd/alu8/base/6_final.def
+            benchmarks/evidence/phase21/orfs/results/sky130hd/alu8/base/6_lvs.lvsdb
+            benchmarks/evidence/phase21/orfs/reports/sky130hd/alu8/base/6_drc.lyrdb
+            benchmarks/evidence/phase21/orfs/reports/sky130hd/alu8/base/6_drc_count.rpt
+            benchmarks/evidence/phase21/orfs/logs/sky130hd/alu8/base/6_*.log
+          if-no-files-found: warn

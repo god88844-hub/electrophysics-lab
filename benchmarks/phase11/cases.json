@@ -1,0 +1,318 @@
+{
+  "format": "invention-lab/phase11-fixtures/1",
+  "opset": 13,
+  "rankRestrictions": {
+    "convolution": 4,
+    "axisQdq": 2
+  },
+  "cases": [
+    {
+      "id": "qconv-uint8-valid",
+      "op": "QLinearConv",
+      "x": {
+        "dtype": "uint8",
+        "shape": [
+          1,
+          1,
+          3,
+          3
+        ],
+        "values": [
+          131,
+          126,
+          140,
+          130,
+          128,
+          124,
+          122,
+          127,
+          135
+        ]
+      },
+      "w": {
+        "dtype": "uint8",
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "values": [
+          129,
+          128,
+          127,
+          130
+        ]
+      },
+      "xScale": 0.5,
+      "xZeroPoint": 128,
+      "wScales": [
+        0.25
+      ],
+      "wZeroPoints": [
+        128
+      ],
+      "yScale": 0.125,
+      "yZeroPoint": 120,
+      "yType": "uint8",
+      "pads": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "strides": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "qconv-int8-pad-stride",
+      "op": "QLinearConv",
+      "x": {
+        "dtype": "int8",
+        "shape": [
+          1,
+          1,
+          3,
+          3
+        ],
+        "values": [
+          -3,
+          7,
+          4,
+          2,
+          -5,
+          6,
+          1,
+          -1,
+          3
+        ]
+      },
+      "w": {
+        "dtype": "int8",
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "values": [
+          2,
+          -1,
+          3,
+          1
+        ]
+      },
+      "xScale": 0.25,
+      "xZeroPoint": 0,
+      "wScales": [
+        0.5
+      ],
+      "wZeroPoints": [
+        0
+      ],
+      "yScale": 0.125,
+      "yZeroPoint": -2,
+      "yType": "int8",
+      "pads": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "strides": [
+        2,
+        2
+      ],
+      "bias": [
+        2
+      ]
+    },
+    {
+      "id": "qconv-mixed-per-channel",
+      "op": "QLinearConv",
+      "x": {
+        "dtype": "uint8",
+        "shape": [
+          1,
+          1,
+          3,
+          3
+        ],
+        "values": [
+          125,
+          128,
+          131,
+          140,
+          118,
+          121,
+          122,
+          129,
+          127
+        ]
+      },
+      "w": {
+        "dtype": "int8",
+        "shape": [
+          2,
+          1,
+          2,
+          2
+        ],
+        "values": [
+          2,
+          -1,
+          3,
+          0,
+          -2,
+          4,
+          1,
+          -3
+        ]
+      },
+      "xScale": 0.5,
+      "xZeroPoint": 120,
+      "wScales": [
+        0.25,
+        0.5
+      ],
+      "wZeroPoints": [
+        0,
+        -1
+      ],
+      "yScale": 0.125,
+      "yZeroPoint": 128,
+      "yType": "uint8",
+      "pads": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "strides": [
+        1,
+        1
+      ],
+      "bias": [
+        2,
+        -3
+      ]
+    },
+    {
+      "id": "qconv-int8-saturation",
+      "op": "QLinearConv",
+      "x": {
+        "dtype": "int8",
+        "shape": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "values": [
+          127,
+          127,
+          127,
+          127
+        ]
+      },
+      "w": {
+        "dtype": "int8",
+        "shape": [
+          2,
+          1,
+          1,
+          1
+        ],
+        "values": [
+          127,
+          -128
+        ]
+      },
+      "xScale": 0.5,
+      "xZeroPoint": 0,
+      "wScales": [
+        0.5,
+        0.5
+      ],
+      "wZeroPoints": [
+        0,
+        0
+      ],
+      "yScale": 0.25,
+      "yZeroPoint": 0,
+      "yType": "int8",
+      "pads": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "strides": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "per-axis-int8-axis1",
+      "op": "PerAxisQDQ",
+      "x": {
+        "dtype": "float32",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          -1.25,
+          -0.75,
+          0.25,
+          0.5,
+          1.5,
+          8
+        ]
+      },
+      "axis": 1,
+      "scales": [
+        0.5,
+        0.25,
+        1
+      ],
+      "zeroPoints": [
+        0,
+        1,
+        -1
+      ],
+      "qType": "int8"
+    },
+    {
+      "id": "per-axis-uint8-negative-axis",
+      "op": "PerAxisQDQ",
+      "x": {
+        "dtype": "float32",
+        "shape": [
+          2,
+          3
+        ],
+        "values": [
+          -100,
+          0.25,
+          50,
+          0.125,
+          8,
+          -200
+        ]
+      },
+      "axis": -2,
+      "scales": [
+        0.25,
+        0.5
+      ],
+      "zeroPoints": [
+        128,
+        3
+      ],
+      "qType": "uint8"
+    }
+  ]
+}

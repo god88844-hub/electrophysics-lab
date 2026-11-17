@@ -1,0 +1,28 @@
+{
+  "format": "invention-lab/phase62-quantum-device-study/1",
+  "referenceModelSha256": null,
+  "deviceSlots": [
+    "C-01",
+    "C-02",
+    "H-01",
+    "H-02"
+  ],
+  "calibrationCircuits": [
+    "zero",
+    "one"
+  ],
+  "independentEvaluationCircuits": [
+    "plus",
+    "bell"
+  ],
+  "plannedDeviceCount": 4,
+  "plannedSessions": 16,
+  "plannedShotsPerSession": 1024,
+  "trainAndHoldoutDeviceDisjoint": true,
+  "originalSourceMatchedQuantumHardwareDevices": 0,
+  "actualOriginalReadoutSessions": 0,
+  "independentReviewComplete": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

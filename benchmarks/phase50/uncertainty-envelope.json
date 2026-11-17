@@ -1,0 +1,37 @@
+{
+  "format": "invention-lab/phase50-deterministic-conditional-uncertainty/1",
+  "referenceDesignId": "reference-3v-battery-2-wire-brushed-fan-candidate-001",
+  "sourceVersionIds": [
+    "phase43-E91-two-cell-nominal-ohmic-sensitivity",
+    "phase44-AWG24-copper-loop-with-assumed-contacts",
+    "phase45-Pololu1592-manufacturer-3V-endpoints",
+    "phase49-synthetic-circuit-identifiability"
+  ],
+  "nominalPackVoltageHypothesisV": 3,
+  "batterySeriesResistanceOhm": {
+    "lower": 0.3,
+    "upper": 0.6
+  },
+  "twoContactResistanceEachOhm": {
+    "lower": 0,
+    "upper": 0.05
+  },
+  "actualCopperGaugeAWGAssumed": 24,
+  "eachConductorLengthHypothesisM": 0.25,
+  "wireTemperatureHypothesisC": 20,
+  "motorEffectiveStoppedResistanceHypothesisOhm": 0.75,
+  "manufacturerDataTypicalNotCalibrated": true,
+  "intervalRepresentsPhysicalProbability": false,
+  "assumedDistribution": null,
+  "confidenceLevel": null,
+  "correlationsAndModelDiscrepancyQualified": false,
+  "syntheticHoldoutSource": "benchmarks/phase49/synthetic-identifiability.json",
+  "sourceMatchedPhysicalHoldoutUnits": 0,
+  "physicalCalibrationUnits": 0,
+  "independentInstrumentCalibrationAccepted": false,
+  "independentDeviceHeldoutAccuracy": null,
+  "sourceMatchedPredictionInterval": null,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

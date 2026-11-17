@@ -1,0 +1,35 @@
+# No actual ALU prototype was provided; this checks an unmeasured protocol
+# and proves that self-reported data / synthetic fixtures cannot satisfy it.
+name: Phase 24 physical ALU hardware acquisition plan and fail closed audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  original-hardware-measurement-readiness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Real-RTL ALU vector protocol and malicious physical evidence negative controls
+        run: node --test tests/phase24-prototype.test.mjs
+      - name: Generate original unmeasured hardware capture package
+        run: node scripts/phase24-run.mjs
+      - name: Independently verify all frozen vector, RTL and empty-template evidence
+        run: node scripts/phase24-strict.mjs
+      - name: Report outstanding physical testing
+        run: cat benchmarks/evidence/phase24/phase24-summary.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase24-actual-alu-experiment-protocol-not-physical-validation
+          path: |
+            benchmarks/phase24/acceptance.json
+            benchmarks/evidence/phase24/capture-template.json
+            benchmarks/evidence/phase24/phase24-summary.json
+          if-no-files-found: warn

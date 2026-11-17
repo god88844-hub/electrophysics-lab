@@ -1,0 +1,16 @@
+{
+  "format": "invention-lab/phase64-coupling-policy/1",
+  "stages": [
+    "quantum",
+    "adc",
+    "cpu",
+    "bit"
+  ],
+  "couplingType": "one-way-software-values",
+  "quantumToCpuHardwareLink": false,
+  "physicalInterfacesVerified": 0,
+  "modelScope": "conditional",
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

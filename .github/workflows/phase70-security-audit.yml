@@ -1,0 +1,32 @@
+name: Phase 70 source security and research readiness audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  security-and-scientific-release-gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase70-security.test.mjs
+      - run: |
+          node scripts/phase70-run.mjs
+          node scripts/phase70-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase70-research-security-not-independent-certification
+          path: |
+            benchmarks/phase70/security-policy.json
+            benchmarks/evidence/phase70/phase70.json
+          if-no-files-found: warn

@@ -1,0 +1,47 @@
+# Genuine postroute TT SS FF cell-PVT against one real extracted wire RC view.
+name: Phase 20 actual SKY130 postroute three Liberty corners
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  source-locked-postroute-pvt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enforce evidence negative controls
+        run: node --test tests/phase20-postroute-multicorner.test.mjs
+      - name: Real routed OpenDB, source-pinned three Liberty views and extracted SPEF
+        run: bash scripts/phase20-run.sh
+      - name: Independently replay real raw files and all 30 constrained timing paths
+        run: node scripts/phase20-strict.mjs
+      - name: Publish result without physical signoff claims
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase20/phase20-summary.json; then
+            cat benchmarks/evidence/phase20/phase20-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No verified postroute 3-corner timing; physical UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase20-source-locked-postroute-three-corner-sta-single-rc
+          path: |
+            benchmarks/evidence/phase20/phase20.json
+            benchmarks/evidence/phase20/phase20-summary.json
+            benchmarks/evidence/phase20/tool-logs/*.log
+            benchmarks/evidence/phase20/libs/*.lib
+            benchmarks/evidence/phase19/post-route.spef
+            benchmarks/evidence/phase19/phase19.json
+            benchmarks/evidence/phase19/phase19-summary.json
+            benchmarks/evidence/phase19/orfs/results/sky130hd/alu8/base/5_route.odb
+            benchmarks/evidence/phase19/orfs/results/sky130hd/alu8/base/5_route.sdc
+            benchmarks/evidence/phase19/image-digest.txt
+          if-no-files-found: warn

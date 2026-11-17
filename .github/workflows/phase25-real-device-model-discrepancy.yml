@@ -1,0 +1,47 @@
+# Regress real resistor measured model discrepancy and block fabricated ALU
+# calibration/uncertainty conclusions until actual hardware measurements.
+name: Phase 25 source verified device calibration and uncertainty boundaries
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  bounded-physical-model-calibration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Negative controls forbid invented population intervals and chip success
+        run: node --test tests/phase25-bounded-calibration.test.mjs
+      - name: Fetch authentic source-locked test-tile readings and replay Phase24 no-hardware gate
+        run: bash scripts/phase25-run.sh
+      - name: Independent original raw MDM, model, plan and uncertainty audit
+        run: node scripts/phase25-strict.mjs
+      - name: Publish measured evidence boundaries, not fictitious yield
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase25/phase25-summary.json; then
+            cat benchmarks/evidence/phase25/phase25-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No successful independent resistor evidence replay; ALU physical validity UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase25-genuine-resistor-heldout-diagnostics-not-alu-hardware
+          path: |
+            benchmarks/evidence/phase25/phase25.json
+            benchmarks/evidence/phase25/phase25-summary.json
+            benchmarks/evidence/phase25/tool-logs/*.log
+            benchmarks/phase25/acceptance.json
+            benchmarks/evidence/phase23/raw/*.mdm
+            benchmarks/evidence/phase23/raw/README.rst
+            benchmarks/evidence/phase23/phase23.json
+            benchmarks/evidence/phase24/capture-template.json
+            benchmarks/evidence/phase24/phase24-summary.json
+          if-no-files-found: warn

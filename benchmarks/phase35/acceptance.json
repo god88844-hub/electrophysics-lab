@@ -1,0 +1,68 @@
+{
+  "format": "invention-lab/phase35-source-locked-separate-device-holdout/1",
+  "sourceRepository": "Atikas/OpenBLDCData",
+  "sourceCommit": "1ce35456f83be8f36aec183ab19d6e6e46603023",
+  "author": "Robertas Ūselis",
+  "license": "CC BY 4.0",
+  "motorType": "STEPPEROLINE BLDC 57BYA54-24-01",
+  "motorRatedVoltageV": 24,
+  "driver": "BD10LR BLDC",
+  "powerSupply": "UNIT-T UTP3305 laboratory supply",
+  "speedPulsesPerMechanicalRevolution": 6,
+  "sourceBusVoltageLSBV": 0.00125,
+  "sourceCurrentLSBA": 0.00030518,
+  "readings": [
+    {
+      "id": "training-motor2-2500",
+      "role": "training",
+      "unit": "motor2",
+      "speedSetpointRpm": 2500,
+      "loadCurrentSettingMilliamp": 96,
+      "source": "mait",
+      "path": "data/analize_healthy11_2500rpm_96mA_mait.csv",
+      "bytes": 4737417,
+      "gitBlobSHA1": "329d53ec77d708cca07f6b3a37f6a3346063eb66",
+      "publisherHealth": "healthy"
+    },
+    {
+      "id": "holdout-motor3-2500",
+      "role": "holdout",
+      "unit": "motor3",
+      "speedSetpointRpm": 2500,
+      "loadCurrentSettingMilliamp": 96,
+      "source": "mait",
+      "path": "data/analize_healthy20_2500rpm_96mA_mait.csv",
+      "bytes": 4982886,
+      "gitBlobSHA1": "2de45c123e65711bb33f28609889581826f10cb2",
+      "publisherHealth": "healthy"
+    },
+    {
+      "id": "training-motor2-2000",
+      "role": "operating-point-contrast",
+      "unit": "motor2",
+      "speedSetpointRpm": 2000,
+      "loadCurrentSettingMilliamp": 96,
+      "source": "mait",
+      "path": "data/analize_healthy11_2000rpm_96mA_mait.csv",
+      "bytes": 4707183,
+      "gitBlobSHA1": "7d02bca4073775be034ec00e906b4f7d28a49725",
+      "publisherHealth": "healthy"
+    }
+  ],
+  "trainingOnly": [
+    "training-motor2-2500",
+    "training-motor2-2000"
+  ],
+  "holdoutOnly": [
+    "holdout-motor3-2500"
+  ],
+  "splitMethod": "publisher-independent-motor-unit: training motor2, holdout motor3",
+  "sourcePublisherInstrumentCalibrationIndependentlyVerified": false,
+  "target3VBrushedFanMatchingMotorPart": false,
+  "sourceMeasurementsTransferToTarget3VFan": false,
+  "numberOfIndependentMotorUnitsForThisStudy": 2,
+  "realWorldFanBuildSuccessPercent": null,
+  "realWorldBuildSuccessPercent": null,
+  "physicalValidationOfPhase31Fan": "none",
+  "physicalVerdictOfPhase31Fan": "unknown"
+}

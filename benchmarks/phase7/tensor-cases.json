@@ -1,0 +1,18 @@
+{
+  "format": "invention-lab/phase7-tensor-cases/1",
+  "description": "Small integer matrices exactly representable in f64; independently checked by NumPy in CI. These are computational fixtures, not real-world accelerator measurements or MLPerf.",
+  "cases": [
+    {
+      "id": "matmul-2x3x2-signed",
+      "a": [[1, -2, 3], [0, 4, -1]],
+      "b": [[2, 0], [-1, 5], [3, 2]],
+      "expected": [[13, -4], [-7, 18]]
+    },
+    {
+      "id": "matmul-3x2x3-mixed",
+      "a": [[1, 0], [-2, 4], [3, 5]],
+      "b": [[2, -1, 3], [7, 2, -2]],
+      "expected": [[2, -1, 3], [24, 10, -14], [41, 7, -1]]
+    }
+  ]
+}

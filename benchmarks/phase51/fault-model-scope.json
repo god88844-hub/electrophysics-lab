@@ -1,0 +1,61 @@
+{
+  "format": "invention-lab/phase51-source-scoped-fault-injection/1",
+  "referenceDesignId": "reference-3v-battery-2-wire-brushed-fan-candidate-001",
+  "modelScope": "logic-and-hypothetical-stopped-rotor-resistance-faults-only",
+  "sourceManifests": [
+    "benchmarks/phase41/reference-hardware-candidate.json",
+    "benchmarks/phase43/e91-assumptions.json",
+    "benchmarks/phase44/copper-harness-assumptions.json",
+    "benchmarks/phase45/pololu1592-endpoint-model.json",
+    "benchmarks/phase50/uncertainty-envelope.json"
+  ],
+  "modeledFaultCases": [
+    {
+      "case": "battery-disconnected",
+      "type": "open-electric-loop"
+    },
+    {
+      "case": "wire-open",
+      "type": "open-electric-loop"
+    },
+    {
+      "case": "locked-rotor",
+      "type": "stopped-rotor-ohmic-only"
+    },
+    {
+      "case": "contact-corrosion",
+      "type": "max-assumed-contact-resistance"
+    },
+    {
+      "case": "tach-stuck",
+      "type": "sensor-failure-no-independent-observation"
+    },
+    {
+      "case": "temperature-sensor-invalid",
+      "type": "sensor-failure-no-independent-observation"
+    },
+    {
+      "case": "correlated-pack-and-contacts",
+      "type": "shared-high-resistance-assumptions"
+    },
+    {
+      "case": "impeller-detachment",
+      "type": "unqualified-mechanical-hazard"
+    }
+  ],
+  "sourceQualifiedFaultFrequencyDistributions": null,
+  "realUnitFailureCounts": 0,
+  "realUnitExposureOperatingHours": 0,
+  "actualObservedFailureRates": null,
+  "independentFailureModeDetectionCoverage": null,
+  "independentFaultInjectionExperiments": 0,
+  "actualManufacturerEnvironmentalAgingDataForAssembly": null,
+  "correlatedFailureProbabilityModel": null,
+  "validatedComponentSafetyThresholds": null,
+  "physicalAssemblyFaultTestApproved": false,
+  "safeImpellerOperationApproved": false,
+  "manufacturingReliabilityOrYieldEstimate": null,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

@@ -1,0 +1,44 @@
+name: Phase 38 read-only stacked PR integration preflight
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  live-graph-and-local-merge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Guard against wrong PR ordering or accidental remote writes
+        run: python3 scripts/phase38-integration-preflight.py --self-test
+      - name: Requery live PR stack and merge all heads in temporary throwaway worktree
+        run: python3 scripts/phase38-integration-preflight.py
+      - name: Publish actual safe integration readiness and conflicts
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase38/phase38-summary.json; then
+            cat benchmarks/evidence/phase38/phase38-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No verified Phase38 integration readiness; main has NOT been modified" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase38-live-pr-graph-and-throwaway-merge-readiness
+          path: |
+            benchmarks/evidence/phase38/phase38-preflight.json
+            benchmarks/evidence/phase38/phase38-summary.json
+          if-no-files-found: warn

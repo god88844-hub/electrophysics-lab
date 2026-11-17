@@ -1,0 +1,69 @@
+# Phase 12: REAL CC BY 4.0 UCI Iris data, train-only sklearn MLP
+# and an independently executed actual ONNX Runtime CPU ModelProto.
+# A missing engine, missing 30-sample holdout or altered accuracy FAILS.
+# All earlier Phase 2/7/8/9/10/11 and browser/Node CI remains mandatory.
+name: Phase 12 licensed Iris model and holdout accuracy
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  iris-mlp-independent-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install actual fixed scikit-learn model and ONNX CPU reference
+        run: |
+          python3 -m pip install --no-cache-dir \
+            "numpy==2.3.5" "scipy==1.17.0" "scikit-learn==1.8.0" \
+            "onnx==1.23.2" "onnxruntime==1.32.0"
+          python3 - <<'PY'
+          import sklearn,numpy,scipy,onnx,onnxruntime
+          assert sklearn.__version__=='1.8.0'
+          assert numpy.__version__=='2.3.5'
+          assert scipy.__version__=='1.17.0'
+          assert onnx.__version__=='1.23.2'
+          assert onnxruntime.__version__=='1.32.0'
+          assert 'CPUExecutionProvider' in onnxruntime.get_available_providers()
+          print('Real train-only sklearn and independent ORT CPU engines installed')
+          PY
+      - name: Require UCI Iris data attribution and complete CSV snapshot
+        run: |
+          grep -Fq 'CC BY 4.0' benchmarks/phase12/iris-mlp.json
+          grep -Fq '10.24432/C56C76' benchmarks/phase12/iris-mlp.json
+          test "$(wc -l < benchmarks/phase12/iris.csv)" -eq 151
+      - name: Run real-dataset integrity and evidence spoofing unit tests
+        run: node --test tests/phase12-iris.test.mjs tests/phase12-acceptance.test.mjs
+      - name: Train sklearn only on 120 rows, test 30 and execute actual ONNX Runtime CPU
+        run: node scripts/phase12-iris-differential.mjs
+      - name: Require all source/model hashes, 30 samples, exact confusion and both engines
+        run: node scripts/phase12-strict.mjs
+      - name: Publish evidence summary
+        if: always()
+        run: |
+          if [ -f benchmarks/evidence/phase12-summary.json ]; then
+            cat benchmarks/evidence/phase12-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Real UCI Iris model-level independent evidence missing: FAIL" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase12-licensed-iris-sklearn-onnx-model-evidence
+          path: |
+            benchmarks/phase12/iris.csv
+            benchmarks/phase12/iris-mlp.json
+            benchmarks/evidence/phase12-models/iris-mlp.onnx
+            benchmarks/evidence/phase12-iris.json
+            benchmarks/evidence/phase12-summary.json
+          if-no-files-found: error

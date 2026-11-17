@@ -1,0 +1,531 @@
+{
+  "format": "invention-lab/phase32-public-source-coverage-catalog/1",
+  "asOf": "2026-11-17",
+  "scope": "first-principles-computing-and-electromechanical-validation; sample case battery-two-wires-motor-fan",
+  "sources": [
+    {
+      "id": "asme-vvuq",
+      "sourceClass": "standards",
+      "title": "ASME VVUQ definitions, methods and standards",
+      "url": "https://www.asme.org/codes-standards/publications-information/verification-validation-uncertainty",
+      "units": [],
+      "subjects": [
+        "validation",
+        "numerical-verification",
+        "uncertainty"
+      ],
+      "license": "public webpage; full standards may require paid access",
+      "recordStatus": "public-guidance-page-only",
+      "subjectMatch": "methodology-only",
+      "directOriginalMeasurementCount": 0
+    },
+    {
+      "id": "nasa-7009b",
+      "sourceClass": "standards",
+      "title": "NASA-STD-7009B 2024 modeling and simulation credibility",
+      "url": "https://standards.nasa.gov/standard/nasa/nasa-std-7009",
+      "units": [],
+      "subjects": [
+        "simulation-credibility",
+        "acceptance",
+        "intended-use"
+      ],
+      "license": "NASA public standard access",
+      "recordStatus": "public-standard-summary",
+      "subjectMatch": "methodology-only",
+      "directOriginalMeasurementCount": 0
+    },
+    {
+      "id": "nist-tn1900",
+      "sourceClass": "metrology",
+      "title": "NIST Technical Note 1900 measurement uncertainty",
+      "url": "https://www.nist.gov/publications/simple-guide-evaluating-and-expressing-uncertainty-nist-measurement-results",
+      "units": [],
+      "subjects": [
+        "uncertainty-budget",
+        "measurement"
+      ],
+      "license": "NIST public technical guide",
+      "recordStatus": "public-reference",
+      "subjectMatch": "methodology-only",
+      "directOriginalMeasurementCount": 0
+    },
+    {
+      "id": "nist-uncertainty-machine",
+      "sourceClass": "metrology",
+      "title": "NIST Uncertainty Machine measured correlated parameters",
+      "url": "https://uncertainty.nist.gov/",
+      "units": [],
+      "subjects": [
+        "correlation",
+        "metrology",
+        "uncertainty"
+      ],
+      "license": "public online application",
+      "recordStatus": "external-tool-reference",
+      "subjectMatch": "methodology-only",
+      "directOriginalMeasurementCount": 0
+    },
+    {
+      "id": "pololu-1592",
+      "sourceClass": "manufacturer-characterization",
+      "title": "Pololu 130-size brushed DC 3V motor product 1592 manufacturer typical specs",
+      "url": "https://www.pololu.com/product/1592/specs",
+      "units": [
+        "V",
+        "RPM",
+        "A",
+        "gf-cm"
+      ],
+      "subjects": [
+        "3V-brushed-motor",
+        "current",
+        "torque",
+        "speed",
+        "lifetime"
+      ],
+      "license": "published manufacturer specifications; attribution; no raw individual sample distribution",
+      "recordStatus": "published-typical-specifications-not-raw-observations",
+      "subjectMatch": "specific-different-motor-not-fan",
+      "directOriginalMeasurementCount": 0,
+      "partId": "pololu-1592",
+      "specificationAt3V": {
+        "ratedVoltageV": 3,
+        "noLoadSpeedRpm": 20000,
+        "noLoadCurrentA": 0.35,
+        "stallCurrentA": 4,
+        "stallTorqueGfCm": 55
+      }
+    },
+    {
+      "id": "mendeley-openmct-2026-v2",
+      "sourceClass": "published-experimental-dataset",
+      "title": "OpenMCT original DC motor control raw experiment dataset v2, more than 60k rows",
+      "url": "https://data.mendeley.com/datasets/5xvg43r9r8/2",
+      "doi": "10.17632/5xvg43r9r8.2",
+      "units": [
+        "RPM",
+        "A",
+        "ms",
+        "PWM"
+      ],
+      "subjects": [
+        "motor-control",
+        "motor-speed",
+        "current-calibration",
+        "system-identification",
+        "motor-dynamics"
+      ],
+      "license": "CC BY 4.0",
+      "recordStatus": "public-dataset-discovered-raw-data-not-downloaded-by-this-repository",
+      "subjectMatch": "different-12V-encoder-and-H-bridge-setup-not-target-3V-fan",
+      "directOriginalMeasurementCount": 0,
+      "publishedRowsLowerBoundExclusive": 60000,
+      "reportedRawLogs": 14
+    },
+    {
+      "id": "mendeley-pmdc-2021-v2",
+      "sourceClass": "published-experimental-dataset",
+      "title": "Two separate geared DC motors under different loads and inputs",
+      "url": "https://data.mendeley.com/datasets/2rkpsss6fd/2",
+      "doi": "10.17632/2rkpsss6fd.2",
+      "units": [
+        "V",
+        "A",
+        "RPM",
+        "s"
+      ],
+      "subjects": [
+        "motor-dynamics",
+        "motor-voltage",
+        "motor-speed",
+        "motor-load"
+      ],
+      "license": "CC BY 4.0",
+      "recordStatus": "published-dataset-discovered-not-downloaded-by-this-repository",
+      "subjectMatch": "different-geared-drive-motors-not-target-fan",
+      "directOriginalMeasurementCount": 0,
+      "reportedMotorSpecimens": 2,
+      "reportedDatasets": 11
+    },
+    {
+      "id": "nasa-battery-aging",
+      "sourceClass": "published-experimental-dataset",
+      "title": "NASA Ames Li-ion battery aging charge discharge impedance",
+      "url": "https://data.nasa.gov/dataset/li-ion-battery-aging-datasets",
+      "units": [
+        "V",
+        "A",
+        "s",
+        "degC",
+        "ohm",
+        "Ah"
+      ],
+      "subjects": [
+        "battery-aging",
+        "battery-impedance",
+        "battery-temperature"
+      ],
+      "license": "NASA dataset; dataset-specific terms must be reviewed",
+      "recordStatus": "source-discovered-not-ingested-in-this-phase",
+      "subjectMatch": "18650-li-ion-cells-not-specified-3V-source",
+      "directOriginalMeasurementCount": 0
+    },
+    {
+      "id": "nasa-battery-randomwalk-2",
+      "sourceClass": "published-experimental-dataset",
+      "title": "NASA randomized battery usage room temperature group RW3–RW6",
+      "url": "https://data.nasa.gov/dataset/randomized-battery-usage-2-room-temperature-random-walk",
+      "units": [
+        "V",
+        "A",
+        "s"
+      ],
+      "subjects": [
+        "battery-random-load",
+        "battery-variability",
+        "battery-aging"
+      ],
+      "license": "NASA dataset; dataset-specific terms must be reviewed",
+      "recordStatus": "source-discovered-not-ingested-in-this-phase",
+      "subjectMatch": "four-other-18650-cells-not-target-3V-source",
+      "directOriginalMeasurementCount": 0,
+      "reportedOtherBatterySpecimens": 4
+    },
+    {
+      "id": "nmb-fan-pressure-curve",
+      "sourceClass": "manufacturer-application-guidance",
+      "title": "NMB fan behavior pressure airflow RPM and current vary with operating point",
+      "url": "https://nmbtc.com/white-papers/dc-brushless-cooling-fan-behavior/",
+      "units": [
+        "RPM",
+        "A"
+      ],
+      "subjects": [
+        "fan-pressure-flow",
+        "fan-power",
+        "fan-load"
+      ],
+      "license": "public manufacturer whitepaper",
+      "recordStatus": "guidance-no-device-specific-raw-observations-ingested",
+      "subjectMatch": "BLDC-specific-guidance-not-brushed-DC-fan-data",
+      "directOriginalMeasurementCount": 0
+    },
+    {
+      "id": "nist-copper-resistivity",
+      "sourceClass": "published-physics-reference",
+      "title": "NIST copper temperature-dependent bulk resistivity measurement study",
+      "url": "https://www.nist.gov/publications/improved-estimation-resistivity-pure-copper-electrical-determination-thin-copper-film",
+      "units": [
+        "ohm-m",
+        "K"
+      ],
+      "subjects": [
+        "wire-resistivity",
+        "wire-temperature"
+      ],
+      "license": "public abstract; complete study access must be checked",
+      "recordStatus": "physics-literature-reference-no-target-wire-measurements",
+      "subjectMatch": "bulk-copper-material-qualitative-not-target-assembled-wires",
+      "directOriginalMeasurementCount": 0
+    },
+    {
+      "id": "nist-cfd-vvuq",
+      "sourceClass": "validation-methodology",
+      "title": "NISTIR 8298 industrial CFD VVUQ and model limitations",
+      "url": "https://www.nist.gov/publications/summary-industrial-verification-validation-and-uncertainty-quantification-procedures",
+      "units": [],
+      "subjects": [
+        "CFD",
+        "numerical-convergence",
+        "model-error"
+      ],
+      "license": "NIST public abstract/report",
+      "recordStatus": "guidance-no-target-fan-aerodynamic-measurements",
+      "subjectMatch": "methodology-only",
+      "directOriginalMeasurementCount": 0
+    }
+  ],
+  "requirements": [
+    {
+      "id": "target-identification",
+      "category": "target",
+      "quantity": "part identity and actual motor/fan model",
+      "unit": null,
+      "scope": "entire-assembled-system",
+      "minimumEvidence": "source-matched BOM, geometry, motor topology and manufacturing origin",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "pololu-1592",
+        "mendeley-openmct-2026-v2"
+      ]
+    },
+    {
+      "id": "battery-ocv",
+      "category": "electrical",
+      "quantity": "open-circuit voltage vs state of charge and temperature",
+      "unit": "V",
+      "scope": "actual-battery",
+      "minimumEvidence": "specified cell/circuit, chemistry, SOC and voltage curve",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "nasa-battery-aging",
+        "nasa-battery-randomwalk-2"
+      ]
+    },
+    {
+      "id": "battery-impedance",
+      "category": "electrical",
+      "quantity": "battery internal impedance and transient sag vs current age temperature",
+      "unit": "ohm",
+      "scope": "actual-battery",
+      "minimumEvidence": "frequency/SOC/temperature dependent data with uncertainty",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "nasa-battery-aging"
+      ]
+    },
+    {
+      "id": "battery-capacity",
+      "category": "reliability",
+      "quantity": "usable capacity, discharge lifetime and protection circuits",
+      "unit": "Ah",
+      "scope": "actual-battery",
+      "minimumEvidence": "cell-specific aging measurements and protection timing",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "nasa-battery-aging"
+      ]
+    },
+    {
+      "id": "wire-geometry",
+      "category": "electrical",
+      "quantity": "two-wire length, cross-section, connector and contact resistance",
+      "unit": "m, m2, ohm",
+      "scope": "actual-harness",
+      "minimumEvidence": "measured wire and connector geometry, continuity and contact variation",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "nist-copper-resistivity"
+      ]
+    },
+    {
+      "id": "wire-thermal",
+      "category": "thermal",
+      "quantity": "wire copper resistance vs temperature and Joule heating",
+      "unit": "ohm/K, W",
+      "scope": "actual-harness",
+      "minimumEvidence": "actual wire alloy and ambient temperature, thermal conductivity/limits",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "nist-copper-resistivity"
+      ]
+    },
+    {
+      "id": "motor-topology",
+      "category": "electrical",
+      "quantity": "brushed DC vs BLDC driver, PWM efficiency and commutation",
+      "unit": null,
+      "scope": "actual-motor-driver",
+      "minimumEvidence": "specific motor and controller topology, driver datasheet",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "mendeley-openmct-2026-v2"
+      ]
+    },
+    {
+      "id": "motor-resistance",
+      "category": "electrical",
+      "quantity": "winding resistance and temperature dependence",
+      "unit": "ohm",
+      "scope": "actual-motor",
+      "minimumEvidence": "measurement or traceable exact-part resistance distribution",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "pololu-1592",
+        "mendeley-pmdc-2021-v2"
+      ]
+    },
+    {
+      "id": "motor-constants",
+      "category": "electromechanical",
+      "quantity": "torque constant, back EMF, nonlinear torque-speed/current",
+      "unit": "N*m/A, V*s/rad",
+      "scope": "actual-motor",
+      "minimumEvidence": "part-matched dynamometer torque and speed, uncertainty",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "pololu-1592",
+        "mendeley-openmct-2026-v2"
+      ]
+    },
+    {
+      "id": "motor-startup",
+      "category": "dynamics",
+      "quantity": "starting torque, stiction, driver inrush and acceleration",
+      "unit": "N*m, A, s",
+      "scope": "actual-motor-load",
+      "minimumEvidence": "measured startup transients and stall/driver cutouts",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "mendeley-pmdc-2021-v2"
+      ]
+    },
+    {
+      "id": "motor-thermal",
+      "category": "thermal",
+      "quantity": "winding heating, cooling, safe intermittent/continuous current",
+      "unit": "K/W, A",
+      "scope": "actual-motor",
+      "minimumEvidence": "time-dependent temperature and manufacturer limits",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "pololu-1592"
+      ]
+    },
+    {
+      "id": "fan-geometry",
+      "category": "mechanical",
+      "quantity": "blade/hub/shaft diameter, clearances and balancing",
+      "unit": "m",
+      "scope": "actual-impeller",
+      "minimumEvidence": "actual impeller CAD and measured geometry",
+      "presentForExample": false,
+      "availableNonMatchingSources": []
+    },
+    {
+      "id": "fan-curve",
+      "category": "fluids",
+      "quantity": "fan pressure-flow curve, torque-speed curve and motor loading",
+      "unit": "Pa, m3/s, N*m",
+      "scope": "actual-impeller-plus-housing",
+      "minimumEvidence": "physical aerodynamic test curve at controlled RPM and gas conditions",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "nmb-fan-pressure-curve"
+      ]
+    },
+    {
+      "id": "fan-environment",
+      "category": "environment",
+      "quantity": "air density, altitude, inlet obstruction, humidity, temperature",
+      "unit": "kg/m3, K, Pa",
+      "scope": "operating-environment",
+      "minimumEvidence": "actual intended environment and uncertainty/limits",
+      "presentForExample": false,
+      "availableNonMatchingSources": []
+    },
+    {
+      "id": "thermal-coupling",
+      "category": "thermal",
+      "quantity": "motor fan and battery coupled steady/transient temperature",
+      "unit": "K, W",
+      "scope": "full-assembly",
+      "minimumEvidence": "measured coupled thermal resistance and transients",
+      "presentForExample": false,
+      "availableNonMatchingSources": []
+    },
+    {
+      "id": "assembly-defects",
+      "category": "reliability",
+      "quantity": "solder, contacts, wiring polarity, defects and wear population",
+      "unit": "failures/population",
+      "scope": "manufacturing-population",
+      "minimumEvidence": "independently audited actual process defect counts and confidence bounds",
+      "presentForExample": false,
+      "availableNonMatchingSources": []
+    },
+    {
+      "id": "distribution-parameters",
+      "category": "probability",
+      "quantity": "actual component joint distributions and manufacturing batch correlation",
+      "unit": "distribution",
+      "scope": "target-population",
+      "minimumEvidence": "population sampling plan and raw independent lots",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "mendeley-pmdc-2021-v2"
+      ]
+    },
+    {
+      "id": "sensor-calibration",
+      "category": "metrology",
+      "quantity": "RPM current voltage torque temperature instrument traceability",
+      "unit": "uncertainty-budget",
+      "scope": "physical-test-stand",
+      "minimumEvidence": "original instrument files certificates and expanded uncertainty",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "nist-tn1900",
+        "nist-uncertainty-machine"
+      ]
+    },
+    {
+      "id": "solver-verification",
+      "category": "numerics",
+      "quantity": "independent conservation, convergence and reference solution checks",
+      "unit": "dimensionless",
+      "scope": "model-source",
+      "minimumEvidence": "code tests tolerance and numerical error bound",
+      "presentForExample": true,
+      "availableNonMatchingSources": [
+        "asme-vvuq",
+        "nasa-7009b"
+      ]
+    },
+    {
+      "id": "model-discrepancy",
+      "category": "model-form",
+      "quantity": "uncertainty of missing mechanisms vs actual response",
+      "unit": "RPM, A, W",
+      "scope": "target-validated-envelope",
+      "minimumEvidence": "calibration vs independent disjoint holdout comparisons",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "asme-vvuq",
+        "nasa-7009b"
+      ]
+    },
+    {
+      "id": "qualification-envelope",
+      "category": "validation",
+      "quantity": "validated voltage, load, temperature and sample independence",
+      "unit": "operating-ranges",
+      "scope": "target-validated-envelope",
+      "minimumEvidence": "measured representative PVT and prespecified criteria",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "nasa-7009b"
+      ]
+    },
+    {
+      "id": "safety-reliability",
+      "category": "reliability",
+      "quantity": "short circuit, overcurrent, lifetime and failure consequences",
+      "unit": "failures/hour",
+      "scope": "intended-use",
+      "minimumEvidence": "actual hazard assessment, reliability testing and applicable signoff",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "pololu-1592"
+      ]
+    },
+    {
+      "id": "release-provenance",
+      "category": "audit",
+      "quantity": "original measurement origin, license, calibration/holdout and document versions",
+      "unit": "SHA256, record IDs",
+      "scope": "full-chain",
+      "minimumEvidence": "independently authenticated original bytes and research permissions",
+      "presentForExample": false,
+      "availableNonMatchingSources": [
+        "mendeley-openmct-2026-v2",
+        "mendeley-pmdc-2021-v2"
+      ]
+    }
+  ],
+  "originalFanHardwareMeasurements": 0,
+  "independentTargetSpecificMotorValidationRecords": 0,
+  "manufacturingSuccessPercent": null,
+  "physicalVerdict": "unknown"
+}

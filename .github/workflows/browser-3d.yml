@@ -1,0 +1,23 @@
+# Real-browser smoke for Invention Lab's shared 3D electronics workspace.
+# Unlike the Node test matrix, this tests actual WebGL program creation and
+# click-to-wire interaction using a headless Chromium instance on Linux.
+name: Browser 3D smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify Chrome/Chromium installed
+        run: |
+          command -v google-chrome || command -v chromium || command -v chromium-browser
+      - name: WebGL editor integration smoke
+        run: node scripts/browser-smoke.mjs

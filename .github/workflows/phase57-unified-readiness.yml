@@ -1,0 +1,32 @@
+name: Phase 57 unified simulation and real-world evidence release audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  cross-domain-physical-release-no-go:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase57-unified-audit.test.mjs
+      - run: |
+          node scripts/phase57-run.mjs
+          node scripts/phase57-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase57-research-only-no-production-approval
+          path: |
+            benchmarks/phase57/release-policy.json
+            benchmarks/evidence/phase57/phase57.json
+          if-no-files-found: warn

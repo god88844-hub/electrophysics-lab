@@ -1,0 +1,16 @@
+import {readFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+import {sourceSecurityScreen,normalizeRequestPath} from '../js/release/phase70-security.js';
+const report=JSON.parse(await readFile('benchmarks/evidence/phase70/phase70.json'));
+const raw=await readFile('benchmarks/phase70/security-policy.json');
+const source=await readFile('serve.mjs','utf8');
+assert.equal(report.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(report.policySHA256,createHash('sha256').update(raw).digest('hex'));
+assert.equal(report.serverSHA256,createHash('sha256').update(source).digest('hex'));
+assert.deepEqual(report.serverSourceScreen,sourceSecurityScreen(source));
+assert.ok(report.screened.every(v=>v.denied));assert.equal(report.realPenetrationTesting,'NOT_PERFORMED');
+assert.equal(report.independentScientificReview,'NOT_PERFORMED');
+assert.equal(report.realWorldBuildSuccessPercent,null);
+console.log('PH70 STRICT PASS: server source/route assertions and explicit independent-audit gaps');

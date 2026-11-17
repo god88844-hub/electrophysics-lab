@@ -1,0 +1,1 @@
+import {makePackage,verifyPackage} from '../js/release/phase69-package.js';await makePackage();const x=await verifyPackage();if(x.verifiedFiles<20)throw Error('Incomplete bundle');console.log('PH69 PASS: '+x.verifiedFiles+' verified extracted tracked app files');

@@ -1,0 +1,44 @@
+name: Phase 43 conditional Energizer E91 battery characterization evidence
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  manufacturer-source-conditional-battery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Source-specific battery model and uncalibrated physical gate
+        run: node --test tests/phase43-battery-model.test.mjs
+      - name: Reproduce source-bound conditional battery scenarios
+        run: |
+          node scripts/phase43-run.mjs
+          node scripts/phase43-strict.mjs
+      - name: Full scientific project regression
+        run: npm test
+      - name: Browser regression
+        run: node scripts/browser-smoke.mjs
+      - name: Publish explicitly uncalibrated battery source assessment
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase43/phase43.json; then
+            cat benchmarks/evidence/phase43/phase43.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Phase43 source model not verified; physical battery data absent" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase43-e91-conditional-not-physical-battery-model
+          path: |
+            benchmarks/phase43/e91-assumptions.json
+            benchmarks/evidence/phase43/phase43.json
+          if-no-files-found: warn

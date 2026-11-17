@@ -1,0 +1,52 @@
+{
+  "format": "invention-lab/phase23-sky130-public-measurement-acceptance/1",
+  "project": "invention-lab",
+  "upstreamRepository": "google/skywater-pdk-sky130-raw-data",
+  "upstreamCommit": "1f7214f2f81a0629303947a07e1ec00a28ae8a33",
+  "upstreamLicense": "Apache-2.0",
+  "documentation": {
+    "path": "README.rst",
+    "gitBlobSha1": "92c6648d707251f1fb62fb662257aef2a85a33a3",
+    "bytes": 3889,
+    "sha256": "e29c7fa8961b9638872ecb60be63bcb1c0ed4a23db44b025152eff83ec619efd"
+  },
+  "datasets": [
+    {
+      "id": "specimen-6208-1-2",
+      "path": "sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_2).mdm",
+      "gitBlobSha1": "e82a49007f61006913a8d9cd5bee50288a836d87",
+      "bytes": 3100,
+      "samples": 51,
+      "purpose": "training-only",
+      "sha256": "8661a7a54edf089eee9c976963abd97e3fa95aa9ff4ec7155061a0e3693bfe82"
+    },
+    {
+      "id": "specimen-6208-1-3",
+      "path": "sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_3).mdm",
+      "gitBlobSha1": "f0b9986ccdceaa3f01b12dacff58125c32cb6a73",
+      "bytes": 3100,
+      "samples": 51,
+      "purpose": "held-out-validation-only",
+      "sha256": "aef6ae6ebf8202bf93e8a33458c81e2c56b0697a52d6aae4fc8a178a87172e8e"
+    }
+  ],
+  "expectedColumns": [
+    "V1",
+    "I1",
+    "I2"
+  ],
+  "units": {
+    "V1": "V",
+    "I1": "A",
+    "I2": "A"
+  },
+  "evaluation": "fit-one-parameter-ohmic-conductance-on-first-specimen-compare-unseen-second-specimen",
+  "qualifications": {
+    "instrumentCalibrationChainVerified": false,
+    "uncertaintyBudgetKnown": false,
+    "lotAndWaferKnown": false,
+    "ambientConditionsKnown": false,
+    "sameDeviceAsPhase22Alu": false,
+    "realWorldBuildSuccessPercent": null
+  }
+}

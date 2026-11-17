@@ -1,0 +1,53 @@
+# Real experimental FEOL+BEOL KLayout DRC and post-layout final netlist SAT.
+name: Phase 22 source-pinned FEOL geometry and final gated netlist equivalence
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  postgds-open-feol-and-formal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run fail-closed negative controls
+        run: node --test tests/phase22-feol-final-gates.test.mjs
+      - name: Install genuine Yosys SAT engine
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends yosys
+          yosys -V
+      - name: Run source-locked real GDS FEOL checks and final gate SAT
+        run: bash scripts/phase22-run.sh
+      - name: Independent strict replay of original physical and SAT evidence
+        run: node scripts/phase22-strict.mjs
+      - name: Publish evidence and physical limits
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase22/phase22-summary.json; then
+            cat benchmarks/evidence/phase22/phase22-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "FEOL / final netlist not verified; physical UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase22-real-feol-and-postgds-independent-sat-proof
+          path: |
+            benchmarks/evidence/phase22/phase22.json
+            benchmarks/evidence/phase22/phase22-summary.json
+            benchmarks/evidence/phase22/feol-enabled-drc.lyrdb
+            benchmarks/evidence/phase22/source-sky130hd.lydrc
+            benchmarks/evidence/phase22/feol-enabled-sky130hd.lydrc
+            benchmarks/evidence/phase22/image-digest.txt
+            benchmarks/evidence/phase22/tool-logs/*
+            benchmarks/evidence/phase22/orfs/results/sky130hd/alu8/base/6_final.gds
+            benchmarks/evidence/phase22/orfs/results/sky130hd/alu8/base/6_final.v
+            benchmarks/evidence/phase22/orfs/results/sky130hd/alu8/base/6_final.def
+            benchmarks/evidence/phase22/orfs/results/sky130hd/alu8/base/6_final.cdl
+          if-no-files-found: warn

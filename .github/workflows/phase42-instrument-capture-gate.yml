@@ -1,0 +1,44 @@
+name: Phase 42 original instrument-capture protocol and no-fabrication evidence gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  capture-protocol-readiness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Adversarial original instrument source parsing and fake-validation rejection
+        run: node --test tests/phase42-capture-gate.test.mjs
+      - name: Replay source-backed candidate and physical capture plan without fabricated observations
+        run: |
+          node scripts/phase42-run.mjs
+          node scripts/phase42-strict.mjs
+      - name: Full scientific regression suite including all physical source limits
+        run: npm test
+      - name: Independent real browser and research evidence status
+        run: node scripts/browser-smoke.mjs
+      - name: Record actual physical experiment readiness rather than a fake success rate
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase42/phase42.json; then
+            cat benchmarks/evidence/phase42/phase42.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No qualified hardware data or calibration; physical validation UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase42-preregistered-instrument-capture-plan-no-physical-claim
+          path: |
+            benchmarks/phase42/physical-capture-protocol.json
+            benchmarks/evidence/phase42/phase42.json
+          if-no-files-found: warn

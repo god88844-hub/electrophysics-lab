@@ -1,0 +1,49 @@
+# Executed OpenSTA load/slew sensitivity, TT-only model (not process sweep).
+name: Phase 15 real OpenSTA TT load-slew sensitivity
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  tt-model-sensitivity:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install external OpenSTA/Yosys
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends opensta yosys
+          sta -version
+          yosys -V
+      - name: Reject synthetic manipulation before executing model
+        run: node --test tests/phase15-sensitivity.test.mjs
+      - name: Replay Phase14 pinned SKY130 mapping and independently run nine fresh OpenSTA processes
+        run: bash scripts/phase15-run.sh
+      - name: Independently rehash and reparse all 90 timing paths
+        run: node scripts/phase15-strict.mjs
+      - name: Record computational stage and physical UNKNOWN separately
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase15/phase15-summary.json; then
+            cat benchmarks/evidence/phase15/phase15-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No independent sensitivity evidence produced — FAIL/UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase15-tt-load-slew-nine-real-opensta-evidence
+          path: |
+            benchmarks/evidence/phase15/phase15.json
+            benchmarks/evidence/phase15/phase15-summary.json
+            benchmarks/evidence/phase15/logs/*.log
+            benchmarks/evidence/phase14/alu8-sky130-mapped.v
+            benchmarks/evidence/phase14/source/*.lib
+            benchmarks/evidence/phase14/tool-logs/*.log
+          if-no-files-found: warn

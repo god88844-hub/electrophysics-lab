@@ -1,0 +1,102 @@
+{
+  "format": "invention-lab/phase41-reference-hardware-readiness/1",
+  "designId": "reference-3v-battery-2-wire-brushed-fan-candidate-001",
+  "status": "CANDIDATE_NOT_FROZEN_NOT_PURCHASED_NOT_BUILT",
+  "intendedUse": "Design a specific low-voltage battery, two-conductor, brushed-DC motor, fan/impeller system for future instrumented validation; no physical run authorized from this manifest",
+  "referencePartSelectionNotConfirmed": true,
+  "motor": {
+    "id": "pololu-1592",
+    "manufacturerListing": "Pololu",
+    "partNumber": "1592",
+    "type": "brushed-DC-motor",
+    "recommendedSupplyVoltageV": {
+      "min": 1.5,
+      "max": 3
+    },
+    "publishedApproximateAt3V": {
+      "noLoadRpm": 20000,
+      "noLoadCurrentA": 0.35,
+      "stallCurrentA": 4,
+      "stallTorqueGfCm": 55,
+      "shaftDiameterMm": 2
+    },
+    "listingStatus": "discontinued",
+    "manufacturerSpecsUrl": "https://www.pololu.com/product/1592/specs",
+    "actualSpecimenId": null,
+    "actualLot": null,
+    "originalIndependentlyMeasuredDataCount": 0,
+    "publishedValuesAreTypicalNotDeviceCalibration": true
+  },
+  "battery": {
+    "id": "energizer-e91",
+    "manufacturer": "Energizer",
+    "partNumber": "E91",
+    "chemistry": "alkaline-Zn-MnO2",
+    "nominalCellVoltageV": 1.5,
+    "seriesCount": 2,
+    "nominalPackVoltageV": 3,
+    "freshCellInternalResistanceOhm": {
+      "min": 0.15,
+      "max": 0.3
+    },
+    "publishedOperatingTemperatureC": {
+      "min": -18,
+      "max": 55
+    },
+    "dataSheetUrl": "https://energizer.com/apac/australia/wp-content/uploads/sites/3/2024/05/e91_max_na_AA.pdf",
+    "actualSpecimenIds": [],
+    "actualLot": null,
+    "measuredPackOpenCircuitVoltageV": null,
+    "measuredPackDynamicImpedanceOhm": null
+  },
+  "conductors": {
+    "count": 2,
+    "proposedCopperAWG": 24,
+    "conductorLengthM": null,
+    "wireManufacturerPartNumber": null,
+    "connectorPartNumber": null,
+    "contactResistanceOhm": null,
+    "wireInsulationTemperatureRatingC": null,
+    "measuredHarnessResistanceOhm": null
+  },
+  "fan": {
+    "partNumber": null,
+    "manufacturer": null,
+    "impellerDiameterMm": null,
+    "maximumCertifiedMechanicalRpm": null,
+    "maximumQualifiedSpeedRpm": null,
+    "shaftFitVerified": false,
+    "bladeRetentionVerified": false,
+    "guardOrEnclosureQualified": false,
+    "dynamicBalanceVerified": false,
+    "pressureFlowCurveMeasured": false,
+    "torqueSpeedCurveMeasured": false,
+    "actualFanSpecimenId": null
+  },
+  "supplyAndProtection": {
+    "powerSource": "two-series-AA-cells-proposed",
+    "continuousAndTransientCurrentCapacityIndependentlyVerified": false,
+    "faultCurrentLimitingQualified": false,
+    "thermalProtectionVerified": false,
+    "shaftContainmentOrSafetyAssessmentApproved": false
+  },
+  "operatingEnvelope": {
+    "batteryNominalVoltageV": 3,
+    "loadCurrentRangeA": null,
+    "ambientTemperatureC": null,
+    "mechanicalRpmRange": null,
+    "maxExperimentDurationS": null,
+    "qualifiedPhysicalEnvelope": null
+  },
+  "researchNotes": [
+    "Motor #1592 is discontinued per manufacturer and not confirmed obtainable; a replacement requires a new source-locked identity and specifications.",
+    "Two Energizer E91 AA alkaline cells are a research choice, not evidence of 4A motor startup capability, current supply reliability or battery pack impedance in use.",
+    "Manufacturer's approximate free speed is not an approved impeller RPM; never mount or spin an unverified high-speed fan.",
+    "Fan geometry, shaft retention and qualified maximum RPM are missing; there are no real physical assembly measurements."
+  ],
+  "actualPhysicalFanMeasurements": 0,
+  "modelTransferredFrom24VBLDC": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

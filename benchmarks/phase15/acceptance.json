@@ -1,0 +1,23 @@
+{
+  "format": "invention-lab/phase15-acceptance/1",
+  "purpose": "Actual OpenSTA pre-layout combinational TT sensitivity grid, never physical proof",
+  "design": "alu8",
+  "corner": "tt_025C_1v80",
+  "analysis": "pre-layout-TT-load-and-slew-model-sweep",
+  "periodNs": 20,
+  "requiredPathsPerCase": 10,
+  "grid": [
+    {"id":0,"slewNs":0.05,"loadPf":0.005},
+    {"id":1,"slewNs":0.05,"loadPf":0.01},
+    {"id":2,"slewNs":0.05,"loadPf":0.02},
+    {"id":3,"slewNs":0.1,"loadPf":0.005},
+    {"id":4,"slewNs":0.1,"loadPf":0.01},
+    {"id":5,"slewNs":0.1,"loadPf":0.02},
+    {"id":6,"slewNs":0.2,"loadPf":0.005},
+    {"id":7,"slewNs":0.2,"loadPf":0.01},
+    {"id":8,"slewNs":0.2,"loadPf":0.02}
+  ],
+  "libertyGitBlobSha1": "5773657fe730d984ac06726d0addfdad80395b9b",
+  "physicalValidation": "none",
+  "realWorldBuildSuccessPercent": null
+}

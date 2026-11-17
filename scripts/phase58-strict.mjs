@@ -1,0 +1,13 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {compareCompilerEngines,SAMPLE} from '../js/evidence/phase58-compiler-cosim.js';
+const r=JSON.parse(await readFile('benchmarks/evidence/phase58/phase58.json'));
+const source=await readFile('benchmarks/phase58/compiler-cosimulation-policy.json');
+assert.equal(r.sourcePolicySHA256,createHash('sha256').update(source).digest('hex'));
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.deepEqual(r.result,compareCompilerEngines(SAMPLE));
+assert.equal(r.result.pass,true);assert.equal(r.result.independentRtlWaveformComparison,'NOT_PERFORMED');
+assert.equal(r.result.realWorldBuildSuccessPercent,null);
+console.log('PH58 STRICT PASS: independent IL8 software reference comparison and source replay');

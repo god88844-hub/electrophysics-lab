@@ -1,0 +1,32 @@
+name: Phase 65 content-addressed engineering project history
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  portable-project-history-integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase65-project-history.test.mjs
+      - run: |
+          node scripts/phase65-run.mjs
+          node scripts/phase65-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase65-portable-project-history-no-physical-authentication
+          path: |
+            benchmarks/phase65/versioning-policy.json
+            benchmarks/evidence/phase65/phase65.json
+          if-no-files-found: warn

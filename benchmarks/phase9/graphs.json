@@ -1,0 +1,400 @@
+{
+  "format": "invention-lab/onnx-subset-fixtures/1",
+  "operatorSet": 13,
+  "dtype": "float32",
+  "domain": "",
+  "supportedRank": 2,
+  "numericalAcceptance": {
+    "maxAbsoluteError": 0.00001,
+    "maxRelativeError": 0.00001
+  },
+  "cases": [
+    {
+      "id": "matmul-relu",
+      "name": "Signed MatMul followed by ReLU",
+      "inputs": [
+        {
+          "name": "X",
+          "shape": [
+            2,
+            3
+          ],
+          "values": [
+            1,
+            -2,
+            3,
+            0,
+            4,
+            -1
+          ]
+        }
+      ],
+      "initializers": [
+        {
+          "name": "W",
+          "shape": [
+            3,
+            2
+          ],
+          "values": [
+            2,
+            0,
+            -1,
+            5,
+            3,
+            2
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "id": "mat",
+          "op": "MatMul",
+          "inputs": [
+            "X",
+            "W"
+          ],
+          "output": "Z"
+        },
+        {
+          "id": "activation",
+          "op": "Relu",
+          "inputs": [
+            "Z"
+          ],
+          "output": "Y"
+        }
+      ],
+      "outputs": [
+        "Y"
+      ]
+    },
+    {
+      "id": "gemm-sigmoid",
+      "name": "Gemm with bias, then sigmoid",
+      "inputs": [
+        {
+          "name": "X",
+          "shape": [
+            2,
+            2
+          ],
+          "values": [
+            1,
+            2,
+            -1,
+            3
+          ]
+        }
+      ],
+      "initializers": [
+        {
+          "name": "W",
+          "shape": [
+            2,
+            2
+          ],
+          "values": [
+            2,
+            -1,
+            4,
+            1
+          ]
+        },
+        {
+          "name": "B",
+          "shape": [
+            1,
+            2
+          ],
+          "values": [
+            1,
+            -2
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "id": "dense",
+          "op": "Gemm",
+          "inputs": [
+            "X",
+            "W",
+            "B"
+          ],
+          "output": "H",
+          "attrs": {
+            "alpha": 0.5,
+            "beta": 1,
+            "transA": 0,
+            "transB": 0
+          }
+        },
+        {
+          "id": "activation",
+          "op": "Sigmoid",
+          "inputs": [
+            "H"
+          ],
+          "output": "Y"
+        }
+      ],
+      "outputs": [
+        "Y"
+      ]
+    },
+    {
+      "id": "add-softmax",
+      "name": "Broadcast Add plus stable row Softmax",
+      "inputs": [
+        {
+          "name": "X",
+          "shape": [
+            2,
+            3
+          ],
+          "values": [
+            2,
+            1,
+            -1,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "initializers": [
+        {
+          "name": "B",
+          "shape": [
+            1,
+            3
+          ],
+          "values": [
+            0,
+            -1,
+            1
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "id": "bias",
+          "op": "Add",
+          "inputs": [
+            "X",
+            "B"
+          ],
+          "output": "Z"
+        },
+        {
+          "id": "classifier",
+          "op": "Softmax",
+          "inputs": [
+            "Z"
+          ],
+          "output": "Y",
+          "attrs": {
+            "axis": 1
+          }
+        }
+      ],
+      "outputs": [
+        "Y"
+      ]
+    },
+    {
+      "id": "gemm-transpose",
+      "name": "Gemm transA/transB and alpha/beta",
+      "inputs": [
+        {
+          "name": "X",
+          "shape": [
+            3,
+            2
+          ],
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        }
+      ],
+      "initializers": [
+        {
+          "name": "W",
+          "shape": [
+            2,
+            3
+          ],
+          "values": [
+            2,
+            0,
+            1,
+            -1,
+            3,
+            2
+          ]
+        },
+        {
+          "name": "B",
+          "shape": [
+            1,
+            2
+          ],
+          "values": [
+            2,
+            4
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "id": "dense",
+          "op": "Gemm",
+          "inputs": [
+            "X",
+            "W",
+            "B"
+          ],
+          "output": "Y",
+          "attrs": {
+            "alpha": 0.25,
+            "beta": 0.5,
+            "transA": 1,
+            "transB": 1
+          }
+        }
+      ],
+      "outputs": [
+        "Y"
+      ]
+    },
+    {
+      "id": "two-layer-mlp",
+      "name": "Two fully connected layers with Relu and Softmax",
+      "inputs": [
+        {
+          "name": "X",
+          "shape": [
+            2,
+            3
+          ],
+          "values": [
+            1,
+            0,
+            -1,
+            0,
+            1,
+            1
+          ]
+        }
+      ],
+      "initializers": [
+        {
+          "name": "W1",
+          "shape": [
+            3,
+            3
+          ],
+          "values": [
+            1,
+            -1,
+            0,
+            0,
+            1,
+            2,
+            -1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "B1",
+          "shape": [
+            1,
+            3
+          ],
+          "values": [
+            0.5,
+            0,
+            -0.5
+          ]
+        },
+        {
+          "name": "W2",
+          "shape": [
+            3,
+            2
+          ],
+          "values": [
+            1,
+            2,
+            2,
+            -1,
+            -1,
+            1
+          ]
+        },
+        {
+          "name": "B2",
+          "shape": [
+            1,
+            2
+          ],
+          "values": [
+            0,
+            -0.5
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "id": "dense1",
+          "op": "Gemm",
+          "inputs": [
+            "X",
+            "W1",
+            "B1"
+          ],
+          "output": "H1"
+        },
+        {
+          "id": "relu",
+          "op": "Relu",
+          "inputs": [
+            "H1"
+          ],
+          "output": "H1A"
+        },
+        {
+          "id": "dense2",
+          "op": "Gemm",
+          "inputs": [
+            "H1A",
+            "W2",
+            "B2"
+          ],
+          "output": "H2"
+        },
+        {
+          "id": "softmax",
+          "op": "Softmax",
+          "inputs": [
+            "H2"
+          ],
+          "output": "Y",
+          "attrs": {
+            "axis": 1
+          }
+        }
+      ],
+      "outputs": [
+        "Y"
+      ]
+    }
+  ]
+}

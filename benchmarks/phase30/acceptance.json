@@ -1,0 +1,270 @@
+{
+  "format": "invention-lab/phase30-release-stack-policy/1",
+  "repository": "god88844-hub/invention-lab",
+  "productionReleaseAuthorized": false,
+  "automaticMergeAuthorized": false,
+  "projectScope": "computing-invention-lab-only-AeroForge-out-of-scope",
+  "baselineDevelopmentHead": "525cf34874fe2672c593bc32db1d81142df80d85",
+  "stackStartPr": 4,
+  "stackEndPr": 29,
+  "stackLength": 26,
+  "standaloneOpenPr": {
+    "number": 3,
+    "headBranch": "feature/physical-validation-foundation",
+    "baseBranch": "main",
+    "headSha": "fee4cad85bdea46189c7008cb0dda30efd56bf01",
+    "expectedOpen": true,
+    "expectedMerged": false,
+    "requireDraft": false
+  },
+  "stack": [
+    {
+      "number": 4,
+      "headBranch": "feature/3d-invention-workspace-foundation",
+      "baseBranch": "main",
+      "headSha": "3aad597fcb9b4fe9b6a44188aa990603fe548379",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": false
+    },
+    {
+      "number": 5,
+      "headBranch": "feature/hierarchical-computing-assemblies",
+      "baseBranch": "feature/3d-invention-workspace-foundation",
+      "headSha": "84e57eac97d40a9853acffeea6baccc3c76d3688",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": false
+    },
+    {
+      "number": 6,
+      "headBranch": "feature/parametric-nested-computing-modules",
+      "baseBranch": "feature/hierarchical-computing-assemblies",
+      "headSha": "375fb55135e33ada3753308001f895b8592f3aaf",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": false
+    },
+    {
+      "number": 7,
+      "headBranch": "feature/rv32i-architecture-evidence",
+      "baseBranch": "feature/parametric-nested-computing-modules",
+      "headSha": "1b1ae9cf72f1f74f8f4716a72da723d01409ef9b",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 8,
+      "headBranch": "feature/rv32m-instruction-extension-evidence",
+      "baseBranch": "feature/rv32i-architecture-evidence",
+      "headSha": "33b772610ccdec8c6f7550ca927ead2138e0ad88",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 9,
+      "headBranch": "feature/onnx-subset-independent-inference",
+      "baseBranch": "feature/rv32m-instruction-extension-evidence",
+      "headSha": "7eb1c94006c72c5fcd18a43ab671485e7a104c4d",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 10,
+      "headBranch": "feature/onnx-int8-quantization-evidence",
+      "baseBranch": "feature/onnx-subset-independent-inference",
+      "headSha": "c701e7f23fd05850b36c4994c0821f9a6723aebb",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 11,
+      "headBranch": "feature/onnx-per-axis-qlinearconv-evidence",
+      "baseBranch": "feature/onnx-int8-quantization-evidence",
+      "headSha": "03eb54a923b0c21d745d25ea7a0aedb41f6f77b3",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 12,
+      "headBranch": "feature/iris-mlp-licensed-model-benchmark",
+      "baseBranch": "feature/onnx-per-axis-qlinearconv-evidence",
+      "headSha": "271dac8dab0da038baae3cdbbf538791fbdce658",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 13,
+      "headBranch": "feature/sky130-synthesis-evidence-ladder",
+      "baseBranch": "feature/iris-mlp-licensed-model-benchmark",
+      "headSha": "743938bd707d746f27471f0a4b7d66827a5dbd18",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 14,
+      "headBranch": "feature/phase14-constrained-tt-sta",
+      "baseBranch": "feature/sky130-synthesis-evidence-ladder",
+      "headSha": "aaad63208bc8c65a6909883e62b9077bfa977ab3",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 15,
+      "headBranch": "feature/phase15-tt-load-slew-sensitivity",
+      "baseBranch": "feature/phase14-constrained-tt-sta",
+      "headSha": "7b30b3662da63e60b0cc29215acd915d8337a9ee",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 16,
+      "headBranch": "feature/phase16-true-sky130-tt-ss-ff-opensta",
+      "baseBranch": "feature/phase15-tt-load-slew-sensitivity",
+      "headSha": "c3c05c66186fd541292d77cdfb9da08e79f47edb",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 17,
+      "headBranch": "feature/phase17-gate-sat-equivalence",
+      "baseBranch": "feature/phase16-true-sky130-tt-ss-ff-opensta",
+      "headSha": "d187253e030a07684504bd8226fdebc7f679bff7",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 18,
+      "headBranch": "feature/phase18-openroad-sky130-physical-geometry",
+      "baseBranch": "feature/phase17-gate-sat-equivalence",
+      "headSha": "89bb864eb91d328600824476dc6e0705a5875ee4",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 19,
+      "headBranch": "feature/phase19-sky130-detailed-route-extracted-rc",
+      "baseBranch": "feature/phase18-openroad-sky130-physical-geometry",
+      "headSha": "a27006b3d38d04e779f5b48162ddf56fa29fd781",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 20,
+      "headBranch": "feature/phase20-postroute-pvt-timing",
+      "baseBranch": "feature/phase19-sky130-detailed-route-extracted-rc",
+      "headSha": "c6b091f311db34206c02e9c9aeb7554d4723eb33",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 21,
+      "headBranch": "feature/phase21-sky130-open-layout-drc-lvs",
+      "baseBranch": "feature/phase20-postroute-pvt-timing",
+      "headSha": "0420c2c87f2c29fadfb4dde62b60b4bd538dc63a",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 22,
+      "headBranch": "feature/phase22-feol-final-gates-proof",
+      "baseBranch": "feature/phase21-sky130-open-layout-drc-lvs",
+      "headSha": "168950b159f770596d8611d44f17304a5408ab5a",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 23,
+      "headBranch": "feature/phase23-sky130-physical-dataset-provenance",
+      "baseBranch": "feature/phase22-feol-final-gates-proof",
+      "headSha": "0320199b86ed8b658f9f18f517e42aa080031dbb",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 24,
+      "headBranch": "feature/phase24-alu-physical-capture-gate",
+      "baseBranch": "feature/phase23-sky130-physical-dataset-provenance",
+      "headSha": "c17cb0864db60041b2518faed93a4f957b86bfdf",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 25,
+      "headBranch": "feature/phase25-bounded-calibration-uncertainty",
+      "baseBranch": "feature/phase24-alu-physical-capture-gate",
+      "headSha": "613219b49413248557d39f0d6a3a0de95cdb355c",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 26,
+      "headBranch": "feature/phase26-sky130-variation-failure-readiness",
+      "baseBranch": "feature/phase25-bounded-calibration-uncertainty",
+      "headSha": "db06b87139b4d63d26759dff00862077bb7b91f5",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 27,
+      "headBranch": "feature/phase27-blind-alu-validation-gate",
+      "baseBranch": "feature/phase26-sky130-variation-failure-readiness",
+      "headSha": "763b76f83b7ecf0fe068a9d5ef5267fb73bb31db",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 28,
+      "headBranch": "feature/phase28-evidence-decision-gate",
+      "baseBranch": "feature/phase27-blind-alu-validation-gate",
+      "headSha": "6cd73819573f419d79f9fb19af58b932f87aff4b",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    },
+    {
+      "number": 29,
+      "headBranch": "feature/phase29-evidence-atlas-3d-integration",
+      "baseBranch": "feature/phase28-evidence-decision-gate",
+      "headSha": "525cf34874fe2672c593bc32db1d81142df80d85",
+      "expectedOpen": true,
+      "expectedMerged": false,
+      "requireDraft": true
+    }
+  ],
+  "immutableEvidenceLimits": {
+    "phase27PlannedALUPhysicalReadings": 49152,
+    "actualAuthenticatedALUPhysicalReadings": 0,
+    "physicallyQualifiedALUPrototypeCount": 0,
+    "foundrySignoffQualified": false,
+    "referenceDatasetsAreDesignSpecific": false,
+    "prototypeApproval": "BLOCKED_NEEDS_REAL_HARDWARE",
+    "productionRelease": "NO_GO_MISSING_INDEPENDENT_SILICON_EVIDENCE",
+    "simulationPhysicalEquivalenceDemonstrated": false,
+    "physicalValidation": "none",
+    "physicalVerdict": "unknown",
+    "realWorldBuildSuccessPercent": null
+  },
+  "releaseDisposition": "RESEARCH_SOFTWARE_CANDIDATE_NOT_PHYSICALLY_QUALIFIED"
+}

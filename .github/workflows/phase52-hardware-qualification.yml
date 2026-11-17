@@ -1,0 +1,36 @@
+name: Phase 52 actual reference-system hardware qualification gates
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verified-research-plan-not-physical-authorization:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check independent real-world requirements and adversarial fabricated approval
+        run: node --test tests/phase52-reference-qualification.test.mjs
+      - name: Generate source-locked physical readiness and strict independent replay
+        run: |
+          node scripts/phase52-run.mjs
+          node scripts/phase52-strict.mjs
+      - name: Full prior scientific regression suite
+        run: npm test
+      - name: Browser and 3D evidence check
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase52-reference-hardware-qualification-no-go
+          path: |
+            benchmarks/phase52/reference-system-qualification.json
+            benchmarks/evidence/phase52/phase52.json
+          if-no-files-found: warn

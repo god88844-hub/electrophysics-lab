@@ -1,0 +1,175 @@
+{
+  "format": "invention-lab/phase40-model-passport-registry/1",
+  "repository": "god88844-hub/invention-lab",
+  "asOf": "2026-11-17",
+  "modelLimits": "Pilot registry supports identity+explicit operating-parameter comparisons; no device physical certification.",
+  "methodology": [
+    {
+      "title": "NASA-STD-7009B",
+      "url": "https://standards.nasa.gov/standard/NASA/NASA-STD-7009"
+    },
+    {
+      "title": "NIST uncertainty guide",
+      "url": "https://www.nist.gov/publications/simple-guide-evaluating-and-expressing-uncertainty-nist-measurement-results"
+    }
+  ],
+  "models": [
+    {
+      "id": "phase31-illustrative-brushed-fan",
+      "kind": "illustrative-physics",
+      "purpose": [
+        "Demonstrate conditional mathematical DC motor/fan predictions only"
+      ],
+      "source": {
+        "repository": "god88844-hub/invention-lab",
+        "path": "js/evidence/phase31-first-principles.js",
+        "version": "1"
+      },
+      "device": {
+        "topology": "brushed-DC-direct",
+        "type": "fan-motor",
+        "identifier": "unidentified-illustration"
+      },
+      "conditions": [
+        {
+          "name": "nominalSupplyVoltageV",
+          "unit": "V",
+          "min": 3,
+          "max": 3,
+          "basis": "illustrative assumption, not measured operating envelope"
+        }
+      ],
+      "provenance": {
+        "publisherSourceCommit": null
+      },
+      "evidence": {
+        "independentPhysicalMotorUnits": 0,
+        "matchedTarget3VFanPhysicalSamples": 0,
+        "targetALUSiliconSamples": 0,
+        "physicallyQualifiedPopulationPredictionInterval": null,
+        "independentInstrumentTraceabilityCertified": false,
+        "physicalValidation": "none",
+        "physicalVerdict": "unknown",
+        "realWorldBuildSuccessPercent": null
+      },
+      "cautions": [
+        "Illustrative unmeasured resistance and torque constants cannot qualify a motor.",
+        "Fan geometry, measured load curve, battery and actual assembly are unknown."
+      ]
+    },
+    {
+      "id": "phase35-published-bldc",
+      "kind": "published-experimental-empirical",
+      "purpose": [
+        "Compare published matched-setpoint motor2 vs motor3 speed/current at 2500 RPM"
+      ],
+      "source": {
+        "repository": "god88844-hub/invention-lab",
+        "path": "js/measure/phase35-independent-holdout.js",
+        "version": "1"
+      },
+      "device": {
+        "topology": "BLDC-driver",
+        "type": "brake-bench-motor",
+        "identifier": "STEPPEROLINE 57BYA54-24-01"
+      },
+      "conditions": [
+        {
+          "name": "motorRatedVoltageV",
+          "unit": "V",
+          "min": 24,
+          "max": 24,
+          "basis": "manufacturer motor rating, not necessarily exact measured bus"
+        },
+        {
+          "name": "brakeControllerSettingMilliamp",
+          "unit": "mA",
+          "min": 96,
+          "max": 96,
+          "basis": "publisher test control setting, not measured motor phase current"
+        },
+        {
+          "name": "controllerSpeedSetpointRpm",
+          "unit": "rpm",
+          "min": 2500,
+          "max": 2500,
+          "basis": "matched 2500 rpm separate-unit comparison only"
+        }
+      ],
+      "provenance": {
+        "publisherSourceCommit": "1ce35456f83be8f36aec183ab19d6e6e46603023"
+      },
+      "evidence": {
+        "independentPhysicalMotorUnits": 2,
+        "matchedTarget3VFanPhysicalSamples": 0,
+        "targetALUSiliconSamples": 0,
+        "physicallyQualifiedPopulationPredictionInterval": null,
+        "independentInstrumentTraceabilityCertified": false,
+        "physicalValidation": "none",
+        "physicalVerdict": "unknown",
+        "realWorldBuildSuccessPercent": null
+      },
+      "cautions": [
+        "One held-out motor specimen; 55k sensor rows are not 55k physical motors.",
+        "Hysteresis brake and BLDC controller cannot represent a fan driven by a 3V brushed motor."
+      ]
+    },
+    {
+      "id": "phase36-two-regime-bldc",
+      "kind": "published-experimental-empirical",
+      "purpose": [
+        "Describe two-point train-motor2 speed-current setpoint model and heldout motor3 errors"
+      ],
+      "source": {
+        "repository": "god88844-hub/invention-lab",
+        "path": "js/measure/phase36-source-calibration.js",
+        "version": "1"
+      },
+      "device": {
+        "topology": "BLDC-driver",
+        "type": "brake-bench-motor",
+        "identifier": "STEPPEROLINE 57BYA54-24-01"
+      },
+      "conditions": [
+        {
+          "name": "motorRatedVoltageV",
+          "unit": "V",
+          "min": 24,
+          "max": 24,
+          "basis": "motor rated voltage, not exact supply telemetry"
+        },
+        {
+          "name": "brakeControllerSettingMilliamp",
+          "unit": "mA",
+          "min": 96,
+          "max": 96,
+          "basis": "publisher test control setting only"
+        },
+        {
+          "name": "controllerSpeedSetpointRpm",
+          "unit": "rpm",
+          "min": 2000,
+          "max": 2500,
+          "basis": "observed original records at endpoints ONLY, not certified interpolation"
+        }
+      ],
+      "provenance": {
+        "publisherSourceCommit": "1ce35456f83be8f36aec183ab19d6e6e46603023"
+      },
+      "evidence": {
+        "independentPhysicalMotorUnits": 2,
+        "matchedTarget3VFanPhysicalSamples": 0,
+        "targetALUSiliconSamples": 0,
+        "physicallyQualifiedPopulationPredictionInterval": null,
+        "independentInstrumentTraceabilityCertified": false,
+        "physicalValidation": "none",
+        "physicalVerdict": "unknown",
+        "realWorldBuildSuccessPercent": null
+      },
+      "cautions": [
+        "Training has two points and zero residual degrees of freedom; interior setpoint behavior is unmeasured.",
+        "One held-out motor does not give independent population accuracy or target fan qualification."
+      ]
+    }
+  ]
+}

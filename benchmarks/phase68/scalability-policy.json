@@ -1,0 +1,9 @@
+{
+  "format": "invention-lab/phase68-index-benchmark/1",
+  "scope": "in-memory spatial query for 2D/3D scene",
+  "measuredIndependentDevices": 0,
+  "hardwareRendererP95Verified": false,
+  "performanceTargetGuarantee": false,
+  "physicalValidation": "none",
+  "realWorldBuildSuccessPercent": null
+}

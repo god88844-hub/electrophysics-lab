@@ -1,0 +1,57 @@
+name: Phase 34 original healthy BLDC speed pulse and fault comparison
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  original-published-motor-physical-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Original motor speed pulse, fake physical proof and timing negative controls
+        run: node --test tests/phase34-healthy-stream.test.mjs
+      - name: Original pinned publisher faulty motor data
+        run: |
+          bash scripts/phase33-download.sh
+          node scripts/phase33-run.mjs
+          node scripts/phase33-strict.mjs
+      - name: Download 22MB publisher healthy original physically measured BLDC source
+        run: bash scripts/phase34-download.sh
+      - name: Stream real healthy pulse speed, current and voltage against bad sensor
+        run: node scripts/phase34-run.mjs
+      - name: Independently reopen original physical source and verify speed no-transfer gate
+        run: node scripts/phase34-strict.mjs
+      - name: Original full original multi-lab scientific tests
+        run: npm test
+      - name: Preserve source-researched target-specific evidence limitations
+        run: |
+          node scripts/phase32-run.mjs
+          node scripts/phase32-strict.mjs
+      - name: Actual Chromium and WebGL browser test
+        run: node scripts/browser-smoke.mjs
+      - name: Publish original observed speed and physical transfer limitations
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase34/phase34-summary.json; then
+            cat benchmarks/evidence/phase34/phase34-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Original healthy publisher data not fully source-verified; 3V fan physical success UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase34-healthy-source-locked-real-BLDC-speed-not-fan-equivalence
+          path: |
+            benchmarks/phase34/acceptance.json
+            benchmarks/evidence/phase34/phase34.json
+            benchmarks/evidence/phase34/phase34-summary.json
+            docs/PHASE34-HEALTHY-BLDC-SPEED.md
+          if-no-files-found: warn
