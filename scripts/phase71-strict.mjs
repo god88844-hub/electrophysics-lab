@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {runAcceptance} from '../js/evidence/phase71-acceptance.js';
+const raw=await readFile('benchmarks/phase71/acceptance-policy.json');
+const policy=JSON.parse(raw);
+const record=JSON.parse(await readFile('benchmarks/evidence/phase71/phase71.json'));
+assert.equal(record.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(record.policySHA256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(record.acceptance,runAcceptance(policy));
+assert.equal(record.acceptance.representativeHumanUserAcceptance,'NOT_CONDUCTED');
+assert.equal(record.realWorldBuildSuccessPercent,null);
+console.log('PH71 STRICT PASS: six source-only real example engine replays and unknown physical confidence');

@@ -1,0 +1,22 @@
+{
+  "format": "invention-lab/phase71-source-acceptance/1",
+  "frozenGitBlobs": {
+    "js/core/registry.js": "5cefbd2d43ebefd49b0a00924cfa16b5a013a7d7",
+    "js/core/diagram.js": "d009adabc9a87646231dc6d1c058d8113960219e",
+    "js/core/validation.js": "a3a0226ac18af2772f2a3ee3ea84d6b8576eb79f",
+    "docs/PLUGIN_API.md": "ea841f8caa041366a4f6d8755acc31bcc096faa4"
+  },
+  "supportedExampleLabs": [
+    "logic",
+    "chip",
+    "cpu",
+    "ai",
+    "quantum",
+    "optics"
+  ],
+  "independentlyAcceptedByUsers": false,
+  "independentWCAGReview": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
