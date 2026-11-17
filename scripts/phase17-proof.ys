@@ -1,0 +1,17 @@
+# Substitutions in this exact archived script are made only by the shell runner:
+# __SPEC__ is the selected independent-good or deliberately-bad reference.
+# Formal proof is against ACTUAL Phase 14 mapped cells, not unsynthesized RTL.
+read_verilog benchmarks/evidence/phase14/alu8-sky130-mapped.v
+rename alu8 alu8_mapped
+read_verilog __SPEC__
+# Import Liberty logic functions. -lib would make unconstrained blackboxes.
+read_liberty -ignore_miss_func -ignore_miss_dir benchmarks/evidence/phase14/source/sky130_fd_sc_hd__tt_025C_1v80.lib
+proc
+opt
+# Flatten functional cell models before equivalence construction.
+flatten alu8_mapped
+opt
+equiv_make __MODULE__ alu8_mapped eq
+hierarchy -check -top eq
+equiv_simple
+equiv_status -assert

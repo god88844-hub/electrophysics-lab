@@ -1,0 +1,19 @@
+{
+  "format": "invention-lab/phase17-mapped-gate-acceptance/1",
+  "design": "alu8",
+  "sourceRtl": "benchmarks/phase13/rtl/alu8.v",
+  "independentReference": "benchmarks/phase13/rtl/alu8_spec.v",
+  "negativeControlReference": "benchmarks/phase13/rtl/alu8_bad_spec.v",
+  "mappedNetlist": "benchmarks/evidence/phase14/alu8-sky130-mapped.v",
+  "cellLiberty": "benchmarks/evidence/phase14/source/sky130_fd_sc_hd__tt_025C_1v80.lib",
+  "libertyGitBlobSha1": "5773657fe730d984ac06726d0addfdad80395b9b",
+  "modelCorner": "tt_025C_1v80",
+  "inputBits": 18,
+  "outputBits": 10,
+  "positiveMustProve": true,
+  "mutantMustFail": true,
+  "proofEngine": "Yosys equiv_simple SAT using Liberty functional cell models",
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
