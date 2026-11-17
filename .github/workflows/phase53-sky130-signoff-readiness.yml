@@ -1,0 +1,36 @@
+name: Phase 53 experimental SKY130 versus actual foundry signoff readiness
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  source-verified-open-flow-vs-foundry-signoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test frozen ALU design and missing foundry signoff domains
+        run: node --test tests/phase53-signoff.test.mjs
+      - name: Replay original source hashes and strictly audit foundry NO-GO
+        run: |
+          node scripts/phase53-run.mjs
+          node scripts/phase53-strict.mjs
+      - name: Full scientific regression
+        run: npm test
+      - name: Browser evidence status
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase53-open-pdk-foundry-signoff-blocked
+          path: |
+            benchmarks/phase53/signoff-boundary.json
+            benchmarks/evidence/phase53/phase53.json
+          if-no-files-found: warn
