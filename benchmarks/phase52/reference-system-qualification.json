@@ -1,0 +1,95 @@
+{
+  "format": "invention-lab/phase52-reference-system-qualification-plan/1",
+  "referenceDesignId": "reference-3v-battery-2-wire-brushed-fan-candidate-001",
+  "evaluationKind": "PLANNED_SOURCE_MATCHED_PHYSICAL_GATES_NOT_HARDWARE_APPROVAL",
+  "softwareModels": [
+    "benchmarks/phase41/reference-hardware-candidate.json",
+    "benchmarks/phase42/physical-capture-protocol.json",
+    "benchmarks/phase48/whole-system-readiness.json",
+    "benchmarks/phase51/fault-model-scope.json"
+  ],
+  "requiredPhysicalGates": [
+    {
+      "id": "purchased-source-matched-battery-and-motor-specimens",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "identified-fan-impeller-and-rated-max-rpm",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "verified-shaft-attachment-and-protective-containment",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "independent-current-fault-and-thermal-protection",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "calibrated-pack-motor-and-load-instruments",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "measured-wire-contact-resistance-and-temperature",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "actual-pressure-flow-and-fan-load-curves",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "measured-startup-and-stalled-rotor-response",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "independent-battery-thermal-aging-sweep",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "actual-assembly-temperature-and-energy-traces",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "device-lot-separated-blind-physical-holdout",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    },
+    {
+      "id": "preregistered-uncertainty-and-safety-release-review",
+      "verified": false,
+      "evidence": null,
+      "independentReview": null
+    }
+  ],
+  "pendingApprovedComponentBOM": false,
+  "actualInstrumentSessions": 0,
+  "actualSourceMatchedPhysicalSpecimens": 0,
+  "independentlyCalibratedOperatingEnvelope": null,
+  "manufacturerSuccessPercent": null,
+  "physicalBuildPermitted": false,
+  "impellerOperationPermitted": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
