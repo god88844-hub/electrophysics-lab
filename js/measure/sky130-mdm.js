@@ -2,6 +2,7 @@
 // Numeric data are sourced from a fixed Git blob, never synthetic stand-ins.
 // No calibration certificate, sample uncertainty or wafer/lot metadata is assumed.
 import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 export const FORMAT='invention-lab/phase23-third-party-sky130-device-measurement/1';
 export const ACCEPTANCE='invention-lab/phase23-sky130-public-measurement-acceptance/1';
 export const UPSTREAM='google/skywater-pdk-sky130-raw-data';
@@ -11,7 +12,7 @@ export const DATASETS=[
  {id:'specimen-6208-1-2',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_2).mdm',gitBlobSha1:'e82a49007f61006913a8d9cd5bee50288a836d87',bytes:3100,sha256:'8661a7a54edf089eee9c976963abd97e3fa95aa9ff4ec7155061a0e3693bfe82',samples:51,purpose:'training-only'},
  {id:'specimen-6208-1-3',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_3).mdm',gitBlobSha1:'f0b9986ccdceaa3f01b12dacff58125c32cb6a73',bytes:3100,sha256:'aef6ae6ebf8202bf93e8a33458c81e2c56b0697a52d6aae4fc8a178a87172e8e',samples:51,purpose:'held-out-validation-only'}
 ];
-const equal=(x,y)=>JSON.stringify(x)===JSON.stringify(y);
+const equal=isDeepStrictEqual; // object member ordering is not evidence or an acceptance-policy change
 export const sha256=x=>createHash('sha256').update(x).digest('hex');
 export const gitBlob=x=>{
  const b=Buffer.isBuffer(x)?x:Buffer.from(x,'utf8');
