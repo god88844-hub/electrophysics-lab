@@ -503,3 +503,7 @@ The baseline is **research software only**, not a fabricated silicon release,
 not a physical success probability for an unmeasured motor/fan assembly, and
 **not merged to main**. The historical Phase30 PR status policy must be safely
 migrated before integration of original open development PRs.
+
+## Phase 40 — Unified scientific evidence and model applicability passports
+
+[Phase40 scientific model passports](docs/PHASE40-EVIDENCE-PASSPORTS.md) define unit-aware source scope, exact motor/device identity, original publisher provenance and physical inference limits. Requests for a 3 V brushed fan are explicitly incompatible with the measured 24 V BLDC brake-bench model. Missing parameters, out-of-range settings and false claims of independent laboratory certification cannot become physical validation; all unmatched physical success estimates remain UNKNOWN.
