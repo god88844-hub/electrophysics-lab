@@ -40,6 +40,13 @@ edges, sample aliasing and mechanical load must be considered.
 The full file is streamed twice by independent report creation and
 replay; original bytes must match the historical Git object SHA.
 
+Actual original healthy recording strict replay: 263,305 physical sensor samples,
+263.303964 seconds, 13,570 genuine original PG rising edges. A six
+PG-pulse-per-revolution average produces 515.3739349 RPM, ~15.374 RPM\n(3.075%) above the nominal 500 RPM controller setpoint for THIS OTHER
+24 V BLDC rig. This 3.075% is an observed signal-versus-setpoint
+difference, not a validated model prediction error for the hypothetical
+3 V brushed fan or a confidence bound over independently sampled motors.
+
 The faulty Phase33 reference had 5,073 of 5,073 PG samples stuck
 HIGH, so its measured shaft speed is UNKNOWN rather than the
 controller's 500 RPM target. Both recordings are measured physical
