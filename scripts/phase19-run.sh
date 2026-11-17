@@ -31,7 +31,7 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" \
   -e PH19_DB=/work/benchmarks/evidence/phase19/orfs/results/sky130hd/alu8/base/5_route.odb \
   -e PH19_SDC=/work/benchmarks/evidence/phase19/orfs/results/sky130hd/alu8/base/5_route.sdc \
   -e PH19_SPEF=/work/benchmarks/evidence/phase19/post-route.spef \
-  "$IMAGE" bash -lc 'cd /work && openroad -exit scripts/phase19-inspect.tcl' \
+  "$IMAGE" bash -lc 'source /OpenROAD-flow-scripts/env.sh && cd /work && openroad -exit scripts/phase19-inspect.tcl' \
   > "$OUT/tool-logs/extraction-timing.log" 2>&1 || {
     tail -n 100 "$OUT/tool-logs/extraction-timing.log" >&2; exit 1;
   }
