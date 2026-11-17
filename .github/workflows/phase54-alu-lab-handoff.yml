@@ -1,0 +1,36 @@
+name: Phase 54 original ALU prototype lab handoff and untrusted-return quarantine
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  unmeasured-blind-acquisition-protocol:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify input-only blind lab stimulus without fake ALU readings
+        run: node --test tests/phase54-alu-handoff.test.mjs
+      - name: Rebuild and independently audit exact original RTL-linked handoff bundle
+        run: |
+          node scripts/phase54-run.mjs
+          node scripts/phase54-strict.mjs
+      - name: Full scientific and silicon modeling regression suite
+        run: npm test
+      - name: Browser evidence scope
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase54-unaltered-alu-blind-acquisition-handoff-no-silicon-data
+          path: |
+            benchmarks/phase54/prototype-acquisition-policy.json
+            benchmarks/evidence/phase54/phase54.json
+          if-no-files-found: warn
