@@ -10,6 +10,20 @@ const EXPECTED_SOURCE_IDS=Object.freeze([
 'nasa-battery-aging','nasa-battery-randomwalk-2','nmb-fan-pressure-curve',
 'nist-copper-resistivity','nist-cfd-vvuq'
 ]);
+export const EXPECTED_SOURCE_URLS=Object.freeze({
+  "asme-vvuq": "https://www.asme.org/codes-standards/publications-information/verification-validation-uncertainty",
+  "nasa-7009b": "https://standards.nasa.gov/standard/nasa/nasa-std-7009",
+  "nist-tn1900": "https://www.nist.gov/publications/simple-guide-evaluating-and-expressing-uncertainty-nist-measurement-results",
+  "nist-uncertainty-machine": "https://uncertainty.nist.gov/",
+  "pololu-1592": "https://www.pololu.com/product/1592/specs",
+  "mendeley-openmct-2026-v2": "https://data.mendeley.com/datasets/5xvg43r9r8/2",
+  "mendeley-pmdc-2021-v2": "https://data.mendeley.com/datasets/2rkpsss6fd/2",
+  "nasa-battery-aging": "https://data.nasa.gov/dataset/li-ion-battery-aging-datasets",
+  "nasa-battery-randomwalk-2": "https://data.nasa.gov/dataset/randomized-battery-usage-2-room-temperature-random-walk",
+  "nmb-fan-pressure-curve": "https://nmbtc.com/white-papers/dc-brushless-cooling-fan-behavior/",
+  "nist-copper-resistivity": "https://www.nist.gov/publications/improved-estimation-resistivity-pure-copper-electrical-determination-thin-copper-film",
+  "nist-cfd-vvuq": "https://www.nist.gov/publications/summary-industrial-verification-validation-and-uncertainty-quantification-procedures"
+});
 export const EXPECTED_REQUIREMENTS=Object.freeze([
 'target-identification','battery-ocv','battery-impedance','battery-capacity',
 'wire-geometry','wire-thermal','motor-topology','motor-resistance',
@@ -28,7 +42,7 @@ export function verifyCatalog(catalog){
  const ids=new Set(EXPECTED_SOURCE_IDS),requirements=new Set(EXPECTED_REQUIREMENTS);
  if(new Set(catalog.sources.map(s=>s.id)).size!==EXPECTED_SOURCE_IDS.length||
     new Set(catalog.requirements.map(r=>r.id)).size!==EXPECTED_REQUIREMENTS.length||
-    catalog.sources.some(s=>!ids.has(s.id)||!s.title||typeof s.title!=='string'||
+    catalog.sources.some(s=>!ids.has(s.id)||s.url!==EXPECTED_SOURCE_URLS[s.id]||!s.title||typeof s.title!=='string'||
        typeof s.url!=='string'||!/^https:\/\//.test(s.url)||!s.recordStatus||
        s.directOriginalMeasurementCount!==0||!s.subjectMatch||
        s.subjectMatch==='matching-target-assembly'||!s.license||
@@ -50,7 +64,9 @@ export function verifyCatalog(catalog){
     s.stallTorqueGfCm!==55||
     catalog.sources.find(x=>x.id==='mendeley-openmct-2026-v2')?.reportedRawLogs!==14||
     catalog.sources.find(x=>x.id==='mendeley-openmct-2026-v2')?.publishedRowsLowerBoundExclusive!==60000||
-    catalog.sources.find(x=>x.id==='mendeley-pmdc-2021-v2')?.reportedMotorSpecimens!==2)
+    catalog.sources.find(x=>x.id==='mendeley-pmdc-2021-v2')?.reportedMotorSpecimens!==2||
+    catalog.sources.find(x=>x.id==='mendeley-openmct-2026-v2')?.license!=='CC BY 4.0'||
+    catalog.sources.find(x=>x.id==='mendeley-pmdc-2021-v2')?.license!=='CC BY 4.0')
   throw Error('Pinned manufacturer numbers or published dataset metadata changed');
  return true;
 }
