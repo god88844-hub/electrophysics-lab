@@ -42,6 +42,7 @@ try{
    accepted:verdict.ok,
    independentProcessCornerRuns:verdict.realProcessCornersAnalyzed,
    cornerWorstSlacksNs:actual.results.map(c=>({corner:c.corner,worstSlackNs:c.worstSlackNs})),
+   acknowledgedUpstreamLibertyDiagnostics:actual.results.map(c=>c.libertyDiagnostic),
    globalWorstModeledSlackNs:Math.min(...actual.results.map(x=>x.worstSlackNs)),
    postLayout:false,physicalValidation:'none',physicalVerdict:'unknown',
    realWorldBuildSuccessPercent:null,errors:verdict.errors
