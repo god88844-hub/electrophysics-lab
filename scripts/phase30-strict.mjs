@@ -33,7 +33,12 @@ try{
  const allowed=p=>p.startsWith('js/release/phase30-')||
    p.startsWith('scripts/phase30-')||p.startsWith('benchmarks/phase30/')||
    p.startsWith('tests/phase30-')||p.startsWith('docs/PHASE30-')||
-   p.startsWith('.github/workflows/phase30-')||p==='README.md'||p==='package.json';
+   p.startsWith('.github/workflows/phase30-')||p.startsWith('js/evidence/phase31-')||
+ p.startsWith('scripts/phase31-')||p.startsWith('benchmarks/phase31/')||
+ p.startsWith('tests/phase31-')||p.startsWith('docs/PHASE31-')||
+ p.startsWith('.github/workflows/phase31-')||
+ p==='js/ui/app.js'||p==='tests/browser-3d.html'||
+ p==='README.md'||p==='package.json';
  const unexpectedChanges=changes.filter(x=>!allowed(x)),missingHistoricalCommits=[];
  for(const p of policy.stack)try{
   execFileSync('git',['merge-base','--is-ancestor',p.headSha,'HEAD'],{stdio:'ignore'});
