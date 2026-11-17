@@ -1,0 +1,30 @@
+{
+  "format": "invention-lab/phase28-engineering-evidence-decision-policy/1",
+  "target": "sky130-alu8",
+  "rtlGitBlob": "3a41d0163a473a00b17a7c4b1893169961519f54",
+  "vectorSha256": "c41a51ffcb1ffbbdc92e5668c98de176746b21ece709f9a235aee4484b23ab26",
+  "previousPhase27Study": "planned-8-dies-2-lots-48-sessions-49152-vectors",
+  "physicalMeasurementsAvailable": 0,
+  "independentlyVerifiedALUDies": 0,
+  "qualifiedFoundrySignoffAvailable": false,
+  "thirdPartyInstrumentEvidenceVerified": false,
+  "instrumentCalibrationChainVerified": false,
+  "independentlyAuthenticatedWholeLotHoldout": false,
+  "preregisteredAccuracyThresholdApproved": false,
+  "timingPredictionAndMeasurementMethodMatched": false,
+  "sampleManufacturingWaferLotCoverageAvailable": false,
+  "allowableSelfAttestedLabPass": false,
+  "allowableNumericalSuccessFromComputerOnly": false,
+  "requiredArtifactClasses": [
+    "authenticated-fab-die-mask-source-chain",
+    "original-calibrated-instrument-traces",
+    "externally-reviewed-uncertainty-budget",
+    "prespecified-operating-envelope-and-acceptance",
+    "independent-lot-die-pvt-holdout",
+    "independent-foundry-signoff-or-qualified-coverage-review"
+  ],
+  "nextAction": "BLOCKED_PENDING_PHYSICAL_EVIDENCE",
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
