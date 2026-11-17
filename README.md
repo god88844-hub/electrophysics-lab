@@ -535,3 +535,7 @@ migrated before integration of original open development PRs.
 ## Phase 47 — Conditional coupled electrical, rotational and thermal energy
 
 [Phase47 source-locked implicit midpoint reference](docs/PHASE47-COUPLED-ENERGY-CONSERVATION.md) combines an assumed battery, copper wire/contact loss, a manufacturer endpoint-derived ideal brushed DC motor and **hypothetical** quadratic fan load. Strict numerical tests require energy conservation and expose disagreement among approximate manufacturer motor points. Actual rotor inertia, fan torque coefficient, thermal constants, safety/containment and physical whole-system qualification remain UNKNOWN.
+
+## Phase 48 — Independent whole-system numerical comparison and real-validation gating
+
+[Phase48 Python RK4 vs JavaScript midpoint whole-system audit](docs/PHASE48-WHOLE-SYSTEM-INDEPENDENT-MODEL-AUDIT.md) evaluates five source-scoped hypothetical fan and battery load conditions using separate numerical implementations, energy conservation, frozen Git source manifests and ten explicit outstanding *real* physical validation gates. Numerical agreement is not hardware qualification: no independently verified whole-system fan recordings, actual impeller safe speed or build-success percentage exists.
