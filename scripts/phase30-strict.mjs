@@ -64,6 +64,9 @@ try{
  p.startsWith('js/evidence/phase40-')||p.startsWith('scripts/phase40-')||
  p.startsWith('tests/phase40-')||p.startsWith('benchmarks/phase40/')||
  p.startsWith('docs/PHASE40-')||p.startsWith('.github/workflows/phase40-')||
+ p.startsWith('js/evidence/phase41-')||p.startsWith('scripts/phase41-')||
+ p.startsWith('tests/phase41-')||p.startsWith('benchmarks/phase41/')||
+ p.startsWith('docs/PHASE41-')||p.startsWith('.github/workflows/phase41-')||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
  p==='README.md'||p==='package.json';
  const unexpectedChanges=changes.filter(x=>!allowed(x)),missingHistoricalCommits=[];
