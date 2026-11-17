@@ -24,12 +24,20 @@ jobs:
           node-version: '24'
       - name: Guard against wrong PR ordering or accidental remote writes
         run: python3 scripts/phase38-integration-preflight.py --self-test
-      - name: Requery live PR stack and merge all heads in temporary throwaway worktree
-        run: python3 scripts/phase38-integration-preflight.py
+      - name: Verify main-integrated original source ancestry or historical open-stack dry run
+        run: |
+          if git merge-base --is-ancestor e1c14e52b02c336bb05ac756de9091e069f30fc1 HEAD; then
+            node scripts/integration-run.mjs
+            node scripts/integration-strict.mjs
+          else
+            python3 scripts/phase38-integration-preflight.py
+          fi
       - name: Publish actual safe integration readiness and conflicts
         if: always()
         run: |
-          if test -s benchmarks/evidence/phase38/phase38-summary.json; then
+          if test -s benchmarks/evidence/integration/integration.json; then
+            cat benchmarks/evidence/integration/integration.json >> "$GITHUB_STEP_SUMMARY"
+          elif test -s benchmarks/evidence/phase38/phase38-summary.json; then
             cat benchmarks/evidence/phase38/phase38-summary.json >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No verified Phase38 integration readiness; main has NOT been modified" >> "$GITHUB_STEP_SUMMARY"
@@ -41,4 +49,5 @@ jobs:
           path: |
             benchmarks/evidence/phase38/phase38-preflight.json
             benchmarks/evidence/phase38/phase38-summary.json
+            benchmarks/evidence/integration/integration.json
           if-no-files-found: warn

@@ -40,8 +40,13 @@ jobs:
         run: |
           node scripts/phase29-capture.mjs
           node scripts/phase29-strict.mjs
-      - name: Independently check all original SHA256 source bytes and LIVE unmerged PR stack
-        run: node scripts/phase30-capture.mjs
+      - name: Audit actual research source history — legacy open stack or postmerge ancestry
+        run: |
+          if git merge-base --is-ancestor e1c14e52b02c336bb05ac756de9091e069f30fc1 HEAD; then
+            node scripts/integration-postmerge-phase30.mjs --capture
+          else
+            node scripts/phase30-capture.mjs
+          fi
       - name: Deterministic complete research source ZIP, twice, byte-identical
         run: |
           python3 scripts/phase30-package.py
@@ -50,8 +55,13 @@ jobs:
           second=$(sha256sum benchmarks/evidence/phase30/invention-lab-phase30-research-source.zip | cut -d' ' -f1)
           test "$first" = "$second"
           python3 scripts/phase30-package.py --verify
-      - name: Independently re-query 27 original PRs and replay all original source/evidence results
-        run: node scripts/phase30-strict.mjs
+      - name: Independently reproduce correct historical or integrated source provenance
+        run: |
+          if git merge-base --is-ancestor e1c14e52b02c336bb05ac756de9091e069f30fc1 HEAD; then
+            node scripts/integration-postmerge-phase30.mjs --strict
+          else
+            node scripts/phase30-strict.mjs
+          fi
       - name: Declare final software research acceptance and physical hardware blockers
         if: always()
         run: |
