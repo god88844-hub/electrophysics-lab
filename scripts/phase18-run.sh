@@ -3,7 +3,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="$PWD/benchmarks/evidence/phase18"
-mkdir -p "$OUT" "$OUT/orfs" "$OUT/tool-logs"
+mkdir -p "$OUT" "$OUT/orfs" "$OUT/tool-logs" \
+  "$OUT/orfs/results/sky130hd/alu8/base" \
+  "$OUT/orfs/logs/sky130hd/alu8/base" \
+  "$OUT/orfs/reports/sky130hd/alu8/base" \
+  "$OUT/orfs/objects/sky130hd/alu8/base"
 IMAGE="openroad/orfs:26Q4-430-g2272e787c"
 docker pull "$IMAGE" | tee "$OUT/tool-logs/image-pull.log"
 docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}' > "$OUT/image-digest.txt"
