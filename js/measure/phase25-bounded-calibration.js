@@ -53,6 +53,12 @@ export function computeDiagnostics(training,holdout,policy=ACCEPTANCE){
     training.rows.length!==51||holdout.rows.length!==51||
     training.sweep?.samples!==51||holdout.sweep?.samples!==51)
   throw Error('Actual two complete distinct SKY130 specimen source sweeps required');
+ const expected=policy.onlyUseInEnvelope;
+ for(const sweep of [training.sweep,holdout.sweep]){
+  if(!isDeepStrictEqual([sweep?.startV,sweep?.stopV],expected)||
+      typeof sweep?.stepV!=='number'||Math.abs(sweep.stepV-0.01)>1e-9)
+   throw Error('Specimen did not retain the exact source-locked measurement sweep');
+ }
  const original=fitAndHoldout(training,holdout);
  if(original.trainObservations!==51||original.holdoutObservationsInsideTrainingEnvelope!==51||
     original.holdoutObservationsTotal!==51||
