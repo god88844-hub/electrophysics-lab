@@ -14,7 +14,7 @@ function fakeLog(){
   '  4.00 slack (MET)','PH19_PATH_END '+x]),
  'PH19_TIMING_END'].join('\n')+'\n';
 }
-const fakeSpef=()=>['*SPEF "IEEE 1481-1998"','*DESIGN "alu8"','*DATE "synthetic test"',
+const fakeSpef=()=>['*SPEF "ieee 1481-1999"','*DESIGN "alu8"','*DATE "synthetic test"',
  ...Array.from({length:10},(_,i)=>['*D_NET '+i+' 0.001','*CONN','*CAP','1 net 0.01','*RES','1 n1 n2 1','*END'].join('\n'))].join('\n')+'\n';
 function fixture(){
  const sha256={};for(const k of Object.keys({...INPUTS,...OUTPUTS}))sha256[k]=H;
@@ -47,6 +47,7 @@ test('Fake/incomplete SPEF rejected',()=>{
   s=>s.replace('*SPEF','*NOTSPEF'),
   s=>s.replaceAll('*D_NET','*NOT_D_NET'),
   s=>s.replaceAll('*RES','*NOT_RES'),
+  s=>s.replace('*END','*NOT_END'),
   s=>s.slice(0,50)
  ])assert.throws(()=>inspectSpef(f(fakeSpef())));
 });

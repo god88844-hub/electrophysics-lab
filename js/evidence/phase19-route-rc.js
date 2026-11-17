@@ -59,11 +59,14 @@ export function parseRouteInspect(log){
   paths:seen,worstSlackNs:Math.min(...seen.map(x=>x.slackNs))};
 }
 export function inspectSpef(s){
- if(typeof s!=='string'||s.length<500||!/^\*SPEF\s+"IEEE 1481/m.test(s)||
+ if(typeof s!=='string'||s.length<500||!/^\*SPEF\s+"ieee 1481-[0-9]{4}"/im.test(s)||
    !/^\*DESIGN\s+/m.test(s)||!/^\*D_NET\s+/m.test(s)||!/^\*CAP\s*$/m.test(s)||
    !/^\*RES\s*$/m.test(s))throw Error('No complete external OpenRCX SPEF network');
  const count=(s.match(/^\*D_NET\s+/gm)||[]).length;
- if(count<10||!(s.match(/^\*END\s*$/gm)||[]).length)throw Error('Incomplete physical extracted networks');
+ const cap=(s.match(/^\*CAP\s*$/gm)||[]).length;
+ const res=(s.match(/^\*RES\s*$/gm)||[]).length;
+ const end=(s.match(/^\*END\s*$/gm)||[]).length;
+ if(count<10||cap!==count||res!==count||end!==count)throw Error('Incomplete physical extracted networks');
  return {nets:count,bytes:Buffer.byteLength(s,'utf8')};
 }
 export function evaluatePhase19(record,actual){

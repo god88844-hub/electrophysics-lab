@@ -9,7 +9,7 @@ The real `route` target produces OpenDB before/after detailed wire routing
 and a router-internal design-is-routed completion gate. The tool may omit\na local DRC marker file for no detected markers, so the signed evidence\nrequires the original detailed-router log, not a fabricated DRC report. The separate `openroad` process
 loads the native detailed-route OpenDB, runs **OpenRCX extraction** with
 the original SKY130HD resistance/capacitance rules, writes and then
-reloads a genuine SPEF. Each of the ten ALU outputs is checked with an
+reloads a genuine SPEF (the authentic OpenRCX writer uses a lowercase\n\`ieee 1481-1999\` header). Each of the ten ALU outputs is checked with an
 individually constrained post-route maximum timing path. The independent
 Node gate reopens original design inputs, databases, SPEF, logs, report,
 container digest and all ten parsed output paths and hashes them.

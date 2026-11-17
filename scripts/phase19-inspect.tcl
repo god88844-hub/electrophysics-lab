@@ -50,7 +50,7 @@ puts "PH19_SPEF_RELOADED"
 puts "PH19_TIMING_BEGIN"
 foreach port {carry zero {y[0]} {y[1]} {y[2]} {y[3]} {y[4]} {y[5]} {y[6]} {y[7]}} {
   puts "PH19_PATH_BEGIN $port"
-  report_checks -path_delay max -to [get_ports $port] -group_count 1
+  report_checks -path_delay max -to [get_ports $port] -group_path_count 1
   puts "PH19_PATH_END $port"
 }
 puts "PH19_TIMING_END"
