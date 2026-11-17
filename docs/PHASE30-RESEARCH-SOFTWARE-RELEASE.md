@@ -95,3 +95,8 @@ edits. The project can be considered **software milestone complete** if
 and only if the final original CI suite passes. It is **not physically
 complete** and should not be described as simulation evidence universally
 equivalent to physical evidence.
+
+
+## Post-integration source provenance (17 November 2026)
+
+After merge PR #73 (`e1c14e52b02c336bb05ac756de9091e069f30fc1`) the original requirement that PRs #3–29 remain **open and unmerged** is historically obsolete. The frozen original stack policy and old scripts remain unchanged for archive/replay. On a descendant of the actual merge, the CI workflow switches to `scripts/integration-postmerge-phase30.mjs --capture` and `--strict`, verifying the merged ancestry, identical Phase 3 scientific sources, original archived evidence digests, every current Git-tracked source byte, and no manufactured real-world success percentage. Source ZIP packaging retains the same exact manifest format. The new mode never claims independent hardware qualification or a public product signoff.

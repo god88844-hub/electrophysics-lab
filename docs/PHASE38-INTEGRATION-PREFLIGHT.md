@@ -18,3 +18,8 @@ If there is a conflict, it stops at the first blocking PR and publishes the exac
 **Safety:** No `git push`, remote merge or branch update is executed. Use explicit human-reviewed conflict resolution and verified tests before any subsequent GitHub merging. Physical fan success remains unknown; this is a software-integration graph assessment, not a physical experiment.
 
 **Next required work:** inspect any named conflicts, prepare a source-preserving reconciled staging branch, rerun the integrated test suite, review existing draft PRs, then merge in a controlled dependency order. AeroForge remains untouched.
+
+
+## Post-integration behavior (17 November 2026)
+
+PR #73's source merge (`e1c14e52b02c336bb05ac756de9091e069f30fc1`) has been included in `main`. Therefore the old live preflight that required PRs #3–37 to remain unmerged no longer describes repository state. For checkouts containing that exact Git merge commit, the workflow runs the existing `scripts/integration-run.mjs` and `scripts/integration-strict.mjs` ancestry, exact-byte and evidence-preservation audits instead; historical unmerged checkouts continue the original throwaway PR-merge preflight. This is a source-only integrity audit, not representative human approval, a signed release or matching hardware validation.
