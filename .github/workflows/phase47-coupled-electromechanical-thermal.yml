@@ -1,0 +1,36 @@
+name: Phase 47 coupled electro-mechanical thermal conservation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  original-source-hypotheses-and-energy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Coupled source and fail-closed numerical conservation tests
+        run: node --test tests/phase47-coupled-solver.test.mjs
+      - name: Deterministic scientific energy report and independent audit
+        run: |
+          node scripts/phase47-run.mjs
+          node scripts/phase47-strict.mjs
+      - name: Full prior scientific regression
+        run: npm test
+      - name: Browser and evidence status
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase47-hypothetical-energy-balanced-not-physically-calibrated
+          path: |
+            benchmarks/phase47/coupled-hypotheses.json
+            benchmarks/evidence/phase47/phase47.json
+          if-no-files-found: warn
