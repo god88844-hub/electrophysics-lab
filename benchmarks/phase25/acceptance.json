@@ -1,0 +1,28 @@
+{
+  "format": "invention-lab/phase25-bounded-measurement-calibration-plan/1",
+  "sourceMeasurementCommit": "1f7214f2f81a0629303947a07e1ec00a28ae8a33",
+  "sourceDatasetIds": [
+    "specimen-6208-1-2",
+    "specimen-6208-1-3"
+  ],
+  "calibrationSpecimen": "specimen-6208-1-2",
+  "independentHoldoutSpecimen": "specimen-6208-1-3",
+  "measuredDomain": "sky130-test-tile-poly-resistor-I-V",
+  "targetDut": "unfabricated-sky130-alu8",
+  "model": "single-parameter-through-origin-ohmic-current",
+  "onlyUseInEnvelope": [
+    -0.25,
+    0.25
+  ],
+  "allowedHoldoutModelFitting": false,
+  "allowedRowWiseUncertaintyBootstrap": false,
+  "allowedStatisticalPopulationCoverageClaim": false,
+  "independentInstrumentCertificatesAvailable": false,
+  "sourceAttestationAvailable": false,
+  "holdoutLotIndependenceVerified": false,
+  "calibrationErrorThresholdPrespecified": false,
+  "estimatedPhysicalYield": null,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
