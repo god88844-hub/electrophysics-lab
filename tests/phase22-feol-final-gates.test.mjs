@@ -49,7 +49,7 @@ test('Open deck violations remain visible, never silently accepted as clean',()=
 test('Tampered real proof, missing mutant, fake silicon yields and digest rejected',()=>{
  const good=fixture();
  for(const f of [
-  x=>x.sha256='injected',x=>x.hashes.finalGds='invalid',
+  x=>x.hashes.sourceRtl='injected',x=>x.hashes.finalGds='invalid',
   x=>x.hashes.finalNetlist='c'.repeat(64),
   x=>x.hashes.liberty='0',
   x=>x.originalDeckBlob='modified',
