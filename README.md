@@ -507,3 +507,7 @@ migrated before integration of original open development PRs.
 ## Phase 40 — Unified scientific evidence and model applicability passports
 
 [Phase40 scientific model passports](docs/PHASE40-EVIDENCE-PASSPORTS.md) define unit-aware source scope, exact motor/device identity, original publisher provenance and physical inference limits. Requests for a 3 V brushed fan are explicitly incompatible with the measured 24 V BLDC brake-bench model. Missing parameters, out-of-range settings and false claims of independent laboratory certification cannot become physical validation; all unmatched physical success estimates remain UNKNOWN.
+
+## Phase 41 — Source-matched hardware candidate and blocking safety gates
+
+[Research hardware candidate and physical-readiness audit](docs/PHASE41-REFERENCE-HARDWARE-READINESS.md) identifies published **Energizer E91 AA alkaline x2** and **Pololu #1592 brushed DC 3 V motor** ratings, including the manufacturer's discontinuation notice and a potential stall-versus-battery voltage-sag incompatibility. Fan/impeller safety rating, exact wire/connector parts, purchased device specimens and original laboratory measurements **do not exist** in this candidate. It is explicitly NOT a frozen, assembled or physically qualified design; no unverified high-speed impeller experiment is authorized.
