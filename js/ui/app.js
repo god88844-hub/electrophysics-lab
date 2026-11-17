@@ -1396,6 +1396,16 @@ export class App {
       bldcScope.textContent=' — 5,073 publisher-logged samples, different 24 V BLDC; PG tach stuck HIGH, so 500 RPM is the controller setting NOT a measured speed. These source rows do NOT measure this 3 V fan or justify build-success probability.';
       newData.appendChild(bldcScope);
       details.appendChild(newData);
+      const healthy=document.createElement('p');
+      healthy.className='muted';
+      const healthyLink=document.createElement('a');
+      healthyLink.href='https://github.com/Atikas/OpenBLDCData/blob/1ce35456f83be8f36aec183ab19d6e6e46603023/data/analize_healthy10_500rpm_19mA_bat.csv';
+      healthyLink.textContent='Original healthy BLDC publisher recording: source-verified measured pulse speed';
+      healthyLink.target='_blank';healthyLink.rel='noopener noreferrer';
+      const healthyLimit=document.createElement('span');
+      healthyLimit.textContent=' — 263,305 original sensor rows over 263.304 s; 13,570 source PG rising edges, reconstructed 515.37 RPM versus 500 RPM source setpoint. Original separate 24 V BLDC, NOT this 3 V fan. No physically estimated 3 V manufacturing success rate.';
+      healthy.append(healthyLink,healthyLimit);
+      details.appendChild(healthy);
       return report;
     }).catch(error=>{
       status.textContent='Cannot audit public sources: '+error.message+
