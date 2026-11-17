@@ -555,3 +555,7 @@ migrated before integration of original open development PRs.
 ## Phase 52 — Source-matched reference-system engineering release gates
 
 [Phase52 reference-system safety and qualification audit](docs/PHASE52-REFERENCE-QUALIFICATION.md) implements 12 physical-evidence requirements and independently checks upstream source reports. No actual approved battery–motor–impeller assembly or calibrated fan data exists, so the software issues explicit **NO-GO for physical operation**, not a numerical manufacturing probability.
+
+## Phase 53 — SKY130 open experimental PDK signoff readiness
+
+[Phase53 foundry-signoff coverage and source-audited open EDA flow](docs/PHASE53-SKY130-SIGNOFF-READINESS.md) distinguishes the previously verified experimental KLayout DRC/LVS and Yosys equivalence workflows from a foundry-approved production signoff. Ten independent acceptance requirements remain unverified. SkyWater's public open PDK is an experimental preview; no signed mask record, fabricated ALU die or physical yield evidence exists.
