@@ -28,5 +28,10 @@ for entry in "${cases[@]}"; do
   PHASE16_CORNER_ID="$id" PHASE16_CORNER_NAME="$corner" PHASE16_LIBRARY="$lib" \
     sta -no_splash -exit scripts/phase16-corner.tcl > "$OUT/tool-logs/$id.log" 2>&1
 done
+# Preserve original logs and expose diagnostics even when the strict gate rejects them.
+for corner_id in tt ss ff; do
+  echo "PHASE16 raw OpenSTA diagnostics for $corner_id"
+  grep -E '^(Error:|Warning:|Startpoint:|Endpoint:|PHASE16_CORNER_)|slack \(|Path Type:|Path Group:' "$OUT/tool-logs/$corner_id.log" || true
+done
 node scripts/phase16-capture.mjs
 node scripts/phase16-strict.mjs
