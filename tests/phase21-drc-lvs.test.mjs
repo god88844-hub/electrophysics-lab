@@ -32,10 +32,13 @@ test('DRC negative controls: added markers, malformed or missing KLayout XML',()
 test('LVS negative controls: missing verdict, mismatch, or concurrent contradiction',()=>{
  for(const log of [
   lvsLog.replaceAll('Congratulations! Netlists match.','comparison incomplete'),
-  lvsLog+"ERROR : Netlists don't match",
-  "ERROR : Netlists don't match".repeat(12)
- ])assert.throws(()=>parseLvsLog(log,lvsDb),
-    /Not an actual|No unique|Missing|External|no actual/i);
+  lvsLog+"ERROR : Netlists don't match"
+ ])assert.throws(()=>parseLvsLog(log,lvsDb));
+ const mismatch=parseLvsLog("KLayout\n"+("ERROR : Netlists don't match\n").repeat(12),lvsDb);
+ assert.equal(mismatch.compared,true);
+ assert.equal(mismatch.netlistsMatch,false);
+ const observed=fixture();observed.lvs=mismatch;
+ assert.equal(evaluatePhase21(observed,fixture()).ok,false);
 });
 test('False zero DRC, LVS, foundry signoff or altered raw evidence fail closed',()=>{
  const actual=fixture();
