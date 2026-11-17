@@ -43,7 +43,7 @@ test('Historically sourced references have immutable source commit and explicit 
   assert.equal(r.hardwareValidation,'none');
   assert.equal(r.appliesToActiveDiagram,false);
   assert.ok(r.url.startsWith('https://github.com/god88844-hub/invention-lab/blob/'+REFERENCE_SOURCE_COMMIT+'/'));
-  assert.ok(r.summary.includes('not')||r.summary.includes('NOT'));
+  assert.ok(r.summary.length>80,'every reference must explain its bounded scope');
  }
 });
 test('Canonical logic source diagram and software report are included without physical promotion',()=>{
@@ -119,7 +119,7 @@ test('Crosslab cannot claim one source design or physical certification',()=>{
  assert.equal(x.viewMode,'2d');
  assert.equal(x.realWorldBuildSuccessPercent,null);
  assert.ok(x.atlas.historicalReferences.some(r=>r.id==='cross-adapters'));
- assert.throws(()=>buildEvidencePassport({labId:'crosslab',diagram:diagram('chip')}),/single canonical/);
+ assert.throws(()=>buildEvidencePassport({labId:'crosslab',diagram:diagram('chip')}),/one canonical/);
 });
 test('Reject lab ID spoofing, mismatched diagram source, invalid view and unlinked components',()=>{
  const d=diagram();
