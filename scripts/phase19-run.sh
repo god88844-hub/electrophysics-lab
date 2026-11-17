@@ -25,7 +25,7 @@ test -s "$RES/5_1_grt.odb"
 test -s "$RES/5_2_route.odb"
 test -s "$RES/5_route.odb"
 test -s "$RES/5_route.sdc"
-test -s "$BASE/reports/sky130hd/alu8/base/5_route_drc.rpt" || {
+# An empty original TritonRoute DRC report is valid (no reported markers); it is\n# NOT a foundry DRC signoff. Require original file to exist, not nonzero size.\ntest -f "$BASE/reports/sky130hd/alu8/base/5_route_drc.rpt" || {
   echo "Router's non-signoff detailed-route DRC report missing" >&2; exit 1;
 }
 # Actual routed parasitic extraction, followed by SPEF reload and 10 independent
