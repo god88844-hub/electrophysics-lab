@@ -551,3 +551,7 @@ migrated before integration of original open development PRs.
 ## Phase 51 — Conditional correlated-fault logic without invented hardware reliability
 
 [Phase51 eight-case failure-mode and correlation audit](docs/PHASE51-RELIABILITY-FAULT-ANALYSIS.md) checks ideal open circuits, stopped rotor, hypothetical degraded contacts, stuck sensors and impeller hazards, with symbolic OR/AND/common-cause dependencies. Fault-injection results come from conditional mathematics and declared scenarios only; **no real fault frequency, qualified sensor detection, safe RPM, operating lifetime, manufacturing yield or physical build-success probability** is available without actual source-matched hardware tests.
+
+## Phase 52 — Source-matched reference-system engineering release gates
+
+[Phase52 reference-system safety and qualification audit](docs/PHASE52-REFERENCE-QUALIFICATION.md) implements 12 physical-evidence requirements and independently checks upstream source reports. No actual approved battery–motor–impeller assembly or calibrated fan data exists, so the software issues explicit **NO-GO for physical operation**, not a numerical manufacturing probability.
