@@ -1,0 +1,13 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {verifyStore,importBundle,exportBundle} from '../js/evidence/phase65-project-history.js';
+const r=JSON.parse(await readFile('benchmarks/evidence/phase65/phase65.json'));
+const raw=await readFile('benchmarks/phase65/versioning-policy.json');
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+assert.equal(r.policySHA256,createHash('sha256').update(raw).digest('hex'));
+assert.deepEqual(r.validation,verifyStore(r.store));
+assert.equal(exportBundle(importBundle(exportBundle(r.store))),exportBundle(r.store));
+assert.equal(r.store.refs.main,r.finalHead);assert.equal(r.realWorldBuildSuccessPercent,null);
+console.log('PH65 STRICT PASS: immutable SHA256 project snapshot replay; no remote durability or physical attestation');
