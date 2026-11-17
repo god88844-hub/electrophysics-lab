@@ -1,0 +1,44 @@
+# Prospective blind lot split and zero physical acquisition; NO signoff.
+name: Phase 27 prospective whole-lot blind ALU validation gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  blind-target-hardware-evidence-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Blind-lot allocation, forged perfect capture and digital/timing negative controls
+        run: node --test tests/phase27-blind.test.mjs
+      - name: Independently reproduce original unmeasured ALU prerequisite
+        run: |
+          node scripts/phase24-run.mjs
+          node scripts/phase24-strict.mjs
+      - name: Seal original model outputs, blank raw-data template and preflight blockers
+        run: node scripts/phase27-run.mjs
+      - name: Independently replay original source, policy and all sealed files
+        run: node scripts/phase27-strict.mjs
+      - name: Report zero physical measurements
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase27/phase27-summary.json; then
+            cat benchmarks/evidence/phase27/phase27-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Physical ALU validation UNKNOWN; no independently verified silicon" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase27-locked-blind-lot-holdout-zero-hardware-evidence
+          path: |
+            benchmarks/phase27/acceptance.json
+            benchmarks/evidence/phase27/*.json
+            benchmarks/evidence/phase24/phase24-summary.json
+          if-no-files-found: warn
