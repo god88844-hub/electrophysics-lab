@@ -490,3 +490,16 @@ or runs the Node regression suite on the fully integrated temporary worktree
 if the entire graph merges cleanly. This workflow does **not** merge any
 GitHub PR or alter main; those actions still require explicit conflict
 reconciliation and reviewed integration.
+
+## Phase 39 — reproducible, independently Git-object-verified source research baseline
+
+[Phase39 complete-source research packaging and scientific scope](docs/PHASE39-REPRODUCIBLE-SOURCE-BASELINE.md)
+builds an exact deterministic ZIP of every tracked file and records the
+current commit, Git tree, original Git blob identity and SHA256 per source file.
+An independent verifier opens the ZIP and reconstructs source bytes directly
+from original Git object data, refusing missing, changed or invented files.
+GitHub CI repeats the archive build and verifies full Node and browser tests.
+The baseline is **research software only**, not a fabricated silicon release,
+not a physical success probability for an unmeasured motor/fan assembly, and
+**not merged to main**. The historical Phase30 PR status policy must be safely
+migrated before integration of original open development PRs.
