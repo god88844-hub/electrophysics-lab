@@ -292,6 +292,29 @@ try{
     'Chip evidence panel falsely promoted simulation or example CI to silicon signoff');
   assert(chipEvidence.includes('NOT evidence that this diagram passes'),
     'Example ALU mapping was misattributed to the currently edited design');
+  // Phase31: this is a genuinely calculated conditional model result, NOT
+  // a statement that the current chip diagram physically passed.
+  const fanPanel=app.$outputBody.querySelector('.phase31-fan-evidence');
+  assert(fanPanel,'first-principles electrical and fan motor demonstration missing');
+  assert(fanPanel.textContent.includes('NOT the current design'),
+    'fan example incorrectly presented as the current user-created design');
+  const calculate=fanPanel.querySelector('[data-action="phase31-fan-calculate"]');
+  const fanResult=fanPanel.querySelector('[data-fan-result="phase31"]');
+  assert(calculate&&fanResult,'fan conditional probability controls absent');
+  calculate.click();
+  assert(fanResult.textContent.includes('CONDITIONAL MODEL pass:') &&
+    fanResult.textContent.includes('ACTUAL physical/build success: UNKNOWN'),
+    'browser incorrectly equates modelled success percentage with physical yield');
+  assert(!fanResult.textContent.includes('99% physically verified'),
+    'fabricated independent hardware qualification shown');
+  fanPanel.querySelector('[data-fan-field="rpmDiscrepancyAllowance"]').value='180';
+  calculate.click();
+  assert(fanResult.textContent.includes('If your ASSUMED RPM error bound holds'),
+    'hypothetical discrepancy model error was hidden');
+  fanPanel.querySelector('[data-fan-field="voltageV"]').value='-2';
+  calculate.click();
+  assert(fanResult.textContent.includes('Cannot calculate:'),
+    'nonphysical battery voltage was silently accepted');
   app.switchLab('logic');
 
   output.dataset.smokeResult='pass';
