@@ -559,3 +559,7 @@ migrated before integration of original open development PRs.
 ## Phase 53 — SKY130 open experimental PDK signoff readiness
 
 [Phase53 foundry-signoff coverage and source-audited open EDA flow](docs/PHASE53-SKY130-SIGNOFF-READINESS.md) distinguishes the previously verified experimental KLayout DRC/LVS and Yosys equivalence workflows from a foundry-approved production signoff. Ten independent acceptance requirements remain unverified. SkyWater's public open PDK is an experimental preview; no signed mask record, fabricated ALU die or physical yield evidence exists.
+
+## Phase 54 — Prospective source-locked ALU lab acquisition handoff
+
+[Phase54 blind physical ALU input-only lab bundle](docs/PHASE54-PHYSICAL-ALU-PROTOTYPE-ACQUISITION.md) reproduces the original 1,024 source-aligned stimulus vectors and 48 planned blind-study sessions (8 prospective dies and 49,152 planned reads), while separating the expected-output answer key from lab-facing inputs. No fabricated silicon, foundry source/mask approval, raw calibrated physical observations, or manufacturing-success percentage exists: unreviewed lab data remains quarantined.
