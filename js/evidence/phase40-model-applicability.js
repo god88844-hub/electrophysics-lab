@@ -60,6 +60,19 @@ export function verifyModelRegistry(registry){
  require(c.conditions.some(x=>x.name==='controllerSpeedSetpointRpm'&&x.min===2000&&x.max===2500)&&
  c.conditions.some(x=>x.name==='brakeControllerSettingMilliamp'&&x.min===96&&x.max===96),
  'Published motor speed and brake envelope incorrectly widened');
+ const exact=(m,name,min,max,unit)=>m.conditions.some(x=>x.name===name&&
+   x.min===min&&x.max===max&&x.unit===unit);
+ require(a.conditions.length===1&&exact(a,'nominalSupplyVoltageV',3,3,'V'),
+  'Illustrative model source conditions drift');
+ for(const item of [b,c]){
+  require(item.conditions.length===3&&
+   exact(item,'motorRatedVoltageV',24,24,'V')&&
+   exact(item,'brakeControllerSettingMilliamp',96,96,'mA'),
+   'Original publisher motor voltage or load conditions were widened');
+ }
+ require(exact(b,'controllerSpeedSetpointRpm',2500,2500,'rpm')&&
+   exact(c,'controllerSpeedSetpointRpm',2000,2500,'rpm'),
+   'Publisher motor speed operating settings widened');
  return true;
 }
 function normalizeTarget(target){
