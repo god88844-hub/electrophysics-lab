@@ -1,0 +1,53 @@
+name: Phase 33 real open BLDC original physical acquisition and broken sensor gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  original-public-bldc-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Negative controls for false RPM, fake physical success, source and sensor tampering
+        run: node --test tests/phase33-original-bldc.test.mjs
+      - name: Actually fetch original CC-BY public BLDC measured raw source from pinned publisher Git commit
+        run: bash scripts/phase33-download.sh
+      - name: Analyze all original physical source sensors, numeric quantities and failed tachometer
+        run: node scripts/phase33-run.mjs
+      - name: Independently reopen original publisher SHA1, measured sensor data and physical unknown gate
+        run: node scripts/phase33-strict.mjs
+      - name: All existing scientific and computer invention lab tests remain compatible
+        run: npm test
+      - name: Source-scoped physical data inventory still blocks other 3V motor/fan transfer
+        run: |
+          node scripts/phase32-run.mjs
+          node scripts/phase32-strict.mjs
+      - name: Real Chromium/WebGL UI presents sensor-failure rather than false 500RPM speed
+        run: node scripts/browser-smoke.mjs
+      - name: Report original 5073 sensor rows and zero new target fan measurements
+        if: always()
+        run: |
+          if test -s benchmarks/evidence/phase33/phase33-summary.json; then
+            cat benchmarks/evidence/phase33/phase33-summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No strict original 24V public BLDC source proof; target fan physical status UNKNOWN" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase33-original-24V-BLDC-real-raw-sensor-fault-not-target-fan
+          path: |
+            benchmarks/phase33/acceptance.json
+            benchmarks/evidence/phase33/source-bldc-original.csv
+            benchmarks/evidence/phase33/phase33.json
+            benchmarks/evidence/phase33/phase33-summary.json
+            docs/PHASE33-ORIGINAL-BLDC-RAW-ANALYSIS.md
+          if-no-files-found: warn
