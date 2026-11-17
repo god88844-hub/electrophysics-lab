@@ -1,0 +1,14 @@
+# Actual post-GDS-generated final ORFS SKY130 gate netlist, not earlier
+# Phase 17 (different mapping). Liberty must be imported as FUNCTIONS, not -lib.
+read_verilog benchmarks/evidence/phase22/orfs/results/sky130hd/alu8/base/6_final.v
+rename alu8 alu8_postgds
+read_verilog __SPEC__
+read_liberty -ignore_miss_func -ignore_miss_dir benchmarks/evidence/phase22/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+proc
+opt
+flatten alu8_postgds
+opt
+equiv_make __MODULE__ alu8_postgds eq
+hierarchy -check -top eq
+equiv_simple
+equiv_status -assert
