@@ -4,7 +4,7 @@
   "purpose": "model-probability-with-explicit-dc-motor-assumptions-not-real-hardware-yield",
   "nominalVoltageV": 3,
   "nominalVariationStdPercent": 4,
-  "minModeledRpm": 900,
+  "minModeledRpm": 1150,
   "maxMotorCurrentA": 0.8,
   "assumedDiscrepancyRpm": 150,
   "modelsTested": [

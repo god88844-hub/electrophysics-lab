@@ -392,3 +392,13 @@ release. Authentic physical ALU observations = 0, real-world build success
 = not estimable. Hardware physical qualification, reliability tests,
 independent foundry signoff and final human PR merging remain unresolved.
 AeroForge is not in this repository or this release.
+
+
+## Phase 31 — First principles and conditional physical-model percentages
+
+The **Chip Lab → Build Evidence** panel includes a new interactive battery,
+two wires and DC fan example that solves motor/fan torque balance, separates
+model-only success percentages from observed hardware success, and allows a
+hypothetical speed-model discrepancy range. This generic probability engine
+supports controlled model-uncertainty experiments without claiming physical
+or manufacturing validation. See [Phase 31](docs/PHASE31-FIRST-PRINCIPLES-DECISIONS.md).

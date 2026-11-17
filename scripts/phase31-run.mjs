@@ -9,7 +9,7 @@ const policy=JSON.parse(original);
 const sha=b=>createHash('sha256').update(b).digest('hex');
 if(policy.format!=='invention-lab/phase31-first-principles-conditional-physics/1'||
    policy.illustrativeModel!==MOTOR_MODEL||policy.nominalVoltageV!==3||
-   policy.nominalVariationStdPercent!==4||policy.minModeledRpm!==900||
+   policy.nominalVariationStdPercent!==4||policy.minModeledRpm!==1150||
    policy.maxMotorCurrentA!==0.8||policy.assumedDiscrepancyRpm!==150||
    policy.experimentalFanMeasurements!==0||policy.physicalFanValidation!==false||
    policy.independentHardwareDataAvailable!==false||
@@ -25,9 +25,9 @@ const known={
 };
 const exact=predictFan(known);
 const baseline=fanIllustrativeScenario({samples:5000,seed:31,voltageV:3,
- voltageStdPercent:4,minRpm:900,maxMotorCurrentA:0.8});
+ voltageStdPercent:4,minRpm:1150,maxMotorCurrentA:0.8});
 const sensitivity=fanIllustrativeScenario({samples:5000,seed:31,voltageV:3,
- voltageStdPercent:4,minRpm:900,maxMotorCurrentA:0.8,
+ voltageStdPercent:4,minRpm:1150,maxMotorCurrentA:0.8,
  rpmDiscrepancyAllowance:150});
 const blocked=predictFan({...known,staticFrictionTorqueNm:1});
 if(baseline.status!=='model-only'||sensitivity.status!=='model-only'||

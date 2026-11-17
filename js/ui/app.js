@@ -1252,7 +1252,7 @@ export class App {
     const labels=[
       ['voltageV','Battery open-circuit voltage (V)',3],
       ['voltageStdPercent','Assumed battery voltage variation, 1σ (%)',4],
-      ['minRpm','Required minimum steady speed (RPM)',900],
+      ['minRpm','Required minimum steady speed (RPM)',1150],
       ['maxMotorCurrentA','Maximum motor running current (A)',0.8],
       ['rpmDiscrepancyAllowance','Optional assumed absolute motor-model error (RPM)','']
     ];

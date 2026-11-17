@@ -159,7 +159,7 @@ export function evaluateFirstPrinciples({
  return freezeCopy(result);
 }
 export function fanIllustrativeScenario({
- voltageV=3,voltageStdPercent=4,minRpm=900,maxMotorCurrentA=0.8,
+ voltageV=3,voltageStdPercent=4,minRpm=1150,maxMotorCurrentA=0.8,
  rpmDiscrepancyAllowance=null,samples=5000,seed=31
 }={}){
  if(!finite(voltageV)||voltageV<=0||!finite(voltageStdPercent)||

@@ -15,7 +15,7 @@ try{
  const ui=await readFile('js/ui/app.js'),smoke=await readFile('tests/browser-3d.html');
  if(policy.illustrativeModel!==MOTOR_MODEL||
   policy.nominalVoltageV!==3||policy.nominalVariationStdPercent!==4||
-  policy.minModeledRpm!==900||policy.maxMotorCurrentA!==0.8||
+  policy.minModeledRpm!==1150||policy.maxMotorCurrentA!==0.8||
   policy.assumedDiscrepancyRpm!==150||
   policy.experimentalFanMeasurements!==0||
   policy.physicalFanValidation!==false||
@@ -35,9 +35,9 @@ try{
   dragCoefficientNmPerRad2:2e-7
  };
  const nominal=predictFan(known),baseline=fanIllustrativeScenario({samples:5000,
-  seed:31,voltageV:3,voltageStdPercent:4,minRpm:900,maxMotorCurrentA:0.8});
+  seed:31,voltageV:3,voltageStdPercent:4,minRpm:1150,maxMotorCurrentA:0.8});
  const sensitivity=fanIllustrativeScenario({samples:5000,seed:31,voltageV:3,
-  voltageStdPercent:4,minRpm:900,maxMotorCurrentA:0.8,rpmDiscrepancyAllowance:150});
+  voltageStdPercent:4,minRpm:1150,maxMotorCurrentA:0.8,rpmDiscrepancyAllowance:150});
  const jammedFan=predictFan({...known,staticFrictionTorqueNm:1});
  if(record.format!=='invention-lab/phase31-computed-conditional-first-principles-simulation/1'||
   record.sourceCommit!==head||!isDeepStrictEqual(record.input,input)||
