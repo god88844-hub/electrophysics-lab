@@ -1,0 +1,113 @@
+{
+  "format": "invention-lab/phase42-target-fan-capture-protocol/1",
+  "referenceDesignId": "reference-3v-battery-2-wire-brushed-fan-candidate-001",
+  "captureState": "PLANNED_NO_HARDWARE_OR_REAL_MEASUREMENTS",
+  "protocolVersion": "1.0.0",
+  "asOf": "2026-11-17",
+  "requiredCSVColumns": [
+    "t_s",
+    "pack_v",
+    "motor_v",
+    "motor_current_a",
+    "shaft_rpm",
+    "motor_temp_c",
+    "ambient_temp_c"
+  ],
+  "units": {
+    "t_s": "s",
+    "pack_v": "V",
+    "motor_v": "V",
+    "motor_current_a": "A",
+    "shaft_rpm": "rpm",
+    "motor_temp_c": "degC",
+    "ambient_temp_c": "degC"
+  },
+  "requiredSourceMetadata": [
+    "experimentId",
+    "designId",
+    "acquisitionUTC",
+    "acquisitionDeviceSerial",
+    "responsibleOperatorId",
+    "batteryCell1SpecimenId",
+    "batteryCell2SpecimenId",
+    "motorSpecimenId",
+    "impellerSpecimenId",
+    "wireHarnessSpecimenId",
+    "instrumentList",
+    "rawFileSHA256",
+    "originalRawFileName",
+    "safetyPlanReviewRef",
+    "mechanicalContainmentReviewRef",
+    "currentProtectionReviewRef",
+    "instrumentCalibrationReviewRefs",
+    "independentProvenanceReviewRef",
+    "uncertaintyBudgetRef",
+    "acceptanceProtocolRef",
+    "validationPartitionGroup"
+  ],
+  "requiredInstrumentChannels": [
+    {
+      "quantity": "pack_voltage",
+      "unit": "V",
+      "method": "calibrated voltage measurement of exact physical battery pack",
+      "mandatoryCalibration": true
+    },
+    {
+      "quantity": "motor_terminal_voltage",
+      "unit": "V",
+      "method": "calibrated differential DC voltage measurement at motor terminals",
+      "mandatoryCalibration": true
+    },
+    {
+      "quantity": "upstream_motor_current",
+      "unit": "A",
+      "method": "calibrated current sensor with defined bandwidth, location and transient rating",
+      "mandatoryCalibration": true
+    },
+    {
+      "quantity": "shaft_speed",
+      "unit": "rpm",
+      "method": "independently validated noncontact tach with pulses-per-revolution calibration",
+      "mandatoryCalibration": true
+    },
+    {
+      "quantity": "winding_or_case_temperature",
+      "unit": "degC",
+      "method": "rated sensor at documented position with calibration and response time",
+      "mandatoryCalibration": true
+    },
+    {
+      "quantity": "ambient_temperature",
+      "unit": "degC",
+      "method": "environment thermometer",
+      "mandatoryCalibration": true
+    }
+  ],
+  "prerequisites": [
+    "Freeze purchased source-matched bill of materials with actual serials/lots and actual harness dimensions",
+    "Confirm actual power source can safely supply expected loads; specify external fail-safe current limits and fault shutdown",
+    "Have qualified mechanical engineer independently assess actual fan max RPM, shaft retention, dynamic balance and physical containment",
+    "Approve calibrated instruments, traceable uncertainties, sampling bandwidth and synchronized clocks",
+    "Specify independently preregistered acceptance criteria and device/batch-separated holdout protocol",
+    "Approve responsible operator test plan and safe remote operation before energizing"
+  ],
+  "measurementsPlanned": [
+    "open-circuit source and loaded voltage-current curves",
+    "electrical startup transient and current limit behavior without an impeller after independent safety review",
+    "guarded assembled fan RPM, pressure-flow and electrical/thermal response after mechanical review",
+    "several source-matched devices and independent manufacturing-lot holdouts",
+    "fault injection, aging and environment variation under approved safety procedure"
+  ],
+  "unqualifiedFromSoftwareAlone": true,
+  "samplingFrequencyHz": null,
+  "safeCurrentLimitA": null,
+  "qualifiedImpellerMaxRpm": null,
+  "measuredPhysicalSessionCount": 0,
+  "measuredPhysicalSpecimenCount": 0,
+  "actualSourceMatchedFanMeasurements": 0,
+  "independentHardwareEvidenceReviewed": false,
+  "independentInstrumentCalibrationAccepted": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
