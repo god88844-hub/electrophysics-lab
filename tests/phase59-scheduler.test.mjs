@@ -27,7 +27,7 @@ test('Scratchpad undercapacity and invalid matrices fail closed',()=>{
   x=>x.bytesPerCycle=0,x=>x.architecture='magic',x=>x.lanes=5,
   x=>x.A=[[]],x=>x.clockMHz=Infinity];
  for(const e of edits){const x=structuredClone(SAMPLE);e(x);
-  assert.throws(()=>validateJob(x)||scheduleMatrix(x));}
+  assert.throws(()=>scheduleMatrix(x));}
  // validateJob accepts an under-capacity tile, scheduleMatrix must reject.
  assert.throws(()=>scheduleMatrix({...SAMPLE,scratchpadBytes:1}));
 });
