@@ -8,7 +8,7 @@ export const UPSTREAM='google/skywater-pdk-sky130-raw-data';
 export const UPSTREAM_COMMIT='1f7214f2f81a0629303947a07e1ec00a28ae8a33';
 export const README={path:'README.rst',gitBlobSha1:'92c6648d707251f1fb62fb662257aef2a85a33a3',bytes:3889};
 export const DATASETS=[
- {id:'specimen-6208-1-2',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_2).mdm',gitBlobSha1:'e82a49007f61006913a8d9cd5bee50288a836d87',bytes:3100,samples:41,purpose:'training-only'},
+ {id:'specimen-6208-1-2',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_2).mdm',gitBlobSha1:'e82a49007f61006913a8d9cd5bee50288a836d87',bytes:3100,samples:51,purpose:'training-only'},
  {id:'specimen-6208-1-3',path:'sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_3).mdm',gitBlobSha1:'f0b9986ccdceaa3f01b12dacff58125c32cb6a73',bytes:3100,samples:51,purpose:'held-out-validation-only'}
 ];
 const equal=(x,y)=>JSON.stringify(x)===JSON.stringify(y);
@@ -71,13 +71,15 @@ export function parseMdm(text,{expectedSamples=null}={}){
 }
 export function fitAndHoldout(train,heldout){
  if(!train?.rows?.length||!heldout?.rows?.length)throw Error('No source-verified physical sweeps');
+ if(train===heldout||JSON.stringify(train.rows)===JSON.stringify(heldout.rows))
+  throw Error('Same specimen cannot be passed as its own blind holdout');
  const xs=train.rows.map(x=>x.voltageV),ys=train.rows.map(x=>x.currentA);
  const denom=xs.reduce((s,x)=>s+x*x,0);
  const conductanceS=xs.reduce((s,x,i)=>s+x*ys[i],0)/denom;
  if(!Number.isFinite(conductanceS)||conductanceS<=0)throw Error('Nonphysical measured conductance');
  const lo=train.sweep.startV,hi=train.sweep.stopV;
  const evalRows=heldout.rows.filter(x=>x.voltageV>=lo-1e-8&&x.voltageV<=hi+1e-8);
- if(evalRows.length<10||evalRows.length>=heldout.rows.length)
+ if(evalRows.length<10||evalRows.length>heldout.rows.length)
   throw Error('Missing held-out overlap envelope or independent out-of-envelope checks');
  const errors=evalRows.map(x=>conductanceS*x.voltageV-x.currentA);
  const rmseA=Math.sqrt(errors.reduce((s,e)=>s+e*e,0)/errors.length);

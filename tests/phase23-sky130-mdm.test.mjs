@@ -81,7 +81,7 @@ test('Blind separate-specimen comparison fits training only, records heldout dis
 });
 test('Whole-sample holdout refuses identical envelope or too few heldout readings',()=>{
  const train=parseMdm(syntheticMdm());
- assert.throws(()=>fitAndHoldout(train,train),/Missing held-out/);
+ assert.throws(()=>fitAndHoldout(train,train),/Same specimen/);
  assert.throws(()=>fitAndHoldout(train,parseMdm(syntheticMdm({start:-2,stop:2,step:0.5}))),/Missing held-out/);
 });
 test('Policy edits cannot silently re-label external resistor readings as validated ALU silicon',()=>{

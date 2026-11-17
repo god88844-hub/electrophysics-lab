@@ -15,7 +15,7 @@
       "path": "sky130_fd_pr/cells/unsorted/res/pplus_poly_res_w0p69_l0p345_sq0p5(6208_1_2).mdm",
       "gitBlobSha1": "e82a49007f61006913a8d9cd5bee50288a836d87",
       "bytes": 3100,
-      "samples": 41,
+      "samples": 51,
       "purpose": "training-only"
     },
     {

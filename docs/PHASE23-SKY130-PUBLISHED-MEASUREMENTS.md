@@ -18,7 +18,7 @@ establish independently verified wafer/lot membership, uncertainty budgets,
 measurement certification or instrument calibration traceability.
 
 ## Preliminary, explicitly bounded empirical comparison
-Use the 41-point first specimen to fit a *single zero-intercept Ohmic
+Use the 51-point first specimen to fit a *single zero-intercept Ohmic
 conductance parameter*, then predict the second **unseen** specimen's
 I1 measurements only within the training sweep voltage envelope.
 Report holdout points, absolute RMSE, full-scale normalized RMSE, and
