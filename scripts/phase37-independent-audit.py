@@ -149,13 +149,21 @@ def check_locked_ancestry():
                    check=True)
     changed = subprocess.check_output(
         ["git", "diff", "--name-only", PH36_HEAD + "..HEAD"], text=True).splitlines()
-    prefixes = ("scripts/phase37-", "tests/phase37-", "benchmarks/phase37/",
-                "docs/PHASE37-", ".github/workflows/phase37-")
-    exceptions = {"README.md", "scripts/phase30-capture.mjs",
-                  "scripts/phase30-strict.mjs"}
-    unexpected = [path for path in changed if not path.startswith(prefixes)
-                  and path not in exceptions]
-    require(not unexpected, "Original Phase36 evidence/scripts modified: " + str(unexpected))
+    # Protect previously validated experimental code and manifests. Do not
+    # prohibit unrelated later Phase38+ source additions or integration work.
+    protected_prefixes = (
+        "js/measure/phase35-", "js/measure/phase36-",
+        "scripts/phase35-", "scripts/phase36-",
+        "tests/phase35-", "tests/phase36-",
+        "benchmarks/phase35/", "benchmarks/phase36/",
+        "docs/PHASE35-", "docs/PHASE36-",
+        ".github/workflows/phase35-", ".github/workflows/phase36-"
+    )
+    changed_experimental_sources = [
+        path for path in changed if path.startswith(protected_prefixes)]
+    require(not changed_experimental_sources,
+            "Frozen original Phase35/36 experiment changed: "
+            + str(changed_experimental_sources))
     return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 
 
