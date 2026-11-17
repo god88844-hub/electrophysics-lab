@@ -1,0 +1,24 @@
+{
+  "format": "invention-lab/phase58-compiler-cosimulation-policy/1",
+  "target": "IL-8 custom 8-bit microarchitecture, not RV32I",
+  "instructionSet": [
+    "ADD",
+    "SUB",
+    "AND",
+    "OR",
+    "XOR"
+  ],
+  "compilerLanguage": "bounded-structured-register-IR",
+  "originalIndependentEngines": [
+    "pure-arithmetic-oracle",
+    "unpipelined-IL8-reference",
+    "IL8-five-stage-pipeline"
+  ],
+  "architectureVerdict": "source-check-required",
+  "rtlWaveformComparisonAvailable": false,
+  "externalRtlSimulatorUsed": false,
+  "originalHardwareReadings": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

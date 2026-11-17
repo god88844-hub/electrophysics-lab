@@ -1,0 +1,32 @@
+name: Phase 58 compiled IL8 architectural cross-engine validation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  cross-engine-compiler-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase58-compiler-cosim.test.mjs
+      - run: |
+          node scripts/phase58-run.mjs
+          node scripts/phase58-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase58-architecture-not-rtl-or-silicon
+          path: |
+            benchmarks/phase58/compiler-cosimulation-policy.json
+            benchmarks/evidence/phase58/phase58.json
+          if-no-files-found: warn
