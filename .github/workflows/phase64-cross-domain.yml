@@ -1,0 +1,32 @@
+name: Phase 64 typed cross-domain value coupling
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  bounded-cross-lab-values:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/phase64-cross-domain.test.mjs
+      - run: |
+          node scripts/phase64-run.mjs
+          node scripts/phase64-strict.mjs
+      - run: npm test
+      - run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase64-conditional-software-only-coupling
+          path: |
+            benchmarks/phase64/coupling-policy.json
+            benchmarks/evidence/phase64/phase64.json
+          if-no-files-found: warn
