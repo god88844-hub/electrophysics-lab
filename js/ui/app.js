@@ -19,6 +19,7 @@ import {
 } from '../assembly/composites.js';
 import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/feasibility.js';
 import { fanIllustrativeScenario } from '../evidence/phase31-first-principles.js';
+import { assessPublicSourceCoverage } from '../evidence/phase32-source-coverage.js';
 import { PHYSICAL_STAGES } from '../evidence/physical-readiness.js';
 import { buildEvidencePassport } from '../evidence/phase29-atlas.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
@@ -1055,6 +1056,7 @@ export class App {
     this._renderDesignPhysicalLadder(body);
     this._renderScenarioDemo(body);
     if(this.state.labId==='chip')this._renderFanFirstPrinciplesDemo(body);
+    if(this.state.labId==='chip')this._renderPublicSourceResearch(body);
   }
 
   currentEvidencePassport(){
@@ -1312,6 +1314,84 @@ export class App {
     });
     section.append(grid,button,result);
     body.appendChild(section);
+  }
+
+  // Phase32: load audited external-reference metadata, never assume a source
+  // measured this particular user assembly or authenticated the raw logs.
+  _renderPublicSourceResearch(body){
+    const section=document.createElement('section');
+    section.className='scenario-demo phase32-source-research';
+    section.dataset.sourceCoverage='phase32';
+    const header=document.createElement('h4');
+    header.textContent='Source research • What's missing for near-physical evidence?';
+    const lead=document.createElement('p');
+    lead.className='muted';
+    lead.textContent='Public measurements from DIFFERENT motors and cells cannot validate this specific battery, wires, motor and fan. Read the 23-item gap checklist before estimating physical success.';
+    const details=document.createElement('details');
+    const summary=document.createElement('summary');
+    summary.textContent='Research sources and missing measurements (loading...)';
+    details.appendChild(summary);
+    const status=document.createElement('p');
+    status.setAttribute('role','status');
+    status.dataset.sourceStatus='phase32';
+    status.textContent='Loading source-locked research metadata; no claim of physical validation.';
+    section.append(header,lead,details,status);
+    body.appendChild(section);
+    this._sourceResearchPromise=fetch('/benchmarks/phase32/public-source-catalog.json',{
+      cache:'no-store'
+    }).then(response=>{
+      if(!response.ok)throw Error('research catalog unavailable (HTTP '+response.status+')');
+      return response.json();
+    }).then(catalog=>{
+      const report=assessPublicSourceCoverage(catalog);
+      if(!section.isConnected||this.state.labId!=='chip')return null;
+      summary.textContent=report.sourceReferenceCount+' researched sources, '+
+        report.totalExplicitEvidenceRequirements+' requirements, '+
+        report.fullyPhysicallySatisfiedRequirements+' target-specific physical gates verified';
+      status.textContent='SOURCE INVENTORY ONLY: '+report.publishedExperimentalDatasetsIdentified+
+        ' relevant but DIFFERENT-device public datasets identified. Actual raw records ingested: '+
+        report.publishedDataOriginalMeasurementsIngested+
+        '. Actual target assembly physical measurements: 0. Real manufacturing success: UNKNOWN.';
+      const sourcesTitle=document.createElement('h5');
+      sourcesTitle.textContent='Externally sourced references (not physical proof for this design)';
+      details.appendChild(sourcesTitle);
+      const list=document.createElement('ul');
+      for(const source of catalog.sources){
+        const item=document.createElement('li');
+        const a=document.createElement('a');a.textContent=source.title;
+        a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';
+        const scope=document.createElement('span');
+        scope.textContent=' — '+source.recordStatus+'; '+source.subjectMatch;
+        item.append(a,scope);list.appendChild(item);
+      }
+      details.appendChild(list);
+      const requirementTitle=document.createElement('h5');
+      requirementTitle.textContent='Evidence missing from this exact fan assembly';
+      details.appendChild(requirementTitle);
+      const requirements=document.createElement('ul');
+      for(const row of report.requirements){
+        const item=document.createElement('li');
+        item.textContent=row.id+': '+row.requirement+' — '+
+          (row.id==='solver-verification'?'model equations checked, physical evidence not established':
+           'exact-device measurements MISSING');
+        requirements.appendChild(item);
+      }
+      details.appendChild(requirements);
+      const spec=document.createElement('p');spec.className='muted';
+      spec.textContent='Published DIFFERENT motor (Pololu #1592) at 3 V: no-load speed '+
+        report.supplierCharacteristics.sourceNoLoadSpeedRpm+' RPM, stall '+
+        report.supplierCharacteristics.sourceStallCurrentA+' A, inferred winding resistance '+
+        report.supplierCharacteristics.inferredStallResistanceOhm+' Ω. Kt/Ke approximation difference '+
+        report.supplierCharacteristics.kRelativeInconsistencyPercent.toFixed(2)+
+        '%, NOT a calibrated fan model error and NOT a physical success percentage.';
+      details.appendChild(spec);
+      return report;
+    }).catch(error=>{
+      status.textContent='Cannot audit public sources: '+error.message+
+        '. Do not infer matching-device physical measurements.';
+      return null;
+    });
+    return section;
   }
 
   _setVerdict(v) {
