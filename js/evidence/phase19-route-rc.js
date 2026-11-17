@@ -17,7 +17,7 @@ export const OUTPUTS=Object.freeze({
  detailDb:res+'5_2_route.odb',
  routeDb:res+'5_route.odb',
  routeSdc:res+'5_route.sdc',
- drcReport:dir+'orfs/reports/sky130hd/alu8/base/5_route_drc.rpt',
+ detailRouteToolLog:dir+'orfs/logs/sky130hd/alu8/base/5_2_route.log',
  spef:dir+'post-route.spef',
  routeLog:dir+'tool-logs/detailed-route.log',
  inspectLog:dir+'tool-logs/extraction-timing.log',
