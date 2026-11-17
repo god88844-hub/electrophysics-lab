@@ -300,8 +300,11 @@ try{
   assert(sourceUi && sourceUi.textContent.includes('23 requirements') &&
     sourceUi.textContent.includes('physical measurements: 0'),
     'transparent source data gap summary not shown in browser');
-  assert(sourceUi.querySelectorAll('a[target="_blank"]').length===12,
+  assert(sourceUi.querySelectorAll('a[target="_blank"]').length===13,
     'not all verified public reference links are shown');
+  assert(sourceUi.textContent.includes('PG tach stuck HIGH') &&
+    sourceUi.textContent.includes('500 RPM is the controller setting'),
+    'Original faulty tachometer was promoted to validated motor RPM');
   assert(sourceUi.textContent.includes('NOT a calibrated fan model error'),
     'other motor supplier data was incorrectly promoted to physical model accuracy');
   const chipEvidence=app.$outputBody.textContent;
