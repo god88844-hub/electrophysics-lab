@@ -539,3 +539,7 @@ migrated before integration of original open development PRs.
 ## Phase 48 — Independent whole-system numerical comparison and real-validation gating
 
 [Phase48 Python RK4 vs JavaScript midpoint whole-system audit](docs/PHASE48-WHOLE-SYSTEM-INDEPENDENT-MODEL-AUDIT.md) evaluates five source-scoped hypothetical fan and battery load conditions using separate numerical implementations, energy conservation, frozen Git source manifests and ten explicit outstanding *real* physical validation gates. Numerical agreement is not hardware qualification: no independently verified whole-system fan recordings, actual impeller safe speed or build-success percentage exists.
+
+## Phase 49 — Identifiability before calibration
+
+[Phase49 structural identifiability and synthetic train/holdout](docs/PHASE49-IDENTIFIABILITY-AND-CALIBRATION.md) proves that a fixed-source stopped-motor current equation with only total series voltage/current identifies only aggregate resistance (Jacobian rank 1), **not** separate battery, harness, and motor resistances. Its ideal train/holdout data are marked entirely synthetic; no matching actual fan hardware or physically calibrated parameters are inferred.
