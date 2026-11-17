@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {FORMAT,IMAGE,IMAGE_DIGEST,SOURCES,OUTPUTS,parseGeometry,evaluatePhase18} from '../js/evidence/phase18-physical-route.js';
 const H='a'.repeat(64),C='b'.repeat(40);
-function geo(){return 'OpenROAD synthetic TEST ONLY\nPH18_GEOMETRY_BEGIN\nPH18_DIE_DBUNITS 100 120\nPH18_INSTANCES 12\nPH18_PLACED 12\nPH18_NETS 8\nPH18_BTERMS 28\nPH18_GEOMETRY_END\n';}
+function geo(){return 'OpenROAD synthetic TEST ONLY\nPH18_GEOMETRY_BEGIN\nPH18_DIE_DBUNITS 100 120\nPH18_INSTANCES 12\nPH18_PLACED 12\nPH18_NETS 8\nPH18_BTERMS 30\nPH18_GEOMETRY_END\n';}
 function fixture(){
  const sha256={};for(const k of Object.keys({...SOURCES,...OUTPUTS}))sha256[k]=H;
  return {format:FORMAT,imageTag:IMAGE,imageDigest:IMAGE_DIGEST,commitSha:C,
@@ -22,7 +22,7 @@ test('OpenDB geometry parser rejects missing die, instance count and output port
  for(const fn of [
   x=>x.replace('PH18_PLACED 12','PH18_PLACED 11'),
   x=>x.replace('PH18_DIE_DBUNITS 100 120','PH18_DIE_DBUNITS 0 120'),
-  x=>x.replace('PH18_BTERMS 28','PH18_BTERMS 27'),
+  x=>x.replace('PH18_BTERMS 30','PH18_BTERMS 29'),
   x=>x.replace('PH18_NETS 8','PH18_NETS 0'),
   x=>x.replace('PH18_GEOMETRY_END','END'),
   x=>x.replace('PH18_INSTANCES 12','PH18_INSTANCES 0')

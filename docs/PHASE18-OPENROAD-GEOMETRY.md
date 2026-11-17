@@ -7,7 +7,7 @@ The flow executes real standard-cell technology synthesis, floorplanning,
 legal placement and a **global-route wire guide**, archived with OpenDB native
 databases and the runtime Docker image digest. An independent OpenROAD process
 reopens the actual OpenDB and counts placed standard cells, nets, outputs, and
-die geometry. Source, results and logs are independently SHA-256 replayed.
+die geometry. SKY130HD routing adds two power BTerms to the original\n28 functional ALU ports (30 total BTerms); these are not new functional I/O. Source, results and logs are independently SHA-256 replayed.
 
 The phase is separately synthesized by ORFS and is **not** a claim that its
 mapped netlist has been proven identical to the Phase 17 mapped netlist.

@@ -23,6 +23,6 @@ puts "PH18_PLACED $placed"
 puts "PH18_NETS [llength $nets]"
 puts "PH18_BTERMS [llength $bterms]"
 puts "PH18_GEOMETRY_END"
-if {$dx <= 0 || $dy <= 0 || [llength $cells] < 1 || $placed != [llength $cells] || [llength $nets] < 1 || [llength $bterms] != 28} {
+if {$dx <= 0 || $dy <= 0 || [llength $cells] < 1 || $placed != [llength $cells] || [llength $nets] < 1 || [llength $bterms] != 30} {
   error "Geometry is absent, unplaced, unconnected or has unexpected IO"
 }

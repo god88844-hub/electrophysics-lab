@@ -35,8 +35,8 @@ export function parseGeometry(log){
  if(o.PH18_DIE_DBUNITS?.length!==2||o.PH18_DIE_DBUNITS.some(x=>!Number.isSafeInteger(x)||x<=0)||
     o.PH18_INSTANCES?.length!==1||o.PH18_INSTANCES[0]<1||
     o.PH18_PLACED?.[0]!==o.PH18_INSTANCES[0]||
-    o.PH18_NETS?.[0]<1||o.PH18_BTERMS?.[0]!==28)
-   throw Error('Not fully placed or invalid die, net, or 18-input/10-output geometry');
+    o.PH18_NETS?.[0]<1||o.PH18_BTERMS?.[0]!==30)
+   throw Error('Not fully placed or invalid die, net, or 18-input/10-output plus two power-rail BTerms geometry');
  return {dieDbUnits:o.PH18_DIE_DBUNITS,instances:o.PH18_INSTANCES[0],
   placed:o.PH18_PLACED[0],nets:o.PH18_NETS[0],bterms:o.PH18_BTERMS[0]};
 }
