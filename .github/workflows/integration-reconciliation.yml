@@ -1,0 +1,33 @@
+name: Integration Phase 3 and Phase 72 graph reconciliation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  integration-ancestry-and-physical-boundaries:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Exact merged history audit and source preservation
+        run: |
+          node --test tests/integration-reconciliation.test.mjs
+          node scripts/integration-run.mjs
+          node scripts/integration-strict.mjs
+      - name: Full Node suite including restored Phase 3 evidence-integrity tests
+        run: npm test
+      - name: Real Chromium/WebGL application smoke
+        run: node scripts/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-staging-report-not-production-signoff
+          path: benchmarks/evidence/integration/integration.json
+          if-no-files-found: warn

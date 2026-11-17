@@ -157,6 +157,13 @@ try{
  p.startsWith('js/evidence/phase72-')||p.startsWith('scripts/phase72-')||
  p.startsWith('tests/phase72-')||p.startsWith('benchmarks/phase72/')||
  p.startsWith('docs/PHASE72-')||p.startsWith('.github/workflows/phase72-')||
+ p.startsWith('js/release/integration-')||p.startsWith('scripts/integration-')||
+ p.startsWith('tests/integration-')||p.startsWith('docs/INTEGRATION-')||
+ p.startsWith('.github/workflows/integration-')||
+ (p==='docs/PHASE3-ACCEPTANCE.json'&&git('rev-parse','HEAD:'+p)==='c70290fdf51e3b994d3d7cd591f45ab9005911fc')||
+ (p==='docs/PHASE3-INTEGRITY-BOUNDARIES.md'&&git('rev-parse','HEAD:'+p)==='63d49c089b3339bf02da0c04d3ebbdac43c87b59')||
+ (p==='docs/PHASE3-PLAN.md'&&git('rev-parse','HEAD:'+p)==='dde6312cbc3aa696b6c2af396eb175887825cd7f')||
+ (p==='tests/phase3-integrity.test.mjs'&&git('rev-parse','HEAD:'+p)==='681c93d415785bd6a5466b1b902e2266fd311630')||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
  p==='README.md'||p==='package.json';
  const unexpectedChanges=changes.filter(x=>!allowed(x)),missingHistoricalCommits=[];
