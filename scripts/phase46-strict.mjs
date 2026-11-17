@@ -1,0 +1,30 @@
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+const sources=['benchmarks/phase46/fan-affinity-assumptions.json','benchmarks/phase41/reference-hardware-candidate.json'];
+const bufs=await Promise.all(sources.map(p=>readFile(p)));
+const r=JSON.parse(await readFile('benchmarks/evidence/phase46/phase46.json'));
+assert.equal(r.format,'invention-lab/phase46-fan-laws-ratio-only-report/1');
+assert.equal(r.sourceCommit,execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());
+for(let i=0;i<sources.length;i++)assert.equal(r.sourceHashes[sources[i]],createHash('sha256').update(bufs[i]).digest('hex'));
+assert.deepEqual(r.cases.map(c=>c.hypotheticalRpm),[500,1000,1500]);
+for(const [i,n] of [.5,1,1.5].entries()){
+ const c=r.cases[i];
+ assert.equal(c.normalizedAirflowRatio,n);
+ assert.equal(c.normalizedPressureRatio,n*n);
+ assert.equal(c.normalizedShaftPowerRatio,n**3);
+ assert.equal(c.normalizedTorqueRatio,n*n);
+ assert.equal(c.actualShaftPowerW,null);
+ assert.equal(c.actualAirflowM3s,null);
+ assert.equal(c.actualLoadTorqueNm,null);
+ assert.equal(c.physicalValidation,'none');
+}
+assert.equal(r.measuredSourceMatchedFanSpecimens,0);
+assert.equal(r.absoluteFanTorqueCurve,null);
+assert.equal(r.safeFanSpeedLimitRpm,null);
+assert.equal(r.shaftFitVerified,false);
+assert.equal(r.physicalTestingAuthorized,false);
+assert.equal(r.physicalVerdict,'unknown');
+assert.equal(r.realWorldBuildSuccessPercent,null);
+console.log('PH46 STRICT PASS: fan affinity reference ratios replicated; real fan qualification unknown');
