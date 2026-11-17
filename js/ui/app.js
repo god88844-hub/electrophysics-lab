@@ -18,6 +18,7 @@ import {
   serializeHierarchicalLibrary,parseHierarchicalLibrary,
 } from '../assembly/composites.js';
 import { summarizeDesignEvidence, estimateScenarioPassRate } from '../evidence/feasibility.js';
+import { fanIllustrativeScenario } from '../evidence/phase31-first-principles.js';
 import { PHYSICAL_STAGES } from '../evidence/physical-readiness.js';
 import { buildEvidencePassport } from '../evidence/phase29-atlas.js';
 import { toSpiceDeck } from '../labs/chip/spice-export.js';
@@ -1053,6 +1054,7 @@ export class App {
     body.appendChild(atlasOpen);
     this._renderDesignPhysicalLadder(body);
     this._renderScenarioDemo(body);
+    if(this.state.labId==='chip')this._renderFanFirstPrinciplesDemo(body);
   }
 
   currentEvidencePassport(){
@@ -1233,6 +1235,82 @@ export class App {
       }
     });
     section.append(grid, run, result);
+    body.appendChild(section);
+  }
+
+  // First-principles worked example. This is NOT assembled from the user's
+  // current circuit and does not have externally measured motor uncertainty.
+  _renderFanFirstPrinciplesDemo(body){
+    const section=document.createElement('section');
+    section.className='scenario-demo phase31-fan-evidence';
+    const title=document.createElement('h4');
+    title.textContent='First principles • Battery → Two Wires → DC Motor → Fan';
+    const note=document.createElement('p');
+    note.className='muted';
+    note.textContent='Worked illustrative motor example, NOT the current design: battery droop, Ohmic wire drops, a shared torque/back-EMF constant, static startup, and nonlinear fan drag. All component variation values are hypothetical. This is a brushed DC motor; BLDC electronics need a different model.';
+    section.append(title,note);
+    const labels=[
+      ['voltageV','Battery open-circuit voltage (V)',3],
+      ['voltageStdPercent','Assumed battery voltage variation, 1σ (%)',4],
+      ['minRpm','Required minimum steady speed (RPM)',900],
+      ['maxMotorCurrentA','Maximum motor running current (A)',0.8],
+      ['rpmDiscrepancyAllowance','Optional assumed absolute motor-model error (RPM)','']
+    ];
+    const grid=document.createElement('div');
+    grid.className='scenario-fields';
+    const input={};
+    for(const [key,text,value] of labels){
+      const wrap=document.createElement('label');
+      wrap.textContent=text;
+      const field=document.createElement('input');
+      field.type='number';field.step='any';field.value=String(value);
+      field.dataset.fanField=key;
+      field.setAttribute('aria-label',text);
+      input[key]=field;
+      wrap.appendChild(field);grid.appendChild(wrap);
+    }
+    const button=document.createElement('button');
+    button.type='button';button.className='primary';
+    button.dataset.action='phase31-fan-calculate';
+    button.textContent='Predict conditional fan success %';
+    const result=document.createElement('p');
+    result.setAttribute('role','status');result.className='scenario-result';
+    result.dataset.fanResult='phase31';
+    result.textContent='Model the assumptions to calculate a conditional success percentage. Real physical success remains unmeasured.';
+    button.addEventListener('click',()=>{
+      try{
+        const args={};
+        for(const [key,field] of Object.entries(input)){
+          if(!field.value.trim()){
+            if(key==='rpmDiscrepancyAllowance'){args[key]=null;continue;}
+            throw Error(key+' is required');
+          }
+          args[key]=Number(field.value);
+          if(!Number.isFinite(args[key]))throw Error(key+' must be finite');
+        }
+        const trial=fanIllustrativeScenario({...args,seed:31,samples:5000});
+        if(trial.status!=='model-only'){
+          result.textContent='INCONCLUSIVE: '+trial.modelEvaluationErrors+' nonphysical or invalid simulation samples. Physical success remains unmeasured.';
+          return;
+        }
+        const n=trial.illustrativeNominal;
+        const mc=trial.conditionalMonteCarloInterval95Percent;
+        const modeled=trial.conditionalModeledSuccessPercent.toFixed(1);
+        const interval=mc[0].toFixed(1)+'–'+mc[1].toFixed(1);
+        const bound=trial.conditionalWorstCaseModeledSuccessPercent===null?' No measured model-discrepancy bound available.':
+          ' If your ASSUMED RPM error bound holds: modeled range '+
+          trial.conditionalWorstCaseModeledSuccessPercent.toFixed(1)+'–'+
+          trial.conditionalBestCaseModeledSuccessPercent.toFixed(1)+'%.';
+        result.textContent='CONDITIONAL MODEL pass: '+modeled+
+          '% (95% simulation-sampling interval '+interval+
+          '%). Nominal ideal speed '+n.speedRpm.toFixed(0)+
+          ' RPM; modeled current '+n.motorCurrentA.toFixed(2)+' A.'+
+          bound+' ACTUAL physical/build success: UNKNOWN, not estimated. This is not a measured prototype.';
+      }catch(error){
+        result.textContent='Cannot calculate: '+error.message;
+      }
+    });
+    section.append(grid,button,result);
     body.appendChild(section);
   }
 
