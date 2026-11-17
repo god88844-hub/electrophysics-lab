@@ -1,0 +1,51 @@
+{
+  "format": "invention-lab/phase44-copper-harness-illustrative-resistance/1",
+  "referenceDesignId": "reference-3v-battery-2-wire-brushed-fan-candidate-001",
+  "material": "standard-annealed-copper-100pct-IACS-reference",
+  "proposedWireGaugeAWG": 24,
+  "referenceResistivityAt20C_OhmM": 1.724137931034483e-8,
+  "resistivityTemperatureCoefficientPerC": 0.00393,
+  "temperatureReferenceC": 20,
+  "sourceUrl": "https://nvlpubs.nist.gov/nistpubs/Legacy/circ/nbscircular31e4.pdf",
+  "sourceBasis": "Bureau of Standards conductivity standard 58 meter/(ohm mm2), alpha 0.00393/C, 20 C; not measured actual wire",
+  "topology": "two-conductor-series-loop-with-two-hypothetical-contact-resistances",
+  "measuredConductorLengthM": null,
+  "measuredContactResistanceOhm": null,
+  "measuredActualAlloyOrStranding": null,
+  "actualWireManufacturerPartNumber": null,
+  "actualConnectorPartNumber": null,
+  "actualWireInsulationTemperatureRatingC": null,
+  "actualHarnessSpecimenIds": [],
+  "actualSourceMatchedPhysicalReadings": 0,
+  "scenarioEnvelope": {
+    "eachConductorLengthM": [
+      0.01,
+      2
+    ],
+    "currentA": [
+      0,
+      4
+    ],
+    "wireTemperatureC": [
+      0,
+      80
+    ],
+    "contactResistancePerContactOhm": [
+      0,
+      0.05
+    ]
+  },
+  "scenarioEnvelopeIsMathematicalNotThermalSafetyLimit": true,
+  "illustrativeExample": {
+    "eachConductorLengthM": 0.25,
+    "currentA": 1,
+    "wireTemperatureC": 20,
+    "contactResistancePerContactOhm": 0.01
+  },
+  "materialValueIsNotLotCertificate": true,
+  "wireHeatingNotTemperatureRise": true,
+  "electricalContactFaultRateUnknown": true,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}
