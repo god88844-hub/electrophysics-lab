@@ -479,3 +479,14 @@ Even an independently reproduced source-device error remains an empirical
 check of another manufacturer's **24 V BLDC test bench**, not a calibrated
 physical prediction interval, defect probability or real 3 V battery/fan
 success percentage. No matched target fan observations exist.
+
+## Phase 38 — live dependency-stack integration preflight (NO merges)
+
+[Phase38 non-destructive merge-readiness report](docs/PHASE38-INTEGRATION-PREFLIGHT.md)
+audits the *live* unmerged Phase3–37 GitHub PR dependency graph and attempts
+all 35 corresponding merges sequentially into a temporary local worktree
+based on main. It records the first actual conflict and its exact filenames,
+or runs the Node regression suite on the fully integrated temporary worktree
+if the entire graph merges cleanly. This workflow does **not** merge any
+GitHub PR or alter main; those actions still require explicit conflict
+reconciliation and reviewed integration.
