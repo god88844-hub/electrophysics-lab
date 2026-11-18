@@ -1,10 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
+import {resolve} from 'node:path';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {inspectPinnedPdkClosure,runSOAGuardedFoundryDeck,planRealMultiCornerSPICE,
- inspectDeclaredModelCorners,bindSPICEDeviceInstances}
+ inspectDeclaredModelCorners,bindSPICEDeviceInstances,
+ inspectStageMDeckLibraryBinding}
  from '../js/evidence/stage-m-foundry-spice.js';
 import {makeFoundryRailProfile} from '../js/evidence/phase73-soa.js';
 
@@ -81,4 +83,34 @@ test('claims must bind to exact transistor instance IDs in the SPICE deck',()=>{
  assert.equal(bindSPICEDeviceInstances({deck,devices:[
   {...models[0],instance:'Xfake'},models[1]]}).status,
   'SOA_INSUFFICIENT_NODE_BOUNDS');
+});
+
+test('native SPICE deck must bind its exact .lib path and corner to inspected original PDK tree',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'stage-m-deck-binding-'));
+ try{
+  await mkdir(join(root,'models'),{recursive:true});
+  const mainFile=join(root,'models','sky130.lib.spice');
+  await writeFile(mainFile,'.lib tt\n.endl\n');
+  const deck='* transistor model source binding\n'+
+   '.lib "'+mainFile+'" tt\nVDD vdd 0 1.8\n.end';
+  const good=await inspectStageMDeckLibraryBinding({
+   deck,pdkRoot:root,pdk:'SKY130',corner:'tt'});
+  assert.equal(good.modelLibraryBound,true);
+  assert.equal(good.status,'PDK_DECK_LIB_PATH_MATCHED_NOT_CALIBRATED');
+  assert.equal(good.foundryCalibrationVerified,false);
+  assert.equal(good.physicalQualification,'UNQUALIFIED_NO_GO');
+  const wrong=await inspectStageMDeckLibraryBinding({
+   deck:deck.replace(mainFile,resolve(root,'untrusted-model.spice')),
+   pdkRoot:root,pdk:'SKY130',corner:'tt'});
+  assert.equal(wrong.status,'INSUFFICIENT_MODEL_DATA');
+  assert.equal(wrong.modelLibraryBound,false);
+  const mismatchedCorner=await inspectStageMDeckLibraryBinding({
+   deck,pdkRoot:root,pdk:'SKY130',corner:'ss'});
+  assert.equal(mismatchedCorner.modelLibraryBound,false);
+  const extra=await inspectStageMDeckLibraryBinding({
+   deck:deck.replace('.lib "', '.include "/tmp/untrusted.spice"\n.lib "'),
+   pdkRoot:root,pdk:'SKY130',corner:'tt'});
+  assert.equal(extra.modelLibraryBound,false);
+  assert.equal(extra.reason,'caller-deck-include-not-admitted-exact-PDK-library-only');
+ }finally{await rm(root,{recursive:true,force:true});}
 });
