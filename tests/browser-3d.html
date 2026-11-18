@@ -111,9 +111,14 @@ f 4 8 5 1`;
   objFiles.items.add(new File([objFixture],'fixture.obj',{type:'text/plain'}));
   eng.objFile.files=objFiles.files;
   const priorJSON=JSON.stringify(d.toJSON());
-  eng.objButton.click();await pause(50);
+  eng.objButton.click();
+  // File.text() completes asynchronously. Poll for real parser completion
+  // rather than racing the file-read task with an arbitrary 50 ms sleep.
+  for(let attempt=0;attempt<60&&!viewer.importedCADMeshes.has(a.id)&&
+      !eng.report.textContent.startsWith('Cannot preview OBJ:');attempt++)
+    await pause(50);
   assert(viewer.importedCADMeshes.has(a.id),
-    'Local OBJ was not admitted into transient 3D preview');
+    'Local OBJ was not admitted into transient 3D preview: '+eng.report.textContent);
   assert(eng.report.textContent.includes('Local geometry preview only'),
     'OBJ preview was incorrectly presented as physically qualified');
   assert(JSON.stringify(d.toJSON())===priorJSON,
