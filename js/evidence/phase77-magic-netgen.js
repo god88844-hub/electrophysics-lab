@@ -147,6 +147,32 @@ export async function runMagicNetgenCandidate({
   independentDRCLVSReviewVerified:false,
   physicalQualification:'UNQUALIFIED_NO_GO'};
 }
+export const REQUIRED_Q4_CUSTOM_CELLS=Object.freeze([
+ 'q4_inv','q4_thresh_det','q4_mux4','q4_half_adder'
+]);
+export async function runQ4CellLayoutBatch({
+ cells=[],magicRcPath,netgenSetupPath,magicExec='magic',netgenExec='netgen'
+}={}){
+ if(!Array.isArray(cells)||cells.length!==REQUIRED_Q4_CUSTOM_CELLS.length||
+    cells.some(x=>!REQUIRED_Q4_CUSTOM_CELLS.includes(x?.name))||
+    new Set(cells.map(x=>x.name)).size!==REQUIRED_Q4_CUSTOM_CELLS.length)
+  throw Error('All four distinct actual Q4 cell layout sources are required');
+ const records=[];
+ for(const name of REQUIRED_Q4_CUSTOM_CELLS){
+  const source=cells.find(x=>x.name===name);
+  records.push({name,...await runMagicNetgenCandidate({
+   name,magPath:source.magPath,schematicPath:source.schematicPath,
+   magicRcPath,netgenSetupPath,magicExec,netgenExec})});
+ }
+ return {format:POSTLAYOUT_FORMAT,status:'INSUFFICIENT_MODEL_DATA',
+  records,required:REQUIRED_Q4_CUSTOM_CELLS.slice(),
+  nativeToolsInvoked:records.some(x=>x.magicExecuted===true),
+  allOutputHashesPresent:records.every(x=>
+   [x.generatedGdsSha256,x.drcReportSha256,x.lvsReportSha256,
+    x.extractedNetlistSha256].every(v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v))),
+  reason:'actual-source-bound-layouts-and-independent-foundry-signoff-required',
+  postlayoutNoiseVerified:false,physicalQualification:'UNQUALIFIED_NO_GO'};
+}
 export function evaluatePostLayoutSignoff({drcReport,lvsReport,
  parasiticNetwork,postlayoutNoiseMargin,independentRuledeckAudit}={}){
  const reasons=[];
