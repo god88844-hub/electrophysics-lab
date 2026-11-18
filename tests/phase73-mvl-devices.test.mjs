@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {PDK_SOURCES,PDK_DEVICE_CATALOG,Q4_RAILS,BALANCED_TERNARY_RAILS,
 makeVoltageRails,decodeVoltage,buildMvlPrimitive,evaluateRadixAlu,
-validateDeviceOperatingEnvelope} from '../js/evidence/phase73-mvl-devices.js';
+validateDeviceOperatingEnvelope,evaluateMvlPrimitive} from '../js/evidence/phase73-mvl-devices.js';
 test('Phase73 PDKs are exact-source commit declarations, not fabricated calibrated cards',()=>{
  for(const x of Object.values(PDK_SOURCES))assert.match(x.commit,/^[0-9a-f]{40}$/);
  assert.ok(PDK_DEVICE_CATALOG.some(x=>x.thresholdClass==='lvt'));
@@ -38,4 +38,23 @@ test('Binary, balanced ternary, Q4 and base-N 4/8-digit arithmetic is functional
   const sub=evaluateRadixAlu({base,width,a:Array(width).fill(0),b,operation:'sub'});
   assert.deepEqual(sub.digits,Array(width).fill(base-1));
  }
+});
+
+test('Functional MVL detector, complement and level shifter preserve ambiguous inputs',()=>{
+ const input=makeVoltageRails({base:4,minimumV:0,maximumV:1.8});
+ const output=Q4_RAILS;
+ const a=evaluateMvlPrimitive({kind:'level-shifter',sourceRails:input,
+  targetRails:output,inputVoltages:[1.2]});
+ assert.equal(a.status,'RESOLVED_FUNCTIONAL_ONLY');
+ assert.equal(a.logicLevel,2);assert.equal(a.outputVoltageV,2.2);
+ assert.equal(a.foundryCalibrated,false);assert.equal(a.transistorNetlist,null);
+ const ambiguous=evaluateMvlPrimitive({kind:'detector',sourceRails:input,
+  inputVoltages:[.9],guardBandV:.01});
+ assert.equal(ambiguous.status,'UNKNOWN');
+ const complement=evaluateMvlPrimitive({kind:'complement',sourceRails:Q4_RAILS,
+  inputVoltages:[1.1]});
+ assert.equal(complement.outputVoltageV,2.2);
+ assert.throws(()=>evaluateMvlPrimitive({kind:'level-shifter',sourceRails:Q4_RAILS,
+  targetRails:makeVoltageRails({base:3,minimumV:0,maximumV:3.3}),
+  inputVoltages:[1.1]}),/base must match/);
 });
