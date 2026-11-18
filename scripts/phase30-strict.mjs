@@ -186,6 +186,10 @@ try{
  p==='tests/coupled-wire-dc.test.mjs'||p==='docs/COUPLED-DC-WIRE-THERMAL.md'||
  p==='.github/workflows/coupled-wire-dc.yml'||
  p==='scripts/coupled-wire-ngspice.mjs'||p==='.github/workflows/coupled-wire-ngspice.yml'||
+ p==='js/scene/physical-routing.js'||p==='js/scene/physical-routing-ui.js'||
+ p==='js/scene/detailed-cad-mesh.js'||p==='tests/physical-routing-3d.test.mjs'||
+ p==='docs/PHYSICAL-SCALE-3D-TERMINALS.md'||
+ p==='.github/workflows/physical-harness-3d.yml'||
  p==='js/scene/experiment-trace.js'||p==='tests/experiment-trace.test.mjs'||
  p==='docs/EXPERIMENT-TRACE-3D.md'||p==='.github/workflows/experiment-trace-3d.yml'||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
