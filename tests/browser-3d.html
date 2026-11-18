@@ -78,6 +78,9 @@ try{
     'Dimensioned engineering workbench unavailable');
   eng.button.click();
   assert(eng.panel.hidden===false,'Engineering panel did not open');
+  assert(eng.heatFitButton?.dataset.action==='fit-thermal-convection-holdout'&&
+    eng.heatFitRows?.tagName==='TEXTAREA'&&eng.heatFitHoldout?.tagName==='INPUT',
+    'Candidate thermal calibration and holdout controls are unavailable');
   assert(eng.coupled?.dataset.action==='run-coupled-wire-dc',
     'Engineering mode lacks opt-in circuit/thermal solver');
   assert(eng.coupled.disabled===true,
