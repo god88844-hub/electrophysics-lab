@@ -2,6 +2,8 @@
 // Statistical distributions MUST be furnished from independent characterized
 // PDK evidence; a manually supplied sigma is not foundry calibration.
 import {runNgspice,detectNgspiceFailure} from '../bench/ngspice-adapter.js';
+import {requireSafeNetlistSOA} from './phase73-soa.js';
+import {verifyDeckTerminalSOA} from './phase73-deck-node-soa.js';
 export const PHASE75_FORMAT='invention-lab/phase75-parallel-monte-carlo-spice/1';
 export const TEMPERATURE_CORNERS=Object.freeze([-40,25,85,125]);
 function assertFinite(x,name,min=-Infinity,max=Infinity){
@@ -40,6 +42,7 @@ function readMeasurement(output,name){
 export async function runFoundryMonteCarlo({
  seed,trials=1000,concurrency=4,variation,exe,makeDeck,
  maximumDelayS,maximumStaticPowerW,maximumDynamicPowerW,
+ soaNetlist=null,
  // A test runner can exercise scheduling but is never accepted as real SPICE.
  _syntheticTrialRunner=null
 }={}){
@@ -68,6 +71,28 @@ export async function runFoundryMonteCarlo({
   const deck=makeDeck(process);
   if(typeof deck!=='string'||deck.length<10||deck.length>2_000_000)
    throw Error('Invalid ngspice trial netlist');
+  // The variation test harness is never a physical certificate. Even when
+  // using the genuine native ngspice runner, a transistor deck needs its
+  // own source-bound MOS terminal preflight BEFORE *each* randomized trial.
+  if(/^\s*\.(?:control|shell)\b/mi.test(deck))
+   return {index:i,tempC:process.tempC,verdict:'INVALID_SPICE_RESULT',
+    reason:'untrusted-ngspice-executable-control-in-trial-deck',
+    delayS:null,staticPowerW:null,dynamicPowerW:null};
+  const foundryModels=/(?:^|\n)\s*(?:\.lib\b|\.include\b|x[a-z0-9_]+\s)/mi.test(deck);
+  if(foundryModels){
+   if(!soaNetlist?.profile||!Array.isArray(soaNetlist.devices))
+    return {index:i,tempC:process.tempC,verdict:'INVALID_SPICE_RESULT',
+     reason:'SOA_INSUFFICIENT_NODE_BOUNDS',
+     delayS:null,staticPowerW:null,dynamicPowerW:null};
+   const claimed=requireSafeNetlistSOA(soaNetlist);
+   const actual=claimed.status==='SOA_MODEL_RANGE_SCREEN_PASS'?
+    verifyDeckTerminalSOA({deck,devices:soaNetlist.devices,
+     profile:soaNetlist.profile}):claimed;
+   if(actual.status!=='SOA_MODEL_RANGE_SCREEN_PASS')
+    return {index:i,tempC:process.tempC,verdict:'INVALID_SPICE_RESULT',
+     reason:actual.status,
+     delayS:null,staticPowerW:null,dynamicPowerW:null};
+  }
   let raw;
   if(_syntheticTrialRunner)raw=await _syntheticTrialRunner({process,deck});
   else raw=await runNgspice({exe,deck,timeoutMs:30_000});
