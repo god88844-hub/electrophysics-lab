@@ -1,0 +1,26 @@
+name: Physical-scale 3D terminals harness and components
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  dimensional-harness:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Dimensioned wiring and electrothermal regression
+        run: node --test tests/physical-routing-3d.test.mjs tests/physical-wire.test.mjs tests/engineering-cad-thermal.test.mjs tests/coupled-wire-dc.test.mjs
+      - run: node --check js/scene/physical-routing.js
+      - run: node --check js/scene/physical-routing-ui.js
+      - run: node --check js/scene/detailed-cad-mesh.js
+      - run: node --check js/scene/viewer.js
