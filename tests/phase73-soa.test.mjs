@@ -38,7 +38,8 @@ test('terminal checker rejects oxide and body overstress with no simulator fallb
   {gateV:1.8,drainV:1.8,sourceV:0,bodyV:0}]});
  assert.equal(good.status,'SOA_MODEL_RANGE_SCREEN_PASS');
  const bad=verifyMosTerminalSOA({model,samples:[
-  {gateV:3.3,drainV:3.3,sourceV:0,bodyV:0}]});
+  {gateV:3.3,drainV:3.3,sourceV:0,bodyV:0},
+  {gateV:3.3,drainV:0,sourceV:0,bodyV:0}]});
  assert.equal(bad.status,'SOA_OXIDE_OVERSTRESS');
  for(const term of ['Vgs','Vds','Vgb','Vgd'])
   assert.ok(bad.violations.some(x=>x.terminal===term),term);
