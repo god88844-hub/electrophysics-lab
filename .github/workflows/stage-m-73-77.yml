@@ -28,6 +28,9 @@ jobs:
           tests/phase76-virtual-passport.test.mjs
           tests/phase77-mvl-layout.test.mjs
           tests/stage-m-integration.test.mjs
+          tests/stage-m-signoff-readiness.test.mjs
+      - name: Issue deterministic calibrated-data UNKNOWN / NO-GO audit
+        run: node scripts/stage-m-signoff-readiness.mjs
       - name: Validate pure module syntax
         run: >-
           node --check js/evidence/phase73-mvl-devices.js
