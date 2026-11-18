@@ -86,6 +86,10 @@ try{
     'CAD picker must use canonical design components');
   eng.selector.value=a.id;
   eng.selector.dispatchEvent(new Event('change',{bubbles:true}));
+  // Specify the complete measured-mm envelope for the cube OBJ fixture;
+  // never depend on a prior selection's persisted input values.
+  for(const [i,val] of [[0,'0'],[1,'0'],[2,'0'],[3,'20'],[4,'8'],[5,'12']])
+    eng.fields[i].input.value=val;
   eng.save.click();
   assert(d.meta.dimensionedCAD?.parts?.[eng.selector.value]?.widthMm===20,
     'True-scale mm CAD dimensions not saved to canonical design JSON');
