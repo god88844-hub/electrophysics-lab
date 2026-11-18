@@ -41,6 +41,26 @@ export function parseMillimetreOBJ(input){
   }else bad('unsupported OBJ record '+keyword,i+1);
  }
  if(verticesMm.length<4||!faces.length)throw Error('OBJ requires a closed-volume candidate mesh');
+ // A 3D bounding box alone does NOT establish a closed solid. Each undirected
+ // edge must belong to two triangles with opposite winding. Fail closed on
+ // holes, overlapping non-manifold faces and inconsistent normals.
+ const edges=new Map();
+ let sixVolume=0;
+ for(const [a,b,c] of faces){
+  for(const [start,end] of [[a,b],[b,c],[c,a]]){
+   const key=Math.min(start,end)+':'+Math.max(start,end);
+   const prev=edges.get(key)||{count:0,winding:0};
+   prev.count++;prev.winding+=start<end?1:-1;edges.set(key,prev);
+  }
+  const va=verticesMm[a],vb=verticesMm[b],vc=verticesMm[c];
+  sixVolume+=va[0]*(vb[1]*vc[2]-vb[2]*vc[1])+
+   va[1]*(vb[2]*vc[0]-vb[0]*vc[2])+
+   va[2]*(vb[0]*vc[1]-vb[1]*vc[0]);
+ }
+ if([...edges.values()].some(edge=>edge.count!==2||edge.winding!==0))
+  throw Error('OBJ mesh is open, non-manifold or inconsistently wound');
+ if(!Number.isFinite(sixVolume)||Math.abs(sixVolume)<=1e-9)
+  throw Error('OBJ mesh has no enclosed volume');
  const low=[Infinity,Infinity,Infinity],high=[-Infinity,-Infinity,-Infinity];
  for(const v of verticesMm)for(let j=0;j<3;j++){low[j]=Math.min(low[j],v[j]);high[j]=Math.max(high[j],v[j]);}
  const size=high.map((v,j)=>v-low[j]);
