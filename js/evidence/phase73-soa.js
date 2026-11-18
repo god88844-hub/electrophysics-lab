@@ -72,6 +72,31 @@ export function makeFoundryRailProfile({
   transistorALUNetlistAvailable:false,
   physicalQualification:'UNQUALIFIED_NO_GO'};
 }
+// Verify both ±rail ripple extrema and nominal operating temperatures. A
+// passing static transistor envelope is *not* a dynamic reliability signoff.
+export function verifyRailRippleCorners({
+ id='sky130-core-1v8',radix=4,temperatureCornersC=[-40,25,85,125]
+}={}){
+ if(!Array.isArray(temperatureCornersC)||temperatureCornersC.length!==4||
+    temperatureCornersC.some(x=>!finite(x)||x< -40||x>125))
+  throw Error('Complete four-temperature voltage envelope required');
+ const normal=makeFoundryRailProfile({id,radix,temperatureC:25});
+ const pct=normal.maximumSpecifiedRippleFraction;
+ const cases=[];
+ for(const temperatureC of temperatureCornersC)
+  for(const rippleFraction of [-pct,0,pct]){
+   const profile=makeFoundryRailProfile({id,radix,rippleFraction,temperatureC});
+   const soa=verifyProfileSOA(profile);
+   cases.push({temperatureC,rippleFraction,railsV:profile.railsV,
+    modelSOA:soa.status,
+    terminalViolations:soa.findings.reduce((count,v)=>count+(v.violations?.length??0),0)});
+  }
+ return {format:SOA_FORMAT,profileId:id,caseCount:cases.length,cases,
+  status:cases.every(x=>x.modelSOA==='SOA_PROFILE_SCREEN_PASS')?
+   'SOA_ALL_DECLARED_RIPPLE_CORNERS_PASS':'SOA_OXIDE_OVERSTRESS',
+  fullDynamicSOAVerified:false,realDeviceStatisticsVerified:false,
+  physicalQualification:'UNQUALIFIED_NO_GO'};
+}
 export function verifyMosTerminalSOA({model,samples}={}){
  const limit=MOS_SOA_LIMITS[model];
  if(!limit||!Array.isArray(samples)||samples.length<1||samples.length>100000)
