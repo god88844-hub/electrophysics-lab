@@ -44,7 +44,7 @@ test('source-file headers are inspected but a syntactically plausible mock canno
 test('four-cell Q4 layout batch refuses to invent MAG/GDS/DRC/LVS sources or artifact hashes',async()=>{
  const names=['q4_inv','q4_thresh_det','q4_mux4','q4_half_adder'];
  assert.deepEqual(REQUIRED_Q4_CUSTOM_CELLS,names);
- assert.rejects(()=>runQ4CellLayoutBatch({cells:[{name:'q4_inv'}]}),/four distinct/);
+ await assert.rejects(()=>runQ4CellLayoutBatch({cells:[{name:'q4_inv'}]}),/four distinct/);
  const candidate=await runQ4CellLayoutBatch({cells:names.map(name=>({name}))});
  assert.equal(candidate.status,'INSUFFICIENT_MODEL_DATA');
  assert.equal(candidate.records.length,4);
