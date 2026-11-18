@@ -54,6 +54,52 @@ function tarMembers(archive,expected){
  if(result.size!==expected.size)throw Error('Tar inventory differs from tracked source manifest');
  return result;
 }
+
+// USTAR header writer: deterministic, dependency-free, and equally valid on
+// Windows (where the built-in bsdtar lacks GNU --sort/--owner switches).
+// The verifier below independently parses every resulting header and payload.
+const putAscii=(buf,offset,length,s)=>{
+ const v=Buffer.from(s,'ascii');
+ if(v.length>length)throw Error('Tar field exceeds USTAR limit');
+ v.copy(buf,offset);
+};
+const putOct=(buf,offset,length,n)=>{
+ const v=n.toString(8);
+ if(!Number.isSafeInteger(n)||n<0||v.length>length-2)throw Error('USTAR numeric field out of range');
+ putAscii(buf,offset,length,v.padStart(length-1,'0')+'\0');
+};
+function makeUstarEntry(file,payload){
+ const header=Buffer.alloc(512);
+ let name=file,prefix='';
+ if(Buffer.byteLength(file,'ascii')>100){
+  const at=file.lastIndexOf('/');
+  if(at<=0)throw Error('Unsupported long USTAR member path');
+  prefix=file.slice(0,at);name=file.slice(at+1);
+  if(Buffer.byteLength(name)>100||Buffer.byteLength(prefix)>155)throw Error('Long path cannot fit USTAR');
+ }
+ putAscii(header,0,100,name);
+ putOct(header,100,8,0o644);
+ putOct(header,108,8,0);
+ putOct(header,116,8,0);
+ putOct(header,124,12,payload.length);
+ putOct(header,136,12,0);
+ header.fill(32,148,156);
+ header[156]=48; // ASCII "0": strictly regular file
+ putAscii(header,257,6,'ustar\0');putAscii(header,263,2,'00');
+ if(prefix)putAscii(header,345,155,prefix);
+ const sum=header.reduce((acc,n)=>acc+n,0);
+ putAscii(header,148,8,sum.toString(8).padStart(6,'0')+'\0 ');
+ return [header,payload,Buffer.alloc((512-payload.length%512)%512)];
+}
+function writeTrackedUstar(inventory,contents){
+ const out=[];
+ for(const entry of inventory)out.push(...makeUstarEntry(entry.path,contents.get(entry.path)));
+ out.push(Buffer.alloc(1024)); // standard two end markers
+ const bytes=out.reduce((a,b)=>a+b.length,0);
+ out.push(Buffer.alloc((10240-bytes%10240)%10240));
+ return Buffer.concat(out);
+}
+
 export async function makePackage(output='benchmarks/evidence/phase69'){
  const files=trackedFiles();
  if(files.length<20||required.some(p=>!files.includes(p)))throw Error('Missing required tracked web application files');
@@ -61,26 +107,25 @@ export async function makePackage(output='benchmarks/evidence/phase69'){
  // describe a clean Git checkout, not a silently modified local working tree.
  execFileSync('git',['diff','--quiet','--',...rootItems]);
  execFileSync('git',['diff','--cached','--quiet','--',...rootItems]);
+ const contents=new Map();
  const inventory=await Promise.all(files.map(async source=>{
   check(source);
   const s=await lstat(source);
   if(!s.isFile()||s.isSymbolicLink())throw Error('Non-regular/symlink source rejected '+source);
   const bytes=await readFile(source);
+  contents.set(source,bytes);
   return {path:source,bytes:bytes.length,sha256:sha(bytes)};
  }));
  await mkdir(output,{recursive:true});
  const archive=path.join(output,'invention-lab-web.tar');
- // Enumerate exactly tracked regular files, not their containing directories:
- // an untracked private file under js/ must never be silently bundled.
- execFileSync('tar',['--format=ustar','--sort=name','--mtime=@0',
-  '--owner=0','--group=0','--numeric-owner','--no-recursion',
-  '--null','--verbatim-files-from','-cf',archive,'-T','-'],
-  {input:Buffer.from(files.join('\0')+'\0','utf8'),timeout:20000});
- const data=await readFile(archive);
+ // Build a canonical archive from exactly the already-approved bytes. No host
+ // tar executable, directory recursion, symlinks, or accidental local secrets.
+ const data=writeTrackedUstar(inventory,contents);
+ await writeFile(archive,data);
  const expected=new Map(inventory.map(row=>[row.path,row]));
  tarMembers(data,expected); // Verify the actual package before publishing the digest.
  const manifest={format:FORMAT,archiveSHA256:sha(data),files:inventory,
-  tooling:'GNU USTAR, tracked regular files only; normalized owner, group and modification time',
+  tooling:'Pure Node USTAR, exact tracked regular files only; normalized owner, group and modification time',
   includesNodeModuleMetadata:true,untrackedFilesBundled:false,
   physicalValidation:'none',productionQualified:false,externalInstallerSignoff:false};
  await writeFile(path.join(output,'phase69.json'),JSON.stringify(manifest,null,2)+'\n');

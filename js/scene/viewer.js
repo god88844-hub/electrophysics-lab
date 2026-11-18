@@ -1,6 +1,7 @@
 // viewer.js — dependency-free WebGL 3D view of the SAME Diagram used by the labs.
 // This renderer is visualization/editing only. It never claims physical fidelity.
 import { sceneFromDiagram, worldToDesign, portPoint3D } from './layout.js';
+import { experimentBenchMesh } from './experiment-bench.js';
 
 const VERT = `attribute vec3 aPosition;
 attribute vec3 aColor;
@@ -86,7 +87,21 @@ export class Scene3DView {
     this.overlay.setAttribute('aria-hidden','true');
     this.notice=document.createElement('div');this.notice.className='scene3d-help';
     this.notice.textContent='3D MODEL VIEW · drag orbit · click sockets to wire · Shift+drag move · wheel zoom · palette to add';
-    this.root.append(this.canvas,this.overlay,this.notice);container.appendChild(this.root);
+    this.controls=document.createElement('div');this.controls.className='scene3d-controls';
+    const presets=[['isometric','Isometric'],['top','Overhead'],['front','Front'],['fit','Fit scene']];
+    for(const [mode,label] of presets){
+      const control=document.createElement('button');
+      control.type='button';control.textContent=label;control.dataset.preset=mode;
+      control.setAttribute('aria-label','3D camera: '+label);
+      control.addEventListener('click',()=>this.setCameraPreset(mode));
+      this.controls.appendChild(control);
+    }
+    this.qualification=document.createElement('div');this.qualification.className='scene3d-qualification';
+    this.qualification.textContent='ILLUSTRATIVE 3D WORKBENCH  ·  REAL HARDWARE NOT VERIFIED';
+    this.selectionCard=document.createElement('div');this.selectionCard.className='scene3d-selection-card';
+    this.selectionCard.hidden=true;
+    this.root.append(this.canvas,this.overlay,this.controls,this.qualification,this.selectionCard,this.notice);
+    container.appendChild(this.root);
     this.available=false;this._raf=0;
     try {
       this.gl=this.canvas.getContext('webgl',{antialias:true,alpha:false});
@@ -105,12 +120,35 @@ export class Scene3DView {
     this.canvas.addEventListener('pointermove',e=>this._move(e));
     this.canvas.addEventListener('pointerup',e=>this._up(e));
     this.canvas.addEventListener('pointercancel',()=>{this.drag=null;});
+    this.canvas.addEventListener('keydown',e=>{
+      if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-','Escape'].includes(e.key))return;
+      e.preventDefault();
+      if(e.key==='Escape')this.wireSource=null;
+      else if(e.key==='ArrowLeft')this.yaw-=.11;
+      else if(e.key==='ArrowRight')this.yaw+=.11;
+      else if(e.key==='ArrowUp')this.pitch=clip(this.pitch-.09,.18,Math.PI/2-.03);
+      else if(e.key==='ArrowDown')this.pitch=clip(this.pitch+.09,.18,Math.PI/2-.03);
+      else this.distance=clip(this.distance*(e.key==='+'?.86:1.16),2,180);
+      this.requestRender();
+    });
     this.canvas.addEventListener('wheel',e=>{
       e.preventDefault();this.distance=clip(this.distance*Math.exp(e.deltaY*0.001),2,180);
       this.requestRender();
     },{passive:false});
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(this.root);
+  }
+  setCameraPreset(mode){
+    switch(mode){
+      case 'isometric':this.yaw=.65;this.pitch=.78;break;
+      case 'top':this.yaw=0;this.pitch=Math.PI/2-.04;break;
+      case 'front':this.yaw=0;this.pitch=.22;break;
+      case 'fit':this.fit();break;
+      default:throw Error('Unknown 3D camera preset');
+    }
+    this.controls.querySelectorAll('button').forEach(b=>b.setAttribute(
+      'aria-pressed',String(b.dataset.preset===mode)));
+    this.requestRender();
   }
   activate(value){
     this.root.style.display=value?'block':'none';
@@ -277,38 +315,18 @@ export class Scene3DView {
   render(){
     if(!this.available||!this.diagram||this.root.style.display==='none')return;
     const gl=this.gl,scene=this.scene();
-    const tri=[],lines=[];
-    // physical scale is deliberately NOT implied by arbitrary visualization units.
-    const gridSize=scene.span>16?24:16,gridStep=scene.span>16?2:1;
-    for(let i=-gridSize;i<=gridSize;i+=gridStep){
-      line(lines,[-gridSize,0,i],[gridSize,0,i],[0.17,0.24,0.30]);
-      line(lines,[i,0,-gridSize],[i,0,gridSize],[0.17,0.24,0.30]);
-    }
+    // Detailed procedural laboratory geometry is derived from the SAME scene.
+    // It is a visualization layer, never a second netlist or physical solver.
+    const geometry=experimentBenchMesh(scene,{selectedId:this.selectedId});
+    const tri=geometry.triangles,lines=geometry.lines;
     for(const group of scene.assemblies){
       cube(tri,{
-        x:group.x,z:group.z,baseY:0.005,width:group.width,depth:group.depth,
+        x:group.x,z:group.z,baseY:0.002,width:group.width,depth:group.depth,
         height:0.035,color:group.incomplete?[0.48,0.20,0.18]:[0.12,0.32,0.40],
       },false);
     }
-    for(const b of scene.blocks){
-      cube(tri,b,b.id===this.selectedId);
-      for(const [direction,ports] of [['in',b.ports.incoming],['out',b.ports.outgoing]]){
-        for(const port of ports){
-          const p=portPoint3D(b,port.id,direction);
-          if(!p)continue;
-          const active=this.wireSource?.blockId===b.id&&this.wireSource?.portId===port.id&&this.wireSource?.direction===direction;
-          cube(tri,{x:p.x,z:p.z,baseY:p.y-0.055,width:0.16,depth:0.16,height:0.11,
-            color:active?[1,0.85,0.3]:(direction==='out'?[0.42,0.96,0.72]:[0.47,0.70,0.97])},active);
-        }
-      }
-    }
-    for(const wire of scene.wires)
-      for(let i=1;i<wire.points.length;i++){
-        const a=wire.points[i-1],b=wire.points[i];
-        line(lines,[a.x,a.y,a.z],[b.x,b.y,b.z],[0.58,0.88,1.0]);
-      }
     gl.viewport(0,0,this.canvas.width,this.canvas.height);
-    gl.clearColor(0.045,0.062,0.085,1);
+    gl.clearColor(0.035,0.060,0.093,1);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     gl.useProgram(this.program);
     gl.uniformMatrix4fv(this.locations.matrix,false,this.camera().matrix);
@@ -349,8 +367,15 @@ export class Scene3DView {
       ctx.fillStyle=b.id===this.selectedId?'#ffdc85':'#dceaf7';
       ctx.fillText(label,pos.x,pos.y-1);
     }
+    const selected=this.diagram.block(this.selectedId);
+    this.selectionCard.hidden=!selected;
+    if(selected){
+      const appearance=scene.blocks.find(b=>b.id===selected.id);
+      this.selectionCard.textContent=(appearance?.label||selected.type)+
+        '  ·  '+selected.type+'  ·  illustrative model (not dimensional CAD)';
+    }
     this.notice.textContent=this.wireSource
-      ? `WIRE MODE: ${this.wireSource.blockId}.${this.wireSource.portId} → click a compatible input socket · click an output to restart`
-      : `${this.focusLabel ? 'EXPLORING '+this.focusLabel+' · ' : ''}3D COMPONENT WORKSPACE · ${scene.blocks.length} blocks · ${scene.wires.length} wires · click output then input sockets to wire · Shift+drag move · schematic scale`;
+      ? `CONNECTING ${this.wireSource.blockId}.${this.wireSource.portId} → select an input socket`
+      : `${this.focusLabel ? this.focusLabel+' · ' : ''}3D EXPERIMENT WORKBENCH · ${scene.blocks.length} modules · ${scene.wires.length} connected harnesses · drag orbit · Shift+drag move · click terminals to wire · wheel zoom`;
   }
 }

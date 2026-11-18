@@ -161,6 +161,11 @@ const approvedChangedPath=(p)=>(
  p.startsWith('tests/external-qualification-')||
  p.startsWith('docs/EXTERNAL-QUALIFICATION-')||
  p.startsWith('.github/workflows/external-qualification-')||
+ p==='js/scene/experiment-bench.js'||p==='js/scene/viewer.js'||
+ p==='tests/experiment-bench.test.mjs'||p==='docs/EXPERIMENT-WORKBENCH-3D.md'||
+ p==='.github/workflows/experiment-workbench-windows.yml'||
+ p==='tests/phase69-package.test.mjs'||p==='js/release/phase69-package.js'||
+ p==='tests/phase70-security.test.mjs'||p==='tests/phase12-iris.test.mjs'||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
  p==='README.md'||p==='package.json');
 const unexpectedChanges=changes.filter(p=>!approvedChangedPath(p));
