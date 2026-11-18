@@ -13,6 +13,22 @@ const hex=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
 const inside=(root,file)=>file===root||file.startsWith(root+path.sep);
 const safeRoot=x=>typeof x==='string'&&path.isAbsolute(x)&&x.length<1000;
 
+export function inspectDeclaredModelCorners({sourceText,foundry='SKY130',
+ required=['tt','ss','ff','tt_mm']}={}){
+ if(typeof sourceText!=='string'||sourceText.length<1||sourceText.length>10000000||
+    !['SKY130','GF180MCU'].includes(foundry)||!Array.isArray(required)||
+    required.some(x=>typeof x!=='string'||!/^[A-Za-z0-9_-]+$/.test(x)))
+  throw Error('Original bounded model-card source and exact corner requests required');
+ const corners=[...new Set([...sourceText.matchAll(/^\s*\.lib\s+([A-Za-z0-9_]+)\s*$/gim)]
+  .map(m=>m[1].toLowerCase()))].sort();
+ const missing=required.filter(x=>!corners.includes(x.toLowerCase()));
+ return {format:PDK_CLOSURE_FORMAT,foundry,corners,missing,
+  status:missing.length?'INSUFFICIENT_MODEL_DATA':'DECLARED_CORNER_SECTIONS_PRESENT',
+  mismatchDistributionIndependentlyCalibrated:false,
+  sourceModelVersionVerifiedHere:false,
+  physicalQualification:'UNQUALIFIED_NO_GO'};
+}
+
 export async function inspectPinnedPdkClosure({
  pdkRoot,pdk='SKY130',maxFiles=5000,maxBytes=200000000
 }={}){
