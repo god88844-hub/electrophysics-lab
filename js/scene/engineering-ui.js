@@ -1,4 +1,5 @@
 import {setCADEnvelope,dimensionedAssembly} from './dimensioned-cad.js';
+import {parseMillimetreOBJ,objTrianglesForPart} from './imported-obj-geometry.js';
 import {simulateWireThermal,simulateSegmentedWireThermal} from './wire-electrothermal.js';
 import {solveCoupledWireDC} from './coupled-wire-dc.js';
 import {compareWireMeasurements,fitWireResistanceScale} from './wire-measurement-check.js';
@@ -12,7 +13,7 @@ const header=(d,label)=>{
  const p=d.createElement('section');p.className='scene3d-wire-editor';p.hidden=true;
  p.setAttribute('aria-label',label);return p;
 };
-export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChange,onError,onRenderMode){
+export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChange,onError,onRenderMode,onImportedMesh=()=>{}){
  const d=root.ownerDocument;
  const panel=header(d,'Dimensioned CAD and thermal engineering workspace');
  const button=d.createElement('button');button.type='button';button.textContent='Engineering CAD';
@@ -29,6 +30,12 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  const save=d.createElement('button');save.type='button';save.dataset.action='save-dimensioned-cad';
  save.textContent='Save mm component envelope';
  const report=d.createElement('output');report.setAttribute('aria-live','polite');
+ const objNote=d.createElement('p');
+ objNote.textContent='Optional LOCAL OBJ geometry: millimetres, +Y up, matches saved envelope. Session preview only. Not verified manufacturer CAD.';
+ const objFile=d.createElement('input');objFile.type='file';objFile.accept='.obj,text/plain';
+ objFile.setAttribute('aria-label','Local millimetre OBJ component mesh');
+ const objButton=d.createElement('button');objButton.type='button';
+ objButton.dataset.action='preview-local-obj';objButton.textContent='Preview local OBJ in 3D';
  const toggle=d.createElement('button');toggle.type='button';
  toggle.dataset.action='dimensioned-cad-view';toggle.textContent='Show true-scale mm envelopes';
  let mode=false;
@@ -79,6 +86,7 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  const fit=d.createElement('button');fit.type='button';fit.dataset.action='fit-wire-candidate';
  fit.textContent='Fit candidate model (development only)';
  panel.append(title,note,selector,...fields.map(f=>f.wrapper),save,toggle,report,
+  objNote,objFile,objButton,
   thermalHeading,wireSelect,ambient.wrapper,h.wrapper,duration.wrapper,step.wrapper,
   contact.wrapper,thermalButton,thermalResult,
    segmentedHeading,segments.wrapper,jacket.wrapper,jacketK.wrapper,endA.wrapper,endB.wrapper,
@@ -91,7 +99,8 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
   for(const wire of diagram?.wires||[]){const opt=d.createElement('option');opt.value=wire.id;opt.textContent=wire.id;wireSelect.append(opt);}
   if([...selector.options].some(o=>o.value===prior))selector.value=prior;
   if([...wireSelect.options].some(o=>o.value===oldWire))wireSelect.value=oldWire;
-  save.disabled=!selector.options.length;thermalButton.disabled=!wireSelect.options.length;
+  save.disabled=!selector.options.length;objButton.disabled=!selector.options.length;
+  thermalButton.disabled=!wireSelect.options.length;
    segmentedButton.disabled=!wireSelect.options.length;
   coupled.disabled=diagram?.lab!=='chip'||!wireSelect.options.length;
   load();
@@ -116,6 +125,21 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
    report.textContent='Saved '+cad.parts.length+' dimensions; overlaps: '+cad.overlaps.length+
     '; missing envelopes: '+cad.missing.length+'. MODEL ONLY; physical validity UNKNOWN.';
   }catch(e){report.textContent='Invalid CAD: '+e.message;onError(e.message);}
+ });
+ objButton.addEventListener('click',async()=>{
+  try{
+   const diagram=diagramAccessor(),blockId=selector.value,file=objFile.files?.[0];
+   if(!diagram?.blocks?.some(b=>b.id===blockId))throw Error('Select a canonical component');
+   if(!file||file.size<=0||file.size>4_000_000)throw Error('Choose a local OBJ file at most 4 MB');
+   const raw=await file.text();
+   if(diagramAccessor()!==diagram)throw Error('Design changed while reading OBJ file');
+   const model=parseMillimetreOBJ(raw);
+   const part=dimensionedAssembly(diagram).parts.find(p=>p.id===blockId);
+   if(!part)throw Error('Save explicit mm envelope first');
+   objTrianglesForPart(model,part); // refuse dimension mismatch BEFORE changing viewer state
+   onImportedMesh(blockId,model);
+   report.textContent='OBJ '+model.faces.length+' triangles. Local geometry preview only. '+(mode?'Rendered in 3D.':'Enable true-scale mm envelopes to see it.')+' Manufacturer and physical validity UNKNOWN.';
+  }catch(e){report.textContent='Cannot preview OBJ: '+e.message;onError(e.message);}
  });
  thermalButton.addEventListener('click',()=>{
   try{
@@ -201,5 +225,5 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  });
  update();
  return {panel,button,selector,fields,save,toggle,report,wireSelect,thermalButton,
-  thermalResult,segmentedButton,segmentedResult,coupled,coupledReadout,compare,fit,evidence,sync:update,get mode(){return mode;}};
+  thermalResult,segmentedButton,segmentedResult,coupled,coupledReadout,objFile,objButton,compare,fit,evidence,sync:update,get mode(){return mode;}};
 }
