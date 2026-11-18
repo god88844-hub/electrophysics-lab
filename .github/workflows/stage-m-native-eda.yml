@@ -73,7 +73,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /home/runner/.cache/stage-m-eda
-          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-primitive-only-v2
+          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-pr-magic-netgen-v3
       - name: Checkout exact original SKY130 device-model commit
         run: |
           git clone -q https://github.com/google/skywater-pdk-libs-sky130_fd_pr.git "$STAGE_M_ORIGINAL_SKY130_MODELS"
@@ -95,11 +95,22 @@ jobs:
             --disable-sc-ls-sky130 --disable-sc-lp-sky130 \
             --disable-sc-hd-sky130 --disable-sc-hdll-sky130 \
             --disable-sc-hvl-sky130 \
+            --disable-osu-t12-sky130 --disable-osu-t15-sky130 \
+            --disable-osu-t18-sky130 \
             --disable-alpha-sky130 --disable-xschem-sky130
-          make -j2
-          make install
+          # Only the original primitive device model library plus the
+          # Magic/Netgen process technology needed for extraction/LVS.
+          # Do not build unused digital, I/O, SRAM or OSU libraries.
+          make -C sky130 prerequisites
+          make -C sky130 general-A
+          make -C sky130 magic-A netgen-A primitive-A
+          make -C sky130 install-A
           test -s "$PDK_ROOT/sky130A/libs.tech/magic/sky130A.magicrc"
           test -s "$PDK_ROOT/sky130A/libs.tech/netgen/sky130A_setup.tcl"
+          lib="$PDK_ROOT/sky130A/libs.tech/ngspice/sky130.lib.spice"
+          test -s "$lib"
+          sha256sum "$lib" > "$EDA_PREFIX/sky130-lib.sha256"
+          sha256sum -c "$EDA_PREFIX/sky130-lib.sha256"
       - name: Verify restored or newly-built native EDA artifacts
         run: |
           set -euo pipefail
@@ -110,12 +121,15 @@ jobs:
           test -s "$PDK_ROOT/sky130A/libs.tech/netgen/sky130A_setup.tcl"
           dpkg-query -W magic netgen-lvs ngspice
           sha256sum "$(command -v magic)" "$(command -v netgen)" "$(command -v ngspice)"
+          # Require a successful matching byte manifest also on cache hits.
+          test -s "$EDA_PREFIX/sky130-lib.sha256"
+          sha256sum -c "$EDA_PREFIX/sky130-lib.sha256"
       - name: Save PDK build cache before physical qualification
         if: steps.native-eda-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: /home/runner/.cache/stage-m-eda
-          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-primitive-only-v2
+          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-pr-magic-netgen-v3
       - name: Record actual PDK/tool provenance and fail on missing mismatch corner
         run: |
           mkdir -p benchmarks/evidence/stage-m-native-eda
