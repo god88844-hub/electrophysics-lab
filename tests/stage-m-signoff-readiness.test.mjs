@@ -15,10 +15,13 @@ test('all original PDK/width/radix cases require independently calibrated proces
  assert.ok(report.cases.every(x=>x.passport.level2PhysicalSignoff.startsWith('NO_GO')));
  assert.deepEqual(report,assessStageMMatrix(m));
 });
-test('Q4 using SKY130 1.8V devices violates declared 3.3V plus ten-percent supply envelope',async()=>{
+test('SKY130 core Q4 is remapped to 0/.6/1.2/1.8V; +10% ripple still exceeds 1.95V SOA',async()=>{
  const m=await loadSourceManifest();
  const x=inspectStageMReadiness({manifest:m,foundry:'SKY130',radix:4,width:8});
- assert.equal(x.railsV.at(-1),3.3);
+ assert.deepEqual(x.railsV,[0,.6,1.2,1.8]);
+ assert.ok(Math.abs(x.soAMaximumRippleRailsV.at(-1)-1.98)<1e-12);
+ assert.equal(x.soa.status,'SOA_OXIDE_OVERSTRESS');
+ assert.ok(x.blockers.includes('SOA_OXIDE_OVERSTRESS'));
  assert.deepEqual(x.rippleFractions,[-.1,0,.1]);
  assert.deepEqual(x.temperatureCornersC,[-40,25,85,125]);
  assert.ok(x.deviceEnvelopes.every(d=>d.nominalExceeded));
