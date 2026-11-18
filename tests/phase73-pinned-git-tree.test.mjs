@@ -34,7 +34,14 @@ test('transitive model source bytes are matched to exact original pinned Git obj
 test('unsafe include traversal and duplicate PDK inventory cannot be accepted as a valid tree',async()=>{
  const root=await mkdtemp(join(tmpdir(),'stage-m-invalid-path-'));
  try{
-  await assert.rejects(verifyPinnedGitModelTree({root,expectedCommit:'a'.repeat(40),
-   relativeFiles:['../etc/passwd']}),/checkout|repository|unsafe|model/);
+  git(root,'init','-q');
+  git(root,'config','user.email','test@example.invalid');
+  git(root,'config','user.name','PDK Evidence Test');
+  await writeFile(join(root,'model.spice'),'.subckt stub a b\n.ends\n');
+  git(root,'add','model.spice');
+  git(root,'commit','-qm','Original model');
+  const commit=git(root,'rev-parse','HEAD');
+  await assert.rejects(verifyPinnedGitModelTree({root,
+   expectedCommit:commit,relativeFiles:['../etc/passwd']}),/unsafe/);
  }finally{await rm(root,{recursive:true,force:true});}
 });
