@@ -85,9 +85,15 @@ export async function runMagicNetgenCandidate({
  if(audit.status!=='SOURCE_FILES_PRESENT_NOT_AUTHENTICATED')
   return audit;
  const dirname=resolve(magPath,'..');
+ // Magic's "ext2spice lvs" explicitly suppresses C and R parasitics.
+ // Generate *two* netlists: the device LVS version and a separate PEX
+ // version with both extraction thresholds restored to zero.
  const script=[
   'drc on','drc check','drc count total',
-  'extract all','ext2spice lvs','ext2spice',
+  'extract all','ext2spice lvs',
+  'ext2spice -o '+name+'-lvs.spice',
+  'ext2spice cthresh 0','ext2spice rthresh 0',
+  'ext2spice -o '+name+'-pex.spice',
   'gds write '+name,'quit -noprompt',''
  ].join('\n');
  const magic=await runProcess({executable:magicExec,
@@ -98,9 +104,15 @@ export async function runMagicNetgenCandidate({
    reason:'native-Magic-DRC-or-extraction-failed',magic,
    magicExecuted:true,netgenExecuted:false,
    physicalQualification:'UNQUALIFIED_NO_GO'};
- const extracted=join(dirname,name+'.spice');
- let extractedFile;
- try{extractedFile=await checkedFile(extracted,'.spice',10000000);}
+ const extracted=join(dirname,name+'-pex.spice');
+ const extractedLVS=join(dirname,name+'-lvs.spice');
+ let extractedFile,extractedLVSFile;
+ try{
+  [extractedFile,extractedLVSFile]=await Promise.all([
+   checkedFile(extracted,'.spice',10000000),
+   checkedFile(extractedLVS,'.spice',10000000)
+  ]);
+ }
  catch{
   return {format:POSTLAYOUT_FORMAT,status:'INSUFFICIENT_MODEL_DATA',
    reason:'Magic-produced-extracted-SPICE-missing',
@@ -116,7 +128,7 @@ export async function runMagicNetgenCandidate({
  const drcReport=await checkedFile(drcReportPath,'.txt',2000000);
  const resultPath=join(dirname,name+'-netgen-lvs.txt');
  const netgen=await runProcess({executable:netgenExec,
-  args:['-batch','lvs',extracted+' '+name,
+  args:['-batch','lvs',extractedLVS+' '+name,
    schematicPath+' '+name,netgenSetupPath,resultPath],cwd:dirname});
  let lvsReport=null;
  try{lvsReport=await checkedFile(resultPath,'.txt',2000000);}
@@ -138,6 +150,11 @@ export async function runMagicNetgenCandidate({
   drcReportPath,
   lvsReportSha256:lvsReport?.sha256??null,
   lvsReportPath:lvsReport?.path??null,
+  lvsExtractedNetlistSha256:extractedLVSFile.sha256,
+  lvsExtractedNetlistPath:extractedLVS,
+  // Presence flags are diagnostic only; no source matches ground truth yet.
+  rcLumpedResistorPresent:/^\s*r[a-z0-9_]+\s+/im.test(extractedFile.content),
+  rcLumpedCapacitorPresent:/^\s*c[a-z0-9_]+\s+/im.test(extractedFile.content),
   extractedNetlistSha256:extractedFile.sha256,
   extractedNetlistPath:extracted,
   rawReportPath:resultPath,
