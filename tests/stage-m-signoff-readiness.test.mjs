@@ -47,3 +47,23 @@ test('forged or synthetic 1000-trial evidence cannot self-certify virtual or phy
  assert.equal(x.passport.physicallyQualified,false);
  assert.equal(x.releaseAuthorized,false);
 });
+
+test('SKY130 thick-gate + GF180 Q4 map to genuine 3.3V MOS families without double ripple',async()=>{
+ const manifest=await loadSourceManifest();
+ const thick=inspectStageMReadiness({manifest,foundry:'SKY130',
+  railProfileId:'sky130-thick-3v3',radix:4,width:4});
+ assert.equal(thick.profileId,'sky130-thick-3v3');
+ assert.deepEqual(thick.railsV,[0,1.1,2.2,3.3]);
+ assert.deepEqual(thick.modelIdentifiers,[
+  'sky130_nfet_g5v0d10v5','sky130_pfet_g5v0d10v5']);
+ assert.equal(thick.soa.status,'SOA_PROFILE_SCREEN_PASS');
+ assert.equal(thick.simulatedPhysicalBuildSuccessPercent,'UNKNOWN');
+ const gf=inspectStageMReadiness({manifest,foundry:'GF180MCU',
+  railProfileId:'gf180-core-3v3',radix:4,width:8});
+ assert.deepEqual(gf.railsV,[0,1.1,2.2,3.3]);
+ assert.ok(Math.abs(gf.soAMaximumRippleRailsV.at(-1)-3.63)<1e-12);
+ assert.equal(gf.soa.status,'SOA_PROFILE_SCREEN_PASS');
+ assert.equal(gf.modelIdentifiers.length,2);
+ assert.throws(()=>inspectStageMReadiness({manifest,
+  foundry:'GF180MCU',railProfileId:'sky130-core-1v8'}));
+});
