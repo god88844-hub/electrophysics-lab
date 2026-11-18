@@ -34,17 +34,19 @@ try{
   const stop=/^\s*\.endl\s+tt_mm(?:\s|$)/gmi.exec(after);
   if(!stop)throw Error('processed-PDK-missing-tt_mm-terminator');
   const section=after.slice(0,stop.index);
-  if(!/\bmc_mm_switch\s*=\s*1(?:\.0*)?(?:\s|$)/im.test(section))
-    throw Error('tt_mm-section-does-not-explicitly-enable-mc_mm_switch-1');
-  if(/^\s*\.param\s+mc_mm_switch\s*=\s*0(?:\.0*)?\s*$/im.test(section))
-    throw Error('tt_mm-section-disables-mismatch');
+  if(!/\b(?:mismatch|mc_mm_switch|agauss)\b/i.test(section))
+    throw Error('tt_mm-model-section-missing-mismatch-configuration-evidence');
+  // Upstream open_pdks accepts .param mc_mm_switch=1 in the TESTBENCH.
+  // The .lib tt_mm label alone does not enable statistical mismatch.
+  // Trial-deck admission must independently demand the explicit parameter.
   const result={
     format:'invention-lab/stage-m-processed-mismatch-intake/1',
-    status:'PINNED_GENERATOR_AND_DECLARED_MISMATCH_SWITCH_PRESENT_NOT_CALIBRATED',
+    status:'PINNED_PROCESSED_TT_MM_CORNER_PRESENT_REQUIRES_DECK_SWITCH',
     originalSky130Commit:ORIGINAL,openPdksCommit:OPEN_PDKS,
     processedModelRealPath:file,processedLibrarySha256:sha256(raw),
     originalLibrarySha256:sha256(Buffer.from(original)),
-    requestedCorner:'tt_mm',mc_mm_switch:1,
+    requestedCorner:'tt_mm',mc_mm_switchRequiredInEachDeck:1,
+    mismatchSwitchVerifiedInActualDeck:false,
     originalModelContainsNamedTtMm:false,
     transitiveModelClosureVerified:false,
     statisticallyCalibratedWaferDistributionVerified:false,
