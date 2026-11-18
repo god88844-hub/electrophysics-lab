@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {inspectPinnedPdkClosure,runSOAGuardedFoundryDeck,planRealMultiCornerSPICE}
+import {inspectPinnedPdkClosure,runSOAGuardedFoundryDeck,planRealMultiCornerSPICE,
+ inspectDeclaredModelCorners}
  from '../js/evidence/stage-m-foundry-spice.js';
 import {makeFoundryRailProfile} from '../js/evidence/phase73-soa.js';
 
@@ -51,4 +52,15 @@ test('corner matrix enumerates every radix and 4/8 digit at three process and fo
   assert.equal(p.realNgspiceRunsCompleted,0);
   assert.equal(p.level1Yield,'UNKNOWN');
  }
+});
+
+test('an unpinned tt_mm library corner cannot be substituted with tt silently',()=>{
+ const originalStyle='.lib tt\n.include "../cells/example__mismatch.corner.spice"\n.endl\n'+
+  '.lib ss\n.endl\n.lib ff\n.endl\n';
+ const r=inspectDeclaredModelCorners({sourceText:originalStyle,
+  foundry:'SKY130',required:['tt','tt_mm','ss','ff']});
+ assert.deepEqual(r.corners,['ff','ss','tt']);
+ assert.deepEqual(r.missing,['tt_mm']);
+ assert.equal(r.status,'INSUFFICIENT_MODEL_DATA');
+ assert.equal(r.mismatchDistributionIndependentlyCalibrated,false);
 });
