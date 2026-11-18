@@ -182,6 +182,8 @@ const approvedChangedPath=(p)=>(
  p==='js/scene/detailed-cad-mesh.js'||p==='tests/physical-routing-3d.test.mjs'||
  p==='docs/PHYSICAL-SCALE-3D-TERMINALS.md'||
  p==='.github/workflows/physical-harness-3d.yml'||
+ p==='js/scene/manufacturer-cad-intake.js'||p==='tests/manufacturer-cad-intake.test.mjs'||
+ p==='docs/MANUFACTURER-CAD-INTAKE.md'||p==='.github/workflows/manufacturer-cad-intake.yml'||
  p==='js/scene/experiment-trace.js'||p==='tests/experiment-trace.test.mjs'||
  p==='docs/EXPERIMENT-TRACE-3D.md'||p==='.github/workflows/experiment-trace-3d.yml'||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
