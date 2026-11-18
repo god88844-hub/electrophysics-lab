@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {parseMillimetreOBJ,objTrianglesForPart,IMPORTED_OBJ_FORMAT}
  from '../js/scene/imported-obj-geometry.js';
+import {detailedCADMesh} from '../js/scene/detailed-cad-mesh.js';
 const cube=`# mm Y-up cuboid
 v -5 0 -4
 v 5 0 -4
@@ -43,4 +44,17 @@ test('malformed, unsupported, degenerate or oversized geometry fails closed',()=
 test('material URLs in OBJ are inert and do not initiate network requests',()=>{
  const obj=parseMillimetreOBJ('mtllib https://invalid.test/material.mtl\n'+cube+'\nusemtl fixture');
  assert.equal(obj.faces.length,12);assert.equal(obj.sourceAuthenticity,'unverified');
+});
+
+test('imported triangles replace procedural body in actual CAD 3D mesh pipeline',()=>{
+ const report={parts:[{id:'part1',type:'chip.RES',...part,
+  bounds:{x0:37,x1:47,y0:11,y1:17,z0:-21,z1:-13}}],geometrySource:'explicit-mm-envelope'};
+ const proxy=detailedCADMesh(report);
+ const imported=detailedCADMesh(report,{importedMeshes:new Map([['part1',parseMillimetreOBJ(cube)]])});
+ assert.equal(proxy.importedMeshCount,0);
+ assert.equal(imported.importedMeshCount,1);
+ assert.equal(imported.manufacturerCAD,false);
+ assert.equal(imported.physicalValidation,'none');
+ assert.notDeepEqual(imported.triangles,proxy.triangles);
+ assert.ok(imported.triangles.every(Number.isFinite));
 });
