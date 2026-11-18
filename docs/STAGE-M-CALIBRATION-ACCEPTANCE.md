@@ -39,3 +39,9 @@ The foundry SPICE and Phase 74 DC/transient runners now inspect **actual** top-l
 The Phase 75 Monte Carlo driver performs that preflight on each transistor-containing trial deck, including synthetic regression runs, and refuses to launch ngspice when the SOA preconditions are absent. Passing this static screen **does not** certify dynamic MOS stress or long-term device reliability. A valid transistor-level run additionally needs full foundry model closure and independently validated corner statistics, custom-cell netlist equivalence, DRC/LVS, extraction and independent qualification.
 
 Run \`node --test tests/phase73-deck-node-soa.test.mjs tests/phase74-soa-spice-guard.test.mjs tests/phase75-monte-carlo.test.mjs\` to exercise these fail-closed paths.
+
+## Pinned model-tree and process corner binding
+
+A complete original checkout may be admitted for model-source integrity when \`inspectPinnedPdkClosure\` verifies every transitively referenced model byte against the exact source commit \`SKY130 f62031a1...\` or \`GF180MCU 9f992d5a...\`. The native foundry runner also requires the submitted \`.lib\` path to resolve to that **same** PDK checkout's expected model library, with exactly one allowed corner selector and no caller-provided extra \`.include\` paths. A directory name, Git remote URL, matching \`HEAD\` alone, or a copied file with an unverified checksum is not enough.
+
+SKY130 process sections use the exact \`tt\`, \`tt_mm\`, \`ss\`, \`ff\` names; GF180MCU uses \`typical\`, \`ss\`, \`ff\` here. The framework never substitutes \`tt\` for \`typical\` or silently replaces a missing mismatch model with nominal values. Full source integrity still does **not** supply a characterized wafer-level distribution, complete rated voltage envelopes, real Q4 transistor cells, or an independently verified Level-1 calibration passport.
