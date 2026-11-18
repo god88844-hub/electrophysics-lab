@@ -72,3 +72,30 @@ test('any PDK deck without four-terminal node inventory is invalid before mocked
  assert.equal(result.invalid,1000);
  assert.ok(result.outcomes.every(x=>x.reason==='SOA_INSUFFICIENT_NODE_BOUNDS'));
 });
+
+test('GF180 typical corner is bound to the actual model selector, but a mocked run stays synthetic',async()=>{
+ const profile=makeFoundryRailProfile({id:'gf180-core-3v3'});
+ const model=profile.polarityModels.n;
+ const gfDeck='* 3.3V safe model-range fixture; not a calibrated foundry trial\n'+
+  '.lib "/pinned/gf180/design.ngspice" typical\n'+
+  'VDD d 0 3.3\nVG g 0 3.3\n'+
+  'Xn d g 0 0 '+model+' w=1 l=0.28\n.end\n';
+ const soaNetlist={profile,corner:'typical',devices:[{instance:'Xn',model,
+  samples:[{gateV:3.3,drainV:3.3,sourceV:0,bodyV:0}]}]};
+ let invoked=0;
+ const fake=async()=>{invoked++;return {status:'ok',code:0,
+  fullText:'mvl_delay_s = 1e-9\nmvl_static_power_w = 1e-4\nmvl_dynamic_power_w = 1e-4\n'};};
+ const accepted=await runFoundryMonteCarlo({...config,makeDeck:()=>gfDeck,
+  soaNetlist,_syntheticTrialRunner:fake});
+ assert.equal(accepted.status,'SYNTHETIC_TEST_ONLY');
+ assert.equal(accepted.invalid,0);
+ assert.equal(invoked,1000);
+ assert.equal(accepted.realWorldBuildSuccessPercent,null);
+ const rejected=await runFoundryMonteCarlo({...config,
+  makeDeck:()=>gfDeck.replace(' typical',' tt'),
+  soaNetlist,_syntheticTrialRunner:fake});
+ assert.equal(rejected.status,'INSUFFICIENT_MODEL_DATA');
+ assert.equal(rejected.invalid,1000);
+ assert.equal(invoked,1000);
+ assert.ok(rejected.outcomes.every(x=>x.reason==='SOA_INSUFFICIENT_NODE_BOUNDS_UNMATCHED_PDK_CORNER'));
+});
