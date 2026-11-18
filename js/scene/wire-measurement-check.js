@@ -44,3 +44,36 @@ export function compareWireMeasurements(rows,{source, instrument, uncertaintyOhm
   accuracyClaim:'none: source and instrument records not independently authenticated',
   realWorldBuildSuccessPercent:null};
 }
+
+// Candidate one-parameter material model adjustment derived ONLY from development
+// observations. The held-out records are never used in parameter estimation.
+// No instrument authenticity or external qualification is inferred.
+export function fitWireResistanceScale(rows,options){
+ const report=compareWireMeasurements(rows,options);
+ const development=report.rows.filter(r=>r.role==='development');
+ const holdout=report.rows.filter(r=>r.role==='holdout');
+ const den=development.reduce((sum,row)=>sum+row.predictedOhm**2,0);
+ if(den<1e-20)throw Error('Unidentifiable calibration: insufficient reference resistance');
+ const factor=development.reduce((sum,row)=>sum+row.observedOhm*row.predictedOhm,0)/den;
+ if(!Number.isFinite(factor)||factor<.1||factor>10)
+  throw Error('Candidate fitted material scaling outside supported plausibility interval');
+ const residuals=rows=>rows.map(r=>({...r,adjustedPredictionOhm:r.predictedOhm*factor,
+  adjustedResidualOhm:r.observedOhm-r.predictedOhm*factor}));
+ const summary=rows=>({
+  count:rows.length,
+  meanAbsoluteErrorOhm:rows.reduce((s,r)=>s+Math.abs(r.adjustedResidualOhm),0)/rows.length,
+  rootMeanSquareErrorOhm:Math.sqrt(rows.reduce((s,r)=>s+r.adjustedResidualOhm**2,0)/rows.length),
+  withinInstrumentUncertainty:rows.filter(r=>Math.abs(r.adjustedResidualOhm)<=
+   report.declaredUncertaintyOhm).length
+ });
+ const fittedDev=residuals(development),untouchedHoldout=residuals(holdout);
+ return {...report,calibrationPerformed:true,modelParametersFitted:true,
+  candidateParameters:{resistanceScale:factor},
+  calibratedOn:'development records only (least-squares one-parameter ratio)',
+  fittedDevelopment:summary(fittedDev),independentHoldout:summary(untouchedHoldout),
+  correctedRows:[...fittedDev,...untouchedHoldout],
+  independentProvenanceAuthenticated:false,measurementRecordsVerified:false,
+  physicalValidation:'unverified-user-supplied-data',
+  accuracyClaim:'candidate fitting only; blind holdout supplied but physical provenance unverified',
+  realWorldBuildSuccessPercent:null};
+}
