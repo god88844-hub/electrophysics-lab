@@ -2,6 +2,7 @@
 // Every vertex derives from an explicit user-entered millimetre envelope or
 // user-authored terminal/route. Body styling is NOT a manufacturer CAD part.
 import {CAD_MM_PER_WORLD,dimensionedCADMesh} from './dimensioned-cad.js';
+import {objTrianglesForPart} from './imported-obj-geometry.js';
 const S=CAD_MM_PER_WORLD;
 const clamp=v=>Math.max(0,Math.min(1,v));
 const shade=(c,k)=>c.map(v=>clamp(v*k));
@@ -158,13 +159,18 @@ function physicalPart(out,p){
   default:board(out,p);
  }
 }
-export function detailedCADMesh(report,{selectedId=null,routing=null}={}){
+export function detailedCADMesh(report,{selectedId=null,routing=null,importedMeshes=null}={}){
  if(!report||!Array.isArray(report.parts))throw Error('A dimensioned assembly is required');
  if(report.parts.length>500)throw Error('Too many dimensioned components to render');
  const base=dimensionedCADMesh(report,{selectedId});
  const mesh=[],kinds={},lines=[...base.lines];
+ let importedMeshCount=0;
  for(const p of report.parts){
-  physicalPart(mesh,p);
+  const imported=importedMeshes?.get?.(p.id);
+  if(imported){
+   for(const value of objTrianglesForPart(imported,p,S))mesh.push(value);
+   importedMeshCount++;
+  }else physicalPart(mesh,p);
   const kind=physicalComponentStyle(p.type);
   kinds[kind]=(kinds[kind]||0)+1;
   if(selectedId===p.id){
@@ -200,7 +206,8 @@ export function detailedCADMesh(report,{selectedId=null,routing=null}={}){
  if(mesh.length>1_800_000||!mesh.every(Number.isFinite)||!lines.every(Number.isFinite))
   throw Error('Oversized or nonfinite dimensional mesh');
  return {...base,triangles:mesh,lines,
-  kinds,terminalCount,harnessCount,componentRepresentation:'procedural proxy fitted inside entered bounding boxes',
+  kinds,terminalCount,harnessCount,importedMeshCount,
+  componentRepresentation:importedMeshCount?'session-only user-imported OBJ with procedural fallbacks':'procedural proxy fitted inside entered bounding boxes',
   physicalDimensionsEstablished:report.parts.length>0,
   actualTerminalsMapped:terminalCount>0,
   actualHarnessPathsEntered:harnessCount>0,
