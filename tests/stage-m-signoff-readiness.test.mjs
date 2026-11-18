@@ -15,17 +15,18 @@ test('all original PDK/width/radix cases require independently calibrated proces
  assert.ok(report.cases.every(x=>x.passport.level2PhysicalSignoff.startsWith('NO_GO')));
  assert.deepEqual(report,assessStageMMatrix(m));
 });
-test('SKY130 core Q4 is remapped to 0/.6/1.2/1.8V; +10% ripple still exceeds 1.95V SOA',async()=>{
+test('SKY130 core Q4 ±5% LDO remains below 1.95V but calibrated silicon evidence remains absent',async()=>{
  const m=await loadSourceManifest();
  const x=inspectStageMReadiness({manifest:m,foundry:'SKY130',radix:4,width:8});
  assert.deepEqual(x.railsV,[0,.6,1.2,1.8]);
- assert.ok(Math.abs(x.soAMaximumRippleRailsV.at(-1)-1.98)<1e-12);
- assert.equal(x.soa.status,'SOA_OXIDE_OVERSTRESS');
- assert.ok(x.blockers.includes('SOA_OXIDE_OVERSTRESS'));
- assert.deepEqual(x.rippleFractions,[-.1,0,.1]);
+ assert.ok(Math.abs(x.soAMaximumRippleRailsV.at(-1)-1.89)<1e-12);
+ assert.equal(x.soa.status,'SOA_PROFILE_SCREEN_PASS');
+ assert.ok(!x.blockers.includes('SOA_OXIDE_OVERSTRESS'));
+ assert.deepEqual(x.rippleFractions,[-.05,0,.05]);
  assert.deepEqual(x.temperatureCornersC,[-40,25,85,125]);
+ assert.equal(x.regulator,'LDO_REGULATED');
  assert.ok(x.deviceEnvelopes.every(d=>d.nominalExceeded));
- assert.ok(x.blockers.includes('10-percent-supply-ripple-exceeds-declared-nominal-device-voltage'));
+ assert.ok(!x.blockers.includes('specified-supply-ripple-exceeds-declared-device-SOA'));
  assert.equal(x.passport.status,'INSUFFICIENT_MODEL_DATA');
 });
 test('forged or synthetic 1000-trial evidence cannot self-certify virtual or physical passport',async()=>{
@@ -66,4 +67,17 @@ test('SKY130 thick-gate + GF180 Q4 map to genuine 3.3V MOS families without doub
  assert.equal(gf.modelIdentifiers.length,2);
  assert.throws(()=>inspectStageMReadiness({manifest,
   foundry:'GF180MCU',railProfileId:'sky130-core-1v8'}));
+});
+
+test('unregulated 1.65V Q4 profile ±10% passes 1.95V operating-range screen, no fabricated qualification',async()=>{
+ const manifest=await loadSourceManifest();
+ const x=inspectStageMReadiness({manifest,foundry:'SKY130',
+  railProfileId:'sky130-core-1v65-unregulated',radix:4,width:4});
+ assert.deepEqual(x.railsV,[0,.55,1.1,1.65]);
+ assert.ok(Math.abs(x.soAMaximumRippleRailsV.at(-1)-1.815)<1e-12);
+ assert.equal(x.soa.status,'SOA_PROFILE_SCREEN_PASS');
+ assert.deepEqual(x.rippleFractions,[-.1,0,.1]);
+ assert.equal(x.regulator,'UNREGULATED');
+ assert.equal(x.passport.status,'INSUFFICIENT_MODEL_DATA');
+ assert.equal(x.level2Status,'UNQUALIFIED_NO_GO');
 });
