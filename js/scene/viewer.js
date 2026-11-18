@@ -3,6 +3,8 @@
 import { sceneFromDiagram, worldToDesign, portPoint3D } from './layout.js';
 import { experimentBenchMesh } from './experiment-bench.js';
 import { attachPhysicalWireEditor } from './wire-setup-ui.js';
+import { attachEngineeringWorkbench } from './engineering-ui.js';
+import { dimensionedAssembly,dimensionedCADMesh } from './dimensioned-cad.js';
 import { captureExperimentTrace,isExperimentCurrent,experimentReadingsAt,exportExperimentRecord } from './experiment-trace.js';
 
 const VERT = `attribute vec3 aPosition;
@@ -142,6 +144,8 @@ export class Scene3DView {
     container.appendChild(this.root);
     this.wireSetup=attachPhysicalWireEditor(this.root,this.controls,()=>this.diagram,
       ()=>onPhysicalLayoutChange(),message=>this.onError(message));
+    this.engineering=attachEngineeringWorkbench(this.root,this.controls,()=>this.diagram,
+      ()=>onPhysicalLayoutChange(),message=>this.onError(message),()=>this.fit());
     this.available=false;this._raf=0;
     try {
       this.gl=this.canvas.getContext('webgl',{antialias:true,alpha:false});
@@ -288,7 +292,7 @@ export class Scene3DView {
     this.stopExperimentPlayback();this.experiment=null;this.experimentIndex=0;
     this.diagram=diagram;this.selectedId=null;this.wireSource=null;
     this.focusIds=null;this.focusLabel=null;this.fit();this.updateExperimentPanel();
-    this.wireSetup.sync({keepSelection:false});
+    this.wireSetup.sync({keepSelection:false});this.engineering.sync();
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
@@ -298,7 +302,7 @@ export class Scene3DView {
     if(this.experiment&&!isExperimentCurrent(this.experiment,this.diagram)){
       this.stopExperimentPlayback();this.experiment=null;
     }
-    this.wireSetup.sync();
+    this.wireSetup.sync();this.engineering.sync();
     this.updateExperimentPanel();this.requestRender();
   }
   scene(){
@@ -315,6 +319,15 @@ export class Scene3DView {
   }
   fit(){
     if(!this.diagram)return;
+    if(this.engineering?.mode){
+      try{
+        const cad=dimensionedCADMesh(dimensionedAssembly(this.diagram));
+        this.center=[cad.center.x,0,cad.center.z];
+        this.distance=clip(cad.span*1.9+3,7,150);
+        this.requestRender();
+        return;
+      }catch(e){this.onError('CAD camera fit failed: '+e.message);}
+    }
     const scene=this.scene();
     this.center=[scene.center.x,0,scene.center.z];
     this.distance=clip(scene.span*1.9+3,7,150);
@@ -362,8 +375,11 @@ export class Scene3DView {
     const x=clientX-bounds.left,y=clientY-bounds.top;
     const cam=this.camera();
     let hit=null,best=44*44;
-    for(const block of this.scene().blocks){
-      const pt=this.project({x:block.x,y:block.height/2,z:block.z},cam.matrix);
+    const cadParts=this.engineering.mode?dimensionedAssembly(this.diagram).parts:null;
+    const candidates=cadParts||this.scene().blocks;
+    for(const block of candidates){
+      const pt=this.project(cadParts?{x:block.xMm/20,y:(block.yMm+block.heightMm/2)/20,z:block.zMm/20}
+        :{x:block.x,y:block.height/2,z:block.z},cam.matrix);
       if(!pt)continue;
       const d=(x-pt.x)**2+(y-pt.y)**2;
       if(d<best){hit=block.id;best=d;}
@@ -371,7 +387,8 @@ export class Scene3DView {
     return hit;
   }
   pickPort(clientX,clientY){
-    if(!this.diagram)return null;
+    // CAD envelopes have no validated pad footprints or physical port coordinates.
+    if(!this.diagram||this.engineering.mode)return null;
     const rect=this.canvas.getBoundingClientRect();
     const x=clientX-rect.left,y=clientY-rect.top,cam=this.camera();
     let nearest=null,best=17*17;
@@ -430,7 +447,9 @@ export class Scene3DView {
   _up(e){
     const d=this.drag;this.drag=null;
     if(!d)return;
-    if(d.mode==='move'&&d.moved&&d.selected){
+    if(d.mode==='move'&&d.moved&&d.selected&&this.engineering.mode){
+      this.onError('Shift-drag schematic movement disabled in mm CAD mode; edit explicit mm fields.');
+    } else if(d.mode==='move'&&d.moved&&d.selected){
       const point=this.designAt(e.clientX,e.clientY);
       this.onMove(d.selected,point.x,point.y);
     }
@@ -453,9 +472,13 @@ export class Scene3DView {
     const gl=this.gl,scene=this.scene();
     // Detailed procedural laboratory geometry is derived from the SAME scene.
     // It is a visualization layer, never a second netlist or physical solver.
-    const geometry=experimentBenchMesh(scene,{selectedId:this.selectedId});
+    let geometry=experimentBenchMesh(scene,{selectedId:this.selectedId});
+    if(this.engineering.mode){
+      try{geometry=dimensionedCADMesh(dimensionedAssembly(this.diagram),{selectedId:this.selectedId});}
+      catch(error){this.onError('Invalid dimensional CAD: '+error.message);return;}
+    }
     const tri=geometry.triangles,lines=geometry.lines;
-    for(const group of scene.assemblies){
+    for(const group of (this.engineering.mode?[]:scene.assemblies)){
       cube(tri,{
         x:group.x,z:group.z,baseY:0.002,width:group.width,depth:group.depth,
         height:0.035,color:group.incomplete?[0.48,0.20,0.18]:[0.12,0.32,0.40],
@@ -481,7 +504,7 @@ export class Scene3DView {
     ctx.clearRect(0,0,this.canvas.clientWidth,this.canvas.clientHeight);
     ctx.font='12px system-ui,sans-serif';ctx.textAlign='center';
     const cam=this.camera();
-    for(const group of scene.assemblies){
+    for(const group of (this.engineering.mode?[]:scene.assemblies)){
       const pos=this.project({x:group.x,y:0.57,z:group.z},cam.matrix);
       if(!pos)continue;
       ctx.textAlign='center';ctx.font='bold 13px system-ui,sans-serif';
@@ -504,7 +527,11 @@ export class Scene3DView {
     }
     ctx.font='12px system-ui,sans-serif';
     for(const b of scene.blocks){
-      const pos=this.project({x:b.x,y:b.height+0.28,z:b.z},cam.matrix);
+      const cadPart=this.engineering.mode?dimensionedAssembly(this.diagram).parts.find(x=>x.id===b.id):null;
+      if(this.engineering.mode&&!cadPart)continue;
+      const pos=this.project(cadPart?{x:cadPart.xMm/20,
+        y:(cadPart.yMm+cadPart.heightMm)/20+.28,z:cadPart.zMm/20}
+        :{x:b.x,y:b.height+0.28,z:b.z},cam.matrix);
       if(!pos)continue;
       const label=(b.label||b.type).slice(0,25);
       const width=Math.max(52,ctx.measureText(label).width+14);
@@ -529,10 +556,11 @@ export class Scene3DView {
     if(selected){
       const appearance=scene.blocks.find(b=>b.id===selected.id);
       this.selectionCard.textContent=(appearance?.label||selected.type)+
-        '  ·  '+selected.type+'  ·  illustrative model (not dimensional CAD)';
+        '  ·  '+selected.type+(this.engineering.mode?'  ·  entered mm CAD envelope (not manufacturing geometry)'
+          :'  ·  illustrative model (not dimensional CAD)');
     }
     this.notice.textContent=this.wireSource
       ? `CONNECTING ${this.wireSource.blockId}.${this.wireSource.portId} → select an input socket`
-      : `${this.focusLabel ? this.focusLabel+' · ' : ''}3D EXPERIMENT WORKBENCH · ${scene.blocks.length} modules · ${scene.wires.length} connected harnesses · drag orbit · Shift+drag move · click terminals to wire · wheel zoom`;
+      : `${this.focusLabel ? this.focusLabel+' · ' : ''}${this.engineering.mode?'DIMENSIONED CAD ENVELOPES (20 mm/unit) · MODEL ONLY':'3D EXPERIMENT WORKBENCH'} · ${scene.blocks.length} modules · ${scene.wires.length} connected harnesses · drag orbit · Shift+drag move · click terminals to wire · wheel zoom`;
   }
 }

@@ -169,6 +169,11 @@ const approvedChangedPath=(p)=>(
  p==='js/scene/physical-wire.js'||p==='js/scene/wire-setup-ui.js'||
  p==='tests/physical-wire.test.mjs'||p==='docs/PHYSICAL-WIRE-ASSUMPTIONS-3D.md'||
  p==='.github/workflows/physical-wire-3d.yml'||
+ p==='js/scene/dimensioned-cad.js'||p==='js/scene/wire-electrothermal.js'||
+ p==='js/scene/wire-measurement-check.js'||p==='js/scene/engineering-ui.js'||
+ p==='tests/engineering-cad-thermal.test.mjs'||
+ p==='docs/ENGINEERING-CAD-ELECTROTHERMAL.md'||
+ p==='.github/workflows/engineering-cad-thermal.yml'||
  p==='js/scene/experiment-trace.js'||p==='tests/experiment-trace.test.mjs'||
  p==='docs/EXPERIMENT-TRACE-3D.md'||p==='.github/workflows/experiment-trace-3d.yml'||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
