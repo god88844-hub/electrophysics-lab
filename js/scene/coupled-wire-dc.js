@@ -106,9 +106,9 @@ function physicalDC(diagram,parts,contactResistanceOhm){
 }
 export function solveCoupledWireDC(diagram,environment){
  // Must not modify the original netlist, no matter where an error occurs.
- const source=JSON.stringify(diagram?.toJSON?.());
- if(source.length>2_000_000)throw Error('Source-bound DC simulation size exceeded');
  const cfg=inputs(diagram,environment);
+ const source=JSON.stringify(diagram.toJSON());
+ if(source.length>2_000_000)throw Error('Source-bound DC simulation size exceeded');
  const geometry=inspectConductorClearances(diagram);
  if(geometry.impossible.length)
   throw Error('Entered wire length shorter than minimum CAD body separation: '+geometry.impossible.join(', '));
