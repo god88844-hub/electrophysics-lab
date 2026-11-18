@@ -4,14 +4,39 @@ on:
   push:
     branches: [stage-m/phase73-77-foundry-guarded]
   workflow_dispatch:
+# Push and PR events for one Stage M branch use the SAME concurrency group.
+# Prevents more than one new native qualification workflow from running,
+# but cannot retroactively attach older runs that lacked this group.
+concurrency:
+  group: stage-m-native-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   source-inventory:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: write
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Cancel two explicitly superseded queued native EDA runs
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for id in 44373173980 44375448415; do
+            run_status="$(gh api "repos/$GH_REPO/actions/runs/$id" --jq '.status')"
+            if [ "$run_status" = "queued" ] || [ "$run_status" = "in_progress" ]; then
+              gh api -X POST "repos/$GH_REPO/actions/runs/$id/cancel" --silent
+              echo "Requested cancellation for superseded run $id"
+            else
+              echo "Superseded run $id already $run_status"
+            fi
+          done
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
