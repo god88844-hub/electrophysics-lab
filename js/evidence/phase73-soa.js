@@ -177,6 +177,25 @@ export function requireSafeNetlistSOA({profile,devices,corner='tt'}={}){
       ['typical','ss','ff'].includes(corner):
       ['tt','ss','ff','tt_mm'].includes(corner)))
   throw Error('Explicit candidate foundry profile and corner required');
+ let canonical;
+ try{canonical=makeFoundryRailProfile({id:profile.id,radix:profile.radix,
+  rippleFraction:profile.rippleFraction,temperatureC:profile.temperatureC});}
+ catch{return {format:SOA_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+  reason:'unrecognized-source-device-operating-profile',
+  physicalQualification:'UNQUALIFIED_NO_GO'};}
+ if(JSON.stringify(canonical.deviceModels)!==JSON.stringify(profile.deviceModels)||
+    JSON.stringify(canonical.railsV)!==JSON.stringify(profile.railsV)||
+    JSON.stringify(canonical.nominalRailsV)!==JSON.stringify(profile.nominalRailsV)||
+    canonical.regulationMode!==profile.regulationMode||
+    canonical.maximumSpecifiedRippleFraction!==profile.maximumSpecifiedRippleFraction)
+  return {format:SOA_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+   reason:'mutated-or-self-attested-rail-device-profile',
+   physicalQualification:'UNQUALIFIED_NO_GO'};
+ const sourceScreen=verifyProfileSOA(canonical);
+ if(sourceScreen.status!=='SOA_PROFILE_SCREEN_PASS')
+  return {format:SOA_FORMAT,status:sourceScreen.status,
+   reason:'source-ripple-or-model-SOA-envelope-rejected',
+   findings:sourceScreen.findings,physicalQualification:'UNQUALIFIED_NO_GO'};
  if(devices.length<1||devices.length>100000)
   return {format:SOA_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
    reason:'complete-list-of-transistor-devices-required'};
