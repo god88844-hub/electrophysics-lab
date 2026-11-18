@@ -158,6 +158,49 @@ export function bindSPICEDeviceInstances({deck,devices=[]}={}){
   physicalQualification:'UNQUALIFIED_NO_GO'};
 }
 
+// A valid PDK checkout is meaningless if the submitted deck can point its
+// .lib directive to another file. Bind the exact file and corner BEFORE spawn.
+export async function inspectStageMDeckLibraryBinding({
+ deck,pdkRoot,pdk,corner
+}={}){
+ const no=(reason,details={})=>({status:'INSUFFICIENT_MODEL_DATA',
+  reason,...details,modelLibraryBound:false,physicalQualification:'UNQUALIFIED_NO_GO'});
+ if(typeof deck!=='string'||deck.length<10||deck.length>2000000||
+    !safeRoot(pdkRoot)||!['SKY130','GF180MCU'].includes(pdk)||
+    !['tt','ss','ff'].includes(corner))
+  return no('invalid-expected-PDK-library-root-or-corner');
+ const lines=deck.split(/\r?\n/),libraries=[];
+ for(const raw of lines){
+  if(/^\s*\.include\b/i.test(raw))
+   return no('caller-deck-include-not-admitted-exact-PDK-library-only');
+  if(!/^\s*\.lib\b/i.test(raw))continue;
+  const m=/^\s*\.lib\s+["']?([^"'\s]+)["']?\s+([A-Za-z0-9_]+)\s*$/i.exec(raw);
+  if(!m)return no('unrecognized-or-incomplete-PDK-lib-statement');
+  libraries.push({file:m[1],corner:m[2].toLowerCase()});
+ }
+ if(libraries.length!==1||libraries[0].corner!==corner)
+  return no('exactly-one-correct-pinned-PDK-library-corner-required',
+   {librariesFound:libraries.length});
+ const selected=libraries[0].file;
+ if(!path.isAbsolute(selected))
+  return no('PDK-lib-path-must-be-absolute-and-root-bound');
+ const relative=pdk==='SKY130'?'models/sky130.lib.spice':
+  'models/ngspice/design.ngspice';
+ let expected,actual,root;
+ try{
+  root=await realpath(pdkRoot);
+  expected=await realpath(path.join(root,relative));
+  actual=await realpath(selected);
+ }catch{return no('complete-pinned-PDK-library-file-unavailable');}
+ if(!inside(root,expected)||!inside(root,actual)||actual!==expected)
+  return no('deck-model-library-not-from-original-verified-PDK-root',
+   {expectedRelativeFile:relative});
+ return {status:'PDK_DECK_LIB_PATH_MATCHED_NOT_CALIBRATED',pdk,corner,
+  expectedRelativeFile:relative,modelLibraryBound:true,
+  authenticPdkClosureRequired:true,foundryCalibrationVerified:false,
+  physicalQualification:'UNQUALIFIED_NO_GO'};
+}
+
 export async function runSOAGuardedFoundryDeck({
  profile,devices,corner='tt',temperatureC=25,
  exe,deck,pdkRoot
@@ -199,6 +242,14 @@ export async function runSOAGuardedFoundryDeck({
   return {status:'INSUFFICIENT_MODEL_DATA',
    reason:'full-source-pinned-dependency-closure-not-authenticated',
    closure,soa,ngspiceExecuted:false,
+   level1Status:'INSUFFICIENT_MODEL_DATA',
+   physicalQualification:'UNQUALIFIED_NO_GO'};
+ const deckLibrary=await inspectStageMDeckLibraryBinding({
+  deck,pdkRoot,pdk:profile.pdk,corner});
+ if(deckLibrary.status!=='PDK_DECK_LIB_PATH_MATCHED_NOT_CALIBRATED')
+  return {status:'INSUFFICIENT_MODEL_DATA',
+   reason:'actual-deck-model-library-does-not-match-pinned-source',
+   deckLibrary,ngspiceExecuted:false,
    level1Status:'INSUFFICIENT_MODEL_DATA',
    physicalQualification:'UNQUALIFIED_NO_GO'};
  // This only admits an explicitly trusted model tree and fully checked SOA
