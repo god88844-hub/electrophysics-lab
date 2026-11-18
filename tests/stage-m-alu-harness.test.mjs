@@ -55,3 +55,16 @@ test('unsafe arbitrary behavioral sources and shell directives are not admitted'
   allowedModels:['sky130_fd_pr__nfet_01v8','sky130_fd_pr__pfet_01v8']});
  assert.equal(result.status,'INSUFFICIENT_MODEL_DATA');
 });
+
+test('ALU source harness requires exact foundry process corners and preserves unqualified GF180 status',()=>{
+ const gf=assembleFoundryALUCandidate({foundry:'GF180MCU',
+  corner:'typical',radix:4,width:8});
+ assert.equal(gf.status,'INSUFFICIENT_MODEL_DATA');
+ assert.deepEqual(gf.profile.nominalRailsV,[0,1.1,2.2,3.3]);
+ assert.equal(gf.level1Status,'INSUFFICIENT_MODEL_DATA');
+ assert.throws(()=>assembleFoundryALUCandidate({foundry:'GF180MCU',
+  corner:'tt',radix:4,width:8}),/foundry\/corner/);
+ const sky=assembleFoundryALUCandidate({foundry:'SKY130',
+  corner:'tt_mm',radix:4,width:8});
+ assert.equal(sky.level1Status,'INSUFFICIENT_MODEL_DATA');
+});
