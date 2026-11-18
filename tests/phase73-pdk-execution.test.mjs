@@ -8,7 +8,7 @@ import {inspectPinnedPdkClosure,runSOAGuardedFoundryDeck,planRealMultiCornerSPIC
  inspectDeclaredModelCorners,bindSPICEDeviceInstances,
  inspectStageMDeckLibraryBinding}
  from '../js/evidence/stage-m-foundry-spice.js';
-import {makeFoundryRailProfile} from '../js/evidence/phase73-soa.js';
+import {makeFoundryRailProfile,requireSafeNetlistSOA} from '../js/evidence/phase73-soa.js';
 
 test('missing full PDK closure cannot be mistaken for a calibrated ngspice model tree',async()=>{
  const root=await mkdtemp(join(tmpdir(),'stage-m-pdk-missing-'));
@@ -113,4 +113,24 @@ test('native SPICE deck must bind its exact .lib path and corner to inspected or
   assert.equal(extra.modelLibraryBound,false);
   assert.equal(extra.reason,'caller-deck-include-not-admitted-exact-PDK-library-only');
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('GF180 typical process corner is admitted explicitly without pretending it is SKY130 tt',()=>{
+ const gf=makeFoundryRailProfile({id:'gf180-core-3v3',radix:4});
+ const device={model:gf.polarityModels.n,samples:[
+  {gateV:3.3,drainV:3.3,sourceV:0,bodyV:0}]};
+ assert.equal(requireSafeNetlistSOA({profile:gf,devices:[device],
+  corner:'typical'}).status,'SOA_MODEL_RANGE_SCREEN_PASS');
+ assert.throws(()=>requireSafeNetlistSOA({profile:gf,devices:[device],
+  corner:'tt'}),/corner/);
+ const sky=makeFoundryRailProfile({id:'sky130-core-1v8'});
+ assert.throws(()=>requireSafeNetlistSOA({profile:sky,devices:[{
+  model:sky.polarityModels.n,samples:[{gateV:1.8,drainV:1.8,sourceV:0,bodyV:0}]
+ }],corner:'typical'}),/corner/);
+ const declared=inspectDeclaredModelCorners({
+  foundry:'GF180MCU',
+  sourceText:'.lib typical\n.endl\n.lib ss\n.endl\n.lib ff\n.endl\n'});
+ assert.deepEqual(declared.missing,[]);
+ assert.equal(declared.status,'DECLARED_CORNER_SECTIONS_PRESENT');
+ assert.equal(declared.mismatchDistributionIndependentlyCalibrated,false);
 });
