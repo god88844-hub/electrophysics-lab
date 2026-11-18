@@ -55,7 +55,7 @@ export function componentAppearance(type,lab){
  if(/(?:CAP\b|CAPACITOR)/.test(name))return 'capacitor';
  if(/(?:DIODE|LED)/.test(name))return 'diode';
  if(/(?:PROBE|MEASURE|SCOPE)/.test(name))return 'instrument';
- if(/(?:CLOCK|INPUT|SWITCH|CONST)/.test(name))return 'switch';
+ if(/(?:CLOCK|INPUT|SWITCH|CONST|\.IN$)/.test(name))return 'switch';
  if(lab==='cpu'||/(?:CPU|REGISTER|ALU|MEMORY|CACHE)/.test(name))return 'processor';
  if(lab==='chip'||/(?:NMOS|PMOS|TRANSISTOR|OPAMP)/.test(name))return 'chip';
  return 'logic';
@@ -65,7 +65,7 @@ function model(out,b,selected,detail){
  const primary=selected?gold:(b.color||blue);
  // Every part has its own removable module on the shared bench.
  box(out,b,0,-.012,0,b.width+.12,.09,b.depth+.12,[0.12,0.22,0.29]);
- box(out,b,0,.07,0,b.width,.085,b.depth,kind==='quantum'?[.10,.18,.31]:[.06,.30,.29]);
+ box(out,b,0,.07,0,b.width,.085,b.depth,selected?gold:(kind==='quantum'?[.10,.18,.31]:[.06,.30,.29]));
  for(const dx of [-b.width*.41,b.width*.41])for(const dz of [-b.depth*.35,b.depth*.35])
   column(out,b,dx,.161,dz,.032,.045,metal,8);
  if(!detail){
