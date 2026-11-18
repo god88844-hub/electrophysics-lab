@@ -56,53 +56,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install exact native build prerequisites
+      - name: Install native Magic, Netgen LVS and ngspice from Ubuntu packages
         run: |
+          set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            ngspice git make gcc g++ autoconf automake libtool \
+            magic netgen-lvs ngspice git make gcc g++ autoconf automake libtool \
             m4 tcsh tcl-dev tk-dev libx11-dev libxpm-dev \
             libcairo2-dev libncurses-dev libreadline-dev zlib1g-dev
+          magic --version
+          command -v netgen
           ngspice --version
-      - name: Restore compiled Magic Netgen and PDK build outputs
+          dpkg-query -W magic netgen-lvs ngspice
+      - name: Restore pinned open_pdks build cache
         id: native-eda-cache
         uses: actions/cache/restore@v4
         with:
           path: /home/runner/.cache/stage-m-eda
-          key: ubuntu2404-stage-m-native-magic4205ad22-netgene2a49567-openpdks0c1f8232-prf62031a1-v1
-      - name: Register cached/compiled native EDA binaries
-        run: |
-          mkdir -p "$EDA_PREFIX/bin"
-          echo "$EDA_PREFIX/bin" >> "$GITHUB_PATH"
-      - name: Build source-commit-pinned native Magic
-        if: steps.native-eda-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone -q https://github.com/RTimothyEdwards/magic.git /tmp/stage-m-magic
-          git -C /tmp/stage-m-magic checkout --detach 4205ad22bf919cc183af997b60c21140fd6d6fa9
-          test "$(git -C /tmp/stage-m-magic rev-parse HEAD)" = 4205ad22bf919cc183af997b60c21140fd6d6fa9
-          cd /tmp/stage-m-magic
-          ./configure --prefix="$EDA_PREFIX"
-          make -j2
-          make install
-          "$EDA_PREFIX/bin/magic" --version
-      - name: Build source-commit-pinned native Netgen
-        if: steps.native-eda-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone -q https://github.com/RTimothyEdwards/netgen.git /tmp/stage-m-netgen
-          git -C /tmp/stage-m-netgen checkout --detach e2a49567d5e3e451d51130de0227678be31f32e0
-          test "$(git -C /tmp/stage-m-netgen rev-parse HEAD)" = e2a49567d5e3e451d51130de0227678be31f32e0
-          cd /tmp/stage-m-netgen
-          ./configure --prefix="$EDA_PREFIX"
-          make -j2
-          make install
-          test -x "$EDA_PREFIX/bin/netgen"
+          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-primitive-only-v2
       - name: Checkout exact original SKY130 device-model commit
         run: |
           git clone -q https://github.com/google/skywater-pdk-libs-sky130_fd_pr.git "$STAGE_M_ORIGINAL_SKY130_MODELS"
           git -C "$STAGE_M_ORIGINAL_SKY130_MODELS" checkout --detach f62031a1be9aefe902d6d54cddd6f59b57627436
           test "$(git -C "$STAGE_M_ORIGINAL_SKY130_MODELS" rev-parse HEAD)" = f62031a1be9aefe902d6d54cddd6f59b57627436
           node scripts/phase73-source-check.mjs
-      - name: Build source-pinned open_pdks Magic technology and Netgen setup
+      - name: Build exact source-pinned open_pdks SKY130A PDK (only if cache unavailable)
         if: steps.native-eda-cache.outputs.cache-hit != 'true'
         run: |
           git clone -q https://github.com/fossi-foundation/open-pdks.git /tmp/stage-m-open-pdks
@@ -124,28 +102,28 @@ jobs:
           test -s "$PDK_ROOT/sky130A/libs.tech/netgen/sky130A_setup.tcl"
       - name: Verify restored or newly-built native EDA artifacts
         run: |
-          test -x "$EDA_PREFIX/bin/magic"
-          test -x "$EDA_PREFIX/bin/netgen"
+          set -euo pipefail
+          command -v magic
+          command -v netgen
+          command -v ngspice
           test -s "$PDK_ROOT/sky130A/libs.tech/magic/sky130A.magicrc"
           test -s "$PDK_ROOT/sky130A/libs.tech/netgen/sky130A_setup.tcl"
-          "$EDA_PREFIX/bin/magic" --version
-          "$EDA_PREFIX/bin/netgen" -batch -help > /tmp/stage-m-netgen-help.txt 2>&1 || true
-          test -s /tmp/stage-m-netgen-help.txt
-          sha256sum "$EDA_PREFIX/bin/magic" "$EDA_PREFIX/bin/netgen"
-      - name: Save native EDA build cache even when physical qualification fails later
+          dpkg-query -W magic netgen-lvs ngspice
+          sha256sum "$(command -v magic)" "$(command -v netgen)" "$(command -v ngspice)"
+      - name: Save PDK build cache before physical qualification
         if: steps.native-eda-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: /home/runner/.cache/stage-m-eda
-          key: ubuntu2404-stage-m-native-magic4205ad22-netgene2a49567-openpdks0c1f8232-prf62031a1-v1
+          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-primitive-only-v2
       - name: Record actual PDK/tool provenance and fail on missing mismatch corner
         run: |
           mkdir -p benchmarks/evidence/stage-m-native-eda
           {
-            echo "magic_source_commit=4205ad22bf919cc183af997b60c21140fd6d6fa9"
-            echo "netgen_source_commit=e2a49567d5e3e451d51130de0227678be31f32e0"
+            echo "native_tool_source=ubuntu-24.04-apt-repository"
+            dpkg-query -W magic netgen-lvs ngspice
+            sha256sum "$(command -v magic)" "$(command -v netgen)" "$(command -v ngspice)"
             echo "open_pdks_source_commit=0c1f82326278a0871f0a1fc4bdacf94c88e78e4d"
-            sha256sum "$EDA_PREFIX/bin/magic" "$EDA_PREFIX/bin/netgen"
             echo "sky130_original=$(git -C "$STAGE_M_ORIGINAL_SKY130_MODELS" rev-parse HEAD)"
             echo "ngspice=$(command -v ngspice)"
           } > benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
