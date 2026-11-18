@@ -106,7 +106,22 @@ export async function runMvlNgspiceMeasurements({exe,dcDeck,transientDeck,
    return {format:PHASE74_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
     reason:'device-instance-to-terminal-sample-inventory-does-not-match-spice-deck',
     verifiedPdk:false,physicalQualification:false};
-  const checked=requireSafeNetlistSOA(soaNetlist);
+  const declaredCorner=soaNetlist.corner??(
+    soaNetlist.profile.pdk==='SKY130'?'tt':null);
+  if(!declaredCorner)
+   return {format:PHASE74_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+    reason:'explicit-GF180-model-process-corner-required',
+    verifiedPdk:false,physicalQualification:false};
+  // A claimed foundry corner must match every native deck's exact .lib
+  // selector. Do not treat GF180 typical as an alias for SKY130 tt.
+  for(const [kind,source] of [['dc',dcDeck],['transient',transientDeck]]){
+   const matched=[...source.matchAll(/^\s*\.lib\s+\S+\s+([A-Za-z0-9_]+)\s*$/gmi)];
+   if(matched.length!==1||matched[0][1].toLowerCase()!==declaredCorner)
+    return {format:PHASE74_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+     reason:kind+'-unverified-PDK-library-corner',
+     verifiedPdk:false,physicalQualification:false};
+  }
+  const checked=requireSafeNetlistSOA({...soaNetlist,corner:declaredCorner});
   if(checked.status!=='SOA_MODEL_RANGE_SCREEN_PASS')
    return {format:PHASE74_FORMAT,status:checked.status,
     reason:'native-ngspice-blocked-by-soa',
