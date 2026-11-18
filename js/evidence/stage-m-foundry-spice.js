@@ -106,6 +106,48 @@ export async function inspectPinnedPdkClosure({
   independentlyCharacterizedWaferStatisticsAvailable:false,
   physicalReleaseAuthorized:false};
 }
+export function bindSPICEDeviceInstances({deck,devices=[]}={}){
+ if(typeof deck!=='string'||deck.length<10||deck.length>2000000||
+    !Array.isArray(devices)||devices.length<1||devices.length>100000)
+  return {status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+   reason:'native-deck-and-MOS-instance-inventory-required'};
+ const subcircuits=new Set([...deck.matchAll(/^\s*\.subckt\s+([A-Za-z0-9_]+)/gmi)]
+  .map(x=>x[1].toLowerCase()));
+ const mos=new Map(),unknown=[];
+ for(const line of deck.split(/\r?\n/)){
+  if(!/^\s*x[A-Za-z0-9_]+\s/i.test(line))continue;
+  const tokens=line.trim().split(/\s+/);
+  const instance=tokens[0].toLowerCase();
+  const model=tokens.slice(1).find(x=>/^(?:sky130_fd_pr__|gf180mcu_fd_pr__)/.test(x));
+  if(!model){
+   // A declared local subcircuit is allowed as hierarchy, not independent
+   // evidence of the terminal bias of internal transistors.
+   if(!tokens.some(x=>subcircuits.has(x.toLowerCase())))unknown.push(instance);
+   continue;
+  }
+  if(mos.has(instance)&&mos.get(instance)!==model)
+   return {status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+    reason:'duplicate-transistor-instance-with-inconsistent-model'};
+  mos.set(instance,model);
+ }
+ const claims=new Map();
+ for(const d of devices){
+  if(typeof d?.instance!=='string'||!/^x[a-z0-9_]+$/i.test(d.instance)||
+     claims.has(d.instance.toLowerCase()))
+   return {status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+    reason:'duplicate-or-unnamed-terminal-voltage-claim'};
+  claims.set(d.instance.toLowerCase(),d.model);
+ }
+ if(unknown.length||mos.size!==claims.size||
+    [...mos].some(([instance,model])=>claims.get(instance)!==model))
+  return {status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+   reason:'declared-four-terminal-MOS-samples-do-not-match-actual-SPICE-deck',
+   unknown,declaredMOS:claims.size,deckMOS:mos.size};
+ return {status:'SOA_DECK_INSTANCE_INVENTORY_MATCHED',
+  instances:mos.size,dynamicWaveformSOAVerified:false,
+  physicalQualification:'UNQUALIFIED_NO_GO'};
+}
+
 export async function runSOAGuardedFoundryDeck({
  profile,devices,corner='tt',temperatureC=25,
  exe,deck,pdkRoot
@@ -124,6 +166,13 @@ export async function runSOAGuardedFoundryDeck({
   return {status:'INSUFFICIENT_MODEL_DATA',
    reason:'missing-native-ngspice-library-root-or-circuit-deck',
    ngspiceExecuted:false,modelCalibrationVerified:false,
+   level1Status:'INSUFFICIENT_MODEL_DATA',
+   physicalQualification:'UNQUALIFIED_NO_GO'};
+ const binding=bindSPICEDeviceInstances({deck,devices});
+ if(binding.status!=='SOA_DECK_INSTANCE_INVENTORY_MATCHED')
+  return {status:'SOA_INSUFFICIENT_NODE_BOUNDS',
+   reason:'missing-MOS-to-SPICE-instance-source-binding',
+   soa,binding,ngspiceExecuted:false,
    level1Status:'INSUFFICIENT_MODEL_DATA',
    physicalQualification:'UNQUALIFIED_NO_GO'};
  const closure=await inspectPinnedPdkClosure({pdkRoot,pdk:profile.pdk});
