@@ -90,11 +90,14 @@ export function inspectExternalALUDigitCell({cellName='alu_digit',source,
 export function assembleFoundryALUCandidate({
  foundry='SKY130',radix=4,width=4,
  cellSource=null,cellName='alu_digit',
- modelLibraryPath=null,corner='tt',rippleFraction=0,
+ modelLibraryPath=null,corner='tt',rippleFraction=undefined,railProfileId=null,
  temperatureC=25,vectors=null
 }={}){
- const profileName=modeMap[foundry];
- if(!profileName||![4,8].includes(width)||![2,3,4].includes(radix)||
+ const profileName=railProfileId??modeMap[foundry];
+ const foundryProfileMatches=foundry==='GF180MCU'?profileName==='gf180-core-3v3':
+  foundry==='SKY130_THICK'?profileName==='sky130-thick-3v3':
+  ['sky130-core-1v8','sky130-core-1v65-unregulated','sky130-thick-3v3'].includes(profileName);
+ if(!profileName||!foundryProfileMatches||![4,8].includes(width)||![2,3,4].includes(radix)||
     !(foundry==='GF180MCU'?
       ['typical','ss','ff'].includes(corner):
       ['tt','tt_mm','ss','ff'].includes(corner)))
@@ -118,7 +121,9 @@ export function assembleFoundryALUCandidate({
   return {format:ALU_NETLIST_FORMAT,status:'INSUFFICIENT_MODEL_DATA',
    profile,soa,cell,deck:null,reason:'missing-authentic-custom-digit-cell-and-local-verified-library',
    modelLibraryPinned:false,level1Status:'INSUFFICIENT_MODEL_DATA'};
- const rails=profile.railsV;
+ // Nominal logic codes are not the peak ripple stimulus. Keep the supply
+ // corner envelope separate for 5% LDO / 10% unregulated corner sweeps.
+ const rails=profile.nominalRailsV;
  const tStep=100e-9,total=workloads.vectors.length*tStep;
  const lines=[
   '* Unqualified source-bound multi-radix transistor-level ALU candidate',
@@ -144,6 +149,8 @@ export function assembleFoundryALUCandidate({
  return {format:ALU_NETLIST_FORMAT,
   status:'TRANSISTOR_NETLIST_ASSEMBLED_NOT_PHYSICALLY_VALIDATED',
   profile,soa,cell,width,radix,corner,temperatureC,
+  rippleSpecificationFraction:profile.maximumSpecifiedRippleFraction,
+  maximumRippleSupplyV:profile.worstCaseSupplyEnvelopeV.maximum,
   deck:lines.join('\n')+'\n',expected:workloads.vectors,
   modelLibraryPinned:false,soAUnderDynamicWaveformsVerified:false,
   ngspiceExecuted:false,postlayoutParasiticsVerified:false,
