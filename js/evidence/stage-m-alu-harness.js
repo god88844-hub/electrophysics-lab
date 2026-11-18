@@ -111,7 +111,8 @@ export function assembleFoundryALUCandidate({
  const cell=inspectExternalALUDigitCell({cellName,source:cellSource,
   allowedModels:profile.deviceModels});
  if(cell.status!=='SOURCE_BOUND_TO_DEVICE_NAMES_NOT_VERIFIED'||
-    typeof modelLibraryPath!=='string'||!/^\/[\w/.-]+\.spice$/.test(modelLibraryPath))
+    typeof modelLibraryPath!=='string'||
+    !(/^(?:\/[A-Za-z0-9_./-]+|[A-Za-z]:\\[A-Za-z0-9_.\\-]+)\.spice$/i.test(modelLibraryPath)))
   return {format:ALU_NETLIST_FORMAT,status:'INSUFFICIENT_MODEL_DATA',
    profile,soa,cell,deck:null,reason:'missing-authentic-custom-digit-cell-and-local-verified-library',
    modelLibraryPinned:false,level1Status:'INSUFFICIENT_MODEL_DATA'};
@@ -135,9 +136,9 @@ export function assembleFoundryALUCandidate({
    ]);
    lines.push('V'+key+digit+' '+key+digit+' 0 PWL('+pts.join(' ')+')');
   }
- lines.push('.control','tran 1n '+total.toExponential(9),
-  'wrdata alu-output.txt '+Array.from({length:width},(_,i)=>'v(s'+i+')').join(' '),
-  'quit','.endc','.end');
+ lines.push('.tran 1n '+total.toExponential(9),
+  '.print tran '+Array.from({length:width},(_,i)=>'v(s'+i+')').join(' '),
+  '.end');
  return {format:ALU_NETLIST_FORMAT,
   status:'TRANSISTOR_NETLIST_ASSEMBLED_NOT_PHYSICALLY_VALIDATED',
   profile,soa,cell,width,radix,corner,temperatureC,
