@@ -1,6 +1,6 @@
 import {setCADEnvelope,dimensionedAssembly} from './dimensioned-cad.js';
 import {simulateWireThermal} from './wire-electrothermal.js';
-import {compareWireMeasurements} from './wire-measurement-check.js';
+import {compareWireMeasurements,fitWireResistanceScale} from './wire-measurement-check.js';
 function numericField(d,name,value){
  const wrapper=d.createElement('label');wrapper.className='scene3d-wire-field';
  const caption=d.createElement('span');caption.textContent=name;
@@ -62,10 +62,12 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  const compare=d.createElement('button');compare.type='button';compare.textContent='Evaluate held-out measurements';
  compare.dataset.action='compare-wire-measurements';
  const evidence=d.createElement('output');evidence.setAttribute('aria-live','polite');
+ const fit=d.createElement('button');fit.type='button';fit.dataset.action='fit-wire-candidate';
+ fit.textContent='Fit candidate model (development only)';
  panel.append(title,note,selector,...fields.map(f=>f.wrapper),save,toggle,report,
   thermalHeading,wireSelect,ambient.wrapper,h.wrapper,duration.wrapper,step.wrapper,
   contact.wrapper,thermalButton,thermalResult,
-  compareHeading,compareNote,observations,source,instrument,uncertainty.wrapper,held,compare,evidence);
+  compareHeading,compareNote,observations,source,instrument,uncertainty.wrapper,held,compare,fit,evidence);
  const update=()=>{
   const diagram=diagramAccessor();const prior=selector.value,oldWire=wireSelect.value;
   selector.replaceChildren();wireSelect.replaceChildren();
@@ -113,18 +115,32 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
     simulation.finalPowerW.toPrecision(4)+' W; MODEL ONLY, no hardware measurements.';
   }catch(e){thermalResult.textContent='Cannot simulate: '+e.message;onError(e.message);}
  });
+ function readObservations(){
+   return {rows:JSON.parse(observations.value),options:{source:source.value,
+    instrument:instrument.value,uncertaintyOhm:Number(uncertainty.input.value),
+    holdoutIds:held.value.split(',').map(x=>x.trim()).filter(Boolean)}};
+ }
  compare.addEventListener('click',()=>{
   try{
-   const rows=JSON.parse(observations.value);
-   const result=compareWireMeasurements(rows,{source:source.value,
-    instrument:instrument.value,uncertaintyOhm:Number(uncertainty.input.value),
-    holdoutIds:held.value.split(',').map(x=>x.trim()).filter(Boolean)});
+   const {rows,options}=readObservations();
+   const result=compareWireMeasurements(rows,options);
    evidence.textContent='Held-out MAE '+result.holdout.meanAbsoluteErrorOhm.toPrecision(5)+
     ' Ω; RMSE '+result.holdout.rootMeanSquareErrorOhm.toPrecision(5)+
     ' Ω. UNVERIFIED user-supplied observations; no calibration or independent qualification.';
   }catch(e){evidence.textContent='Cannot validate: '+e.message;onError(e.message);}
  });
+ fit.addEventListener('click',()=>{
+  try{
+   const {rows,options}=readObservations();
+   const result=fitWireResistanceScale(rows,options);
+   evidence.textContent='CANDIDATE fitted resistance scale '+
+    result.candidateParameters.resistanceScale.toPrecision(6)+
+    '; held-out MAE '+result.independentHoldout.meanAbsoluteErrorOhm.toPrecision(5)+
+    ' Ω, RMSE '+result.independentHoldout.rootMeanSquareErrorOhm.toPrecision(5)+
+    ' Ω. Fitted only on development rows; unverified source, NOT PHYSICALLY QUALIFIED.';
+  }catch(e){evidence.textContent='Cannot fit: '+e.message;onError(e.message);}
+ });
  update();
  return {panel,button,selector,fields,save,toggle,report,wireSelect,thermalButton,
-  thermalResult,compare,evidence,sync:update,get mode(){return mode;}};
+  thermalResult,compare,fit,evidence,sync:update,get mode(){return mode;}};
 }
