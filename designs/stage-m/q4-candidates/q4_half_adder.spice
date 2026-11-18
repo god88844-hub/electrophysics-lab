@@ -29,7 +29,7 @@ Xn_nb nmid b vss vss sky130_fd_pr__nfet_01v8 w=1.20 l=0.35
 Xp_na o a vdd vdd sky130_fd_pr__pfet_01v8 w=1.30 l=0.35
 Xp_nb o b vdd vdd sky130_fd_pr__pfet_01v8 w=1.30 l=0.35
 .ends q4_mux4__bool_nand2
-* Thermometer decode with 4 complementary low-Vt transmission gates.
+* Thermometer decode with 4 complementary low-Vt NMOS + standard PMOS transmission gates.
 .subckt q4_mux4 sel d0 d1 d2 d3 out vdd vss
 Xdet sel t1 t2 t3 vdd vss q4_thresh_det
 Xs0 t1 s0 vdd vss q4_mux4__bool_not
@@ -41,13 +41,13 @@ Xns2 t2 nt3 ns2 vdd vss q4_mux4__bool_nand2
 Xs2 ns2 s2 vdd vss q4_mux4__bool_not
 * S0=!t1, S1=t1&&!t2, S2=t2&&!t3, S3=t3.
 Xn_tg0 out d0 s0 vss sky130_fd_pr__nfet_01v8_lvt w=1.20 l=0.35
-Xp_tg0 out d0 t1 vdd sky130_fd_pr__pfet_01v8_lvt w=2.40 l=0.35
+Xp_tg0 out d0 t1 vdd sky130_fd_pr__pfet_01v8 w=2.40 l=0.35
 Xn_tg1 out d1 s1 vss sky130_fd_pr__nfet_01v8_lvt w=1.20 l=0.35
-Xp_tg1 out d1 ns1 vdd sky130_fd_pr__pfet_01v8_lvt w=2.40 l=0.35
+Xp_tg1 out d1 ns1 vdd sky130_fd_pr__pfet_01v8 w=2.40 l=0.35
 Xn_tg2 out d2 s2 vss sky130_fd_pr__nfet_01v8_lvt w=1.20 l=0.35
-Xp_tg2 out d2 ns2 vdd sky130_fd_pr__pfet_01v8_lvt w=2.40 l=0.35
+Xp_tg2 out d2 ns2 vdd sky130_fd_pr__pfet_01v8 w=2.40 l=0.35
 Xn_tg3 out d3 t3 vss sky130_fd_pr__nfet_01v8_lvt w=1.20 l=0.35
-Xp_tg3 out d3 nt3 vdd sky130_fd_pr__pfet_01v8_lvt w=2.40 l=0.35
+Xp_tg3 out d3 nt3 vdd sky130_fd_pr__pfet_01v8 w=2.40 l=0.35
 .ends q4_mux4
 
 .subckt q4_half_adder a b sum carry v0 v1 v2 v3
