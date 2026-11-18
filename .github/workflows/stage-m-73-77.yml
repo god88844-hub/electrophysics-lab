@@ -38,6 +38,14 @@ jobs:
           tests/stage-m-alu-harness.test.mjs
       - name: Issue deterministic calibrated-data UNKNOWN / NO-GO audit
         run: node scripts/stage-m-signoff-readiness.mjs
+      - name: Report original-layout admission without fabricated GDS or signoff
+        run: node scripts/stage-m-real-q4-layout.mjs
+      - name: Validate EDA interface source modules
+        run: |
+          node --check js/evidence/phase73-soa.js
+          node --check js/evidence/phase77-magic-netgen.js
+          node --check js/evidence/stage-m-alu-harness.js
+          node --check scripts/stage-m-real-q4-layout.mjs
       - name: Validate pure module syntax
         run: >-
           node --check js/evidence/phase73-mvl-devices.js
