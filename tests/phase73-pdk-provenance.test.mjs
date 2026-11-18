@@ -2,10 +2,10 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {loadSourceManifest,verifyPinnedGitBlob} from '../js/evidence/phase73-pdk-provenance.js';
-test('Two PDK source commits with eight pinned original Git blobs and no silicon calibration',async()=>{
+test('Two PDK source commits with 28 pinned original Git blobs and no silicon calibration',async()=>{
  const m=await loadSourceManifest();
  assert.deepEqual(m.sources.map(x=>x.pdk),['SKY130','GF180MCU']);
- assert.equal(m.sources.reduce((n,s)=>n+s.entries.length,0),8);
+ assert.equal(m.sources.reduce((n,s)=>n+s.entries.length,0),28);
  for(const source of m.sources){
   assert.match(source.commit,/^[a-f0-9]{40}$/);
   for(const e of source.entries){assert.match(e.gitBlobSha1,/^[a-f0-9]{40}$/);}
