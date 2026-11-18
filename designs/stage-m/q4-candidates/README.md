@@ -1,0 +1,23 @@
+# Stage M — experimental Q4 transistor schematics
+
+These four files are **original, unqualified candidate designs**. Their SPICE subcircuits are self-contained; do not concatenate them because names such as `q4_thresh_det` and `q4_mux4` repeat.
+
+| Cell | Candidate topology | Requested function |
+|---|---|---|
+| `q4_thresh_det.spice` | 3 skewed CMOS comparators with CMOS buffer stages | Nominal trip-point targets 0.30, 0.90, 1.50 V |
+| `q4_inv.spice` | 1-of-4 thermometer decoder plus four complementary LVT transmission gates | 0↔3; 1↔2 |
+| `q4_mux4.spice` | 1-of-4 thermometer decoder plus four complementary LVT transmission gates | Analog quaternary 4:1 selection |
+| `q4_half_adder.spice` | 10 hierarchical quaternary muxes | Sum=(A+B)%4, Carry=floor((A+B)/4) |
+
+## Technical limitations and mandatory gates
+
+1. Dimensions of the skewed transistor comparators are **uncharacterized**. None of the three requested thresholds, hysteresis, four noise margins, power, propagation delay, or temperature/mismatch survival have been measured. Transistor models, floating controls, leakage, rail overlap, junction/body effects, and operating-point convergence still need real ngspice analysis.
+2. A transmission gate **passes** a selected supply voltage; without external validation this architecture must **not** be described as a proven rail-restoring cell. It does not establish full CMOS gain or independent noise recovery. Low-Vt PMOS `sky130_fd_pr__pfet_01v8_lvt` is presently **not admitted** by the pinned Phase 73 model whitelist; authenticate and register its original model files and SOA before any native run. Do not bypass the whitelist.
+3. The 1.8 V LDO rail profile remains **0 / 0.6 / 1.2 / 1.8 V nominal, ±5%**, maximum 1.89 V. The existing **1.95 V** original model-range SOA screen and all deck-derived four-terminal checks must remain in force. Static profile envelopes do not prove transient voltage safety.
+4. The pinned SKY130 model repo commit `f62031a1be9aefe902d6d54cddd6f59b57627436` does **not** by itself contain the independently verified open_pdks transformed `tt_mm` statistical library. Any processed mismatch library requires independently pinned source and generated model-byte provenance, verified switches, seed replay and statistical calibration; no fabricated corner labels or invented statistical variation.
+5. Neither a source-bound Magic technology setup, finished design geometry, DRC-clean original `.mag` layout, GDS, independently clean LVS, extracted RC parasitics nor 1,000 native postlayout MC trials currently exist for these candidates. Do not manufacture placeholder artifacts or assert DRC/LVS clean.
+6. No simulated-build-success probability or Wilson interval is emitted from these candidates. Level-1 is **INSUFFICIENT_MODEL_DATA / UNKNOWN**, Level-2 physical authorization **UNQUALIFIED_NO_GO**. PR #94 and dependent stacked drafts must not merge until the required tests and independent acceptance criteria pass.
+
+## How to inspect
+
+Review each candidate as a separate text SPICE library; use only the original PDK-verified models, native EDA executables, approved toolchain configuration and the fail-closed Stage M runners. These source files alone are not valid native PDK verification evidence.
