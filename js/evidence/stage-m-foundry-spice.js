@@ -16,7 +16,9 @@ const inside=(root,file)=>file===root||file.startsWith(root+path.sep);
 const safeRoot=x=>typeof x==='string'&&path.isAbsolute(x)&&x.length<1000;
 
 export function inspectDeclaredModelCorners({sourceText,foundry='SKY130',
- required=['tt','ss','ff','tt_mm']}={}){
+ required=null}={}){
+ if(required===null)required=foundry==='GF180MCU'?
+  ['typical','ss','ff']:['tt','tt_mm','ss','ff'];
  if(typeof sourceText!=='string'||sourceText.length<1||sourceText.length>10000000||
     !['SKY130','GF180MCU'].includes(foundry)||!Array.isArray(required)||
     required.some(x=>typeof x!=='string'||!/^[A-Za-z0-9_-]+$/.test(x)))
@@ -167,7 +169,9 @@ export async function inspectStageMDeckLibraryBinding({
   reason,...details,modelLibraryBound:false,physicalQualification:'UNQUALIFIED_NO_GO'});
  if(typeof deck!=='string'||deck.length<10||deck.length>2000000||
     !safeRoot(pdkRoot)||!['SKY130','GF180MCU'].includes(pdk)||
-    !['tt','ss','ff'].includes(corner))
+    !(pdk==='GF180MCU'?
+      ['typical','ss','ff'].includes(corner):
+      ['tt','tt_mm','ss','ff'].includes(corner)))
   return no('invalid-expected-PDK-library-root-or-corner');
  const lines=deck.split(/\r?\n/),libraries=[];
  for(const raw of lines){
@@ -206,7 +210,10 @@ export async function runSOAGuardedFoundryDeck({
  exe,deck,pdkRoot
 }={}){
  if(profile?.format!=='invention-lab/phase73-transistor-soa/1'||
-    !['tt','ss','ff'].includes(corner)||!Number.isFinite(temperatureC)||
+    !(profile?.pdk==='GF180MCU'?
+      ['typical','ss','ff'].includes(corner):
+      ['tt','tt_mm','ss','ff'].includes(corner))||
+    !Number.isFinite(temperatureC)||
     temperatureC< -40||temperatureC>125)
   throw Error('Invalid foundry SOA/corner request');
  const soa=requireSafeNetlistSOA({profile,devices,corner});
