@@ -86,7 +86,7 @@ export function makeMagicLvsAndPexCommands(name){
   'ext2spice cthresh 0','ext2spice rthresh 0',
   'ext2spice -o '+name+'-pex.spice',
   'gds write '+name,'quit -noprompt',''
- ].join('\\n').replaceAll('\\n','\n');
+ ].join('\n');
 }
 export async function runMagicNetgenCandidate({
  name,magPath,schematicPath,magicRcPath,netgenSetupPath,
