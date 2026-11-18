@@ -1,5 +1,6 @@
 import {setCADEnvelope,dimensionedAssembly} from './dimensioned-cad.js';
 import {simulateWireThermal} from './wire-electrothermal.js';
+import {solveCoupledWireDC} from './coupled-wire-dc.js';
 import {compareWireMeasurements,fitWireResistanceScale} from './wire-measurement-check.js';
 function numericField(d,name,value){
  const wrapper=d.createElement('label');wrapper.className='scene3d-wire-field';
@@ -50,6 +51,9 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  const thermalButton=d.createElement('button');thermalButton.type='button';
  thermalButton.dataset.action='run-wire-thermal';thermalButton.textContent='Simulate wire temperature';
  const thermalResult=d.createElement('output');thermalResult.setAttribute('aria-live','polite');
+ const coupled=d.createElement('button');coupled.type='button';
+ coupled.dataset.action='run-coupled-wire-dc';coupled.textContent='Run coupled DC current + heat';
+ const coupledReadout=d.createElement('output');coupledReadout.setAttribute('aria-live','polite');
  const compareHeading=d.createElement('strong');compareHeading.textContent='Compare real measurements (optional)';
  const compareNote=d.createElement('p');
  compareNote.textContent='Paste JSON array of real resistance observations with id, spec, observedOhm. Development/holdout split is mandatory. The app cannot authenticate raw instrument provenance.';
@@ -66,7 +70,7 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  fit.textContent='Fit candidate model (development only)';
  panel.append(title,note,selector,...fields.map(f=>f.wrapper),save,toggle,report,
   thermalHeading,wireSelect,ambient.wrapper,h.wrapper,duration.wrapper,step.wrapper,
-  contact.wrapper,thermalButton,thermalResult,
+  contact.wrapper,thermalButton,thermalResult,coupled,coupledReadout,
   compareHeading,compareNote,observations,source,instrument,uncertainty.wrapper,held,compare,fit,evidence);
  const update=()=>{
   const diagram=diagramAccessor();const prior=selector.value,oldWire=wireSelect.value;
@@ -76,6 +80,7 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
   if([...selector.options].some(o=>o.value===prior))selector.value=prior;
   if([...wireSelect.options].some(o=>o.value===oldWire))wireSelect.value=oldWire;
   save.disabled=!selector.options.length;thermalButton.disabled=!wireSelect.options.length;
+  coupled.disabled=diagram?.lab!=='chip'||!wireSelect.options.length;
   load();
  };
  const load=()=>{
@@ -115,6 +120,25 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
     simulation.finalPowerW.toPrecision(4)+' W; MODEL ONLY, no hardware measurements.';
   }catch(e){thermalResult.textContent='Cannot simulate: '+e.message;onError(e.message);}
  });
+ coupled.addEventListener('click',()=>{
+  try{
+   const diagram=diagramAccessor();
+   if(diagram?.lab!=='chip')throw Error('Only Chip Lab DC circuits can use coupled solver');
+   const f=[ambient,h,duration,step,contact].map(x=>x.input.value);
+   if(f.some(x=>!x.trim()))throw Error('Enter every thermal boundary condition');
+   const result=solveCoupledWireDC(diagram,{
+    ambientC:Number(f[0]),heatTransferWm2K:Number(f[1]),
+    durationS:Number(f[2]),stepS:Number(f[3]),
+    contactResistanceOhm:Number(f[4])});
+   const hot=result.wires.reduce((a,w)=>a.peakTemperatureC>w.peakTemperatureC?a:w);
+   const count=result.wires.filter(w=>w.crossesTemperatureLimit).length;
+   coupledReadout.textContent='Augmented canonical DC solver: '+result.wires.length+
+    ' physical wires; maximum predicted temperature '+hot.peakTemperatureC.toFixed(3)+
+    ' °C; '+count+' threshold exceedances; minimum CAD body-gap contradictions '+
+    result.geometryClearance.impossible.length+
+    '. MODEL ONLY; real hardware unverified; original schematic unchanged.';
+  }catch(e){coupledReadout.textContent='Coupled DC unavailable: '+e.message;onError(e.message);}
+ });
  function readObservations(){
    return {rows:JSON.parse(observations.value),options:{source:source.value,
     instrument:instrument.value,uncertaintyOhm:Number(uncertainty.input.value),
@@ -142,5 +166,5 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  });
  update();
  return {panel,button,selector,fields,save,toggle,report,wireSelect,thermalButton,
-  thermalResult,compare,fit,evidence,sync:update,get mode(){return mode;}};
+  thermalResult,coupled,coupledReadout,compare,fit,evidence,sync:update,get mode(){return mode;}};
 }

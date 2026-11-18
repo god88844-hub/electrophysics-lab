@@ -182,6 +182,10 @@ try{
  p==='tests/engineering-cad-thermal.test.mjs'||
  p==='docs/ENGINEERING-CAD-ELECTROTHERMAL.md'||
  p==='.github/workflows/engineering-cad-thermal.yml'||
+ p==='js/scene/coupled-wire-dc.js'||p==='js/scene/cad-wire-clearance.js'||
+ p==='tests/coupled-wire-dc.test.mjs'||p==='docs/COUPLED-DC-WIRE-THERMAL.md'||
+ p==='.github/workflows/coupled-wire-dc.yml'||
+ p==='scripts/coupled-wire-ngspice.mjs'||p==='.github/workflows/coupled-wire-ngspice.yml'||
  p==='js/scene/experiment-trace.js'||p==='tests/experiment-trace.test.mjs'||
  p==='docs/EXPERIMENT-TRACE-3D.md'||p==='.github/workflows/experiment-trace-3d.yml'||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
