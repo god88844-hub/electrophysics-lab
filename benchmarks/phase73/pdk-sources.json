@@ -1,0 +1,66 @@
+{
+  "format": "invention-lab/phase73-pinned-pdk-sources/1",
+  "license": "Apache-2.0 for the referenced open PDK libraries; preserve original upstream license",
+  "sources": [
+    {
+      "pdk": "SKY130",
+      "repository": "google/skywater-pdk-libs-sky130_fd_pr",
+      "commit": "f62031a1be9aefe902d6d54cddd6f59b57627436",
+      "entries": [
+        {
+          "path": "models/sky130.lib.spice",
+          "gitBlobSha1": "a8d3bf5ddbacac96a1db08fd464bea46b7174ffa",
+          "bytes": 20730
+        },
+        {
+          "path": "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__tt.corner.spice",
+          "gitBlobSha1": "5f3d829aa7c01dc16e0b08e3cd6712bb9a57c25e",
+          "bytes": 66384
+        },
+        {
+          "path": "cells/nfet_01v8_lvt/sky130_fd_pr__nfet_01v8_lvt__tt.corner.spice",
+          "gitBlobSha1": "aa849ed441ba2315a7d5afea392a4265d20b8f17",
+          "bytes": 787
+        },
+        {
+          "path": "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__tt.corner.spice",
+          "gitBlobSha1": "8e3a83add23c74a5754ee6cb077c6fe62ec7ffb4",
+          "bytes": 796
+        },
+        {
+          "path": "cells/pfet_01v8_hvt/sky130_fd_pr__pfet_01v8_hvt__tt.corner.spice",
+          "gitBlobSha1": "6b0413e31482eb6719c23ba028fcd00d2b776970",
+          "bytes": 88134
+        },
+        {
+          "path": "cells/res_high_po/sky130_fd_pr__res_high_po.model.spice",
+          "gitBlobSha1": "600a00772e726e47f1bcc5b9962af69036781b47",
+          "bytes": 2352
+        }
+      ]
+    },
+    {
+      "pdk": "GF180MCU",
+      "repository": "google/globalfoundries-pdk-libs-gf180mcu_fd_pr",
+      "commit": "9f992d5a9186d1f7820c58f039c484ad35b2edea",
+      "entries": [
+        {
+          "path": "models/ngspice/design.ngspice",
+          "gitBlobSha1": "d2ee50bbd70b26c3dbd1180019cb2fbe5965c5b6",
+          "bytes": 3249
+        },
+        {
+          "path": "models/ngspice/sm141064.ngspice",
+          "gitBlobSha1": "561e63453512eb8c614d7d45ac1c6cc2c41e0111",
+          "bytes": 1348553
+        }
+      ]
+    }
+  ],
+  "calibrationStatus": "NOT_VALIDATED",
+  "waferDistributionValidity": "UNKNOWN",
+  "chipMeasurementsAvailable": false,
+  "minTemperatureC": null,
+  "maxTemperatureC": null,
+  "sourcePurpose": "Upstream file integrity only; nested include dependencies and process distribution not qualified"
+}
