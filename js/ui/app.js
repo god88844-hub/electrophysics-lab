@@ -136,6 +136,7 @@ export class App {
     });
     this.editor.labAccent = (labId) => getLab(labId)?.accent || '#5aa2e8';
     this.scene3d = new Scene3DView(this.$editorArea, {
+      onPhysicalLayoutChange:()=>this._diagramChanged(true),
       onSelect: (id) => {
         this.editor.selection = id ? { kind: 'block', id } : null;
         this.editor.requestRender();

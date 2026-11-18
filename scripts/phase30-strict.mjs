@@ -174,6 +174,9 @@ try{
  p==='.github/workflows/experiment-workbench-windows.yml'||
  p==='tests/phase69-package.test.mjs'||p==='js/release/phase69-package.js'||
  p==='tests/phase70-security.test.mjs'||p==='tests/phase12-iris.test.mjs'||
+ p==='js/scene/physical-wire.js'||p==='js/scene/wire-setup-ui.js'||
+ p==='tests/physical-wire.test.mjs'||p==='docs/PHYSICAL-WIRE-ASSUMPTIONS-3D.md'||
+ p==='.github/workflows/physical-wire-3d.yml'||
  p==='js/scene/experiment-trace.js'||p==='tests/experiment-trace.test.mjs'||
  p==='docs/EXPERIMENT-TRACE-3D.md'||p==='.github/workflows/experiment-trace-3d.yml'||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||

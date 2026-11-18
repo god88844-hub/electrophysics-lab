@@ -396,3 +396,25 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
 @media(max-width:680px){
   .scene3d-experiment-panel{bottom:51px;left:8px;width:min(295px,calc(100% - 16px));max-height:43%;}
 }
+
+/* Explicit, source-bound conductor estimates. Not part of schematic solver. */
+.scene3d-wire-editor{
+ position:absolute;z-index:8;top:64px;left:14px;
+ width:min(340px,calc(100% - 28px));max-height:calc(100% - 140px);overflow-y:auto;
+ display:grid;gap:7px;padding:13px;background:rgba(6,22,33,.97);
+ color:#e1f3f8;border:1px solid #5a879b;border-radius:10px;
+ box-shadow:0 12px 35px #000a;font:12px/1.4 system-ui,sans-serif;
+}
+.scene3d-wire-editor[hidden]{display:none;}
+.scene3d-wire-editor p{margin:0;color:#abced7;}
+.scene3d-wire-editor small{color:#d4b985;}
+.scene3d-wire-editor > select,.scene3d-wire-field input,.scene3d-wire-field select{
+ width:100%;min-width:0;padding:6px;background:#112b3a;color:#f0f9fa;
+ border:1px solid #52768a;border-radius:5px;
+}
+.scene3d-wire-field{display:grid;gap:3px;}
+.scene3d-wire-editor > button{padding:8px;cursor:pointer;color:#c6f4e8;background:#153c44;
+ border:1px solid #65a497;border-radius:7px;}
+.scene3d-wire-editor > button:disabled{opacity:.5;}
+.scene3d-wire-result{padding:8px;background:#0e3940;border-radius:5px;color:#b2f0e2;}
+@media(max-width:680px){.scene3d-wire-editor{top:93px;left:8px;max-height:45%;}}

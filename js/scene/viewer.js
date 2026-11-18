@@ -2,6 +2,7 @@
 // This renderer is visualization/editing only. It never claims physical fidelity.
 import { sceneFromDiagram, worldToDesign, portPoint3D } from './layout.js';
 import { experimentBenchMesh } from './experiment-bench.js';
+import { attachPhysicalWireEditor } from './wire-setup-ui.js';
 import { captureExperimentTrace,isExperimentCurrent,experimentReadingsAt,exportExperimentRecord } from './experiment-trace.js';
 
 const VERT = `attribute vec3 aPosition;
@@ -75,7 +76,7 @@ function line(arr,a,b,color){
   arr.push(a[0],a[1],a[2],...color,b[0],b[1],b[2],...color);
 }
 export class Scene3DView {
-  constructor(container,{onSelect=()=>{},onMove=()=>{},onConnect=()=>{},onError=()=>{}}={}){
+  constructor(container,{onSelect=()=>{},onMove=()=>{},onConnect=()=>{},onError=()=>{},onPhysicalLayoutChange=()=>{}}={}){
     this.container=container;this.onSelect=onSelect;this.onMove=onMove;this.onConnect=onConnect;this.onError=onError;
     this.diagram=null;this.selectedId=null;this.wireSource=null;
     this.experiment=null;this.experimentIndex=0;this.experimentPlaying=false;this.experimentRAF=0;this.experimentTickAt=0;
@@ -139,6 +140,8 @@ export class Scene3DView {
     this.root.append(this.canvas,this.overlay,this.controls,this.qualification,this.selectionCard,this.experimentPanel,this.notice);
     this.updateExperimentPanel();
     container.appendChild(this.root);
+    this.wireSetup=attachPhysicalWireEditor(this.root,this.controls,()=>this.diagram,
+      ()=>onPhysicalLayoutChange(),message=>this.onError(message));
     this.available=false;this._raf=0;
     try {
       this.gl=this.canvas.getContext('webgl',{antialias:true,alpha:false});
@@ -285,6 +288,7 @@ export class Scene3DView {
     this.stopExperimentPlayback();this.experiment=null;this.experimentIndex=0;
     this.diagram=diagram;this.selectedId=null;this.wireSource=null;
     this.focusIds=null;this.focusLabel=null;this.fit();this.updateExperimentPanel();
+    this.wireSetup.sync({keepSelection:false});
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
@@ -294,6 +298,7 @@ export class Scene3DView {
     if(this.experiment&&!isExperimentCurrent(this.experiment,this.diagram)){
       this.stopExperimentPlayback();this.experiment=null;
     }
+    this.wireSetup.sync();
     this.updateExperimentPanel();this.requestRender();
   }
   scene(){
