@@ -4,7 +4,7 @@ import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {inspectOriginalCustomCellFiles,runMagicNetgenCandidate,evaluatePostLayoutSignoff,
- runQ4CellLayoutBatch,REQUIRED_Q4_CUSTOM_CELLS}
+ runQ4CellLayoutBatch,REQUIRED_Q4_CUSTOM_CELLS,makeMagicLvsAndPexCommands}
  from '../js/evidence/phase77-magic-netgen.js';
 test('lack of authentic MAG, extracted SPICE and PDK rule decks cannot fabricate GDS or DRC',async()=>{
  const r=await inspectOriginalCustomCellFiles({name:'q4_mux'});
@@ -53,4 +53,20 @@ test('four-cell Q4 layout batch refuses to invent MAG/GDS/DRC/LVS sources or art
  assert.equal(candidate.physicalQualification,'UNQUALIFIED_NO_GO');
  assert.ok(candidate.records.every(x=>x.magicExecuted===false));
  assert.ok(candidate.records.every(x=>x.status==='INSUFFICIENT_MODEL_DATA'));
+});
+
+test('Magic output commands extract physical GDS, LVS-only and separate 0-ohm/0-fF-threshold postlayout RC',()=>{
+ for(const name of REQUIRED_Q4_CUSTOM_CELLS){
+  const commands=makeMagicLvsAndPexCommands(name).split('\n');
+  assert.ok(commands.includes('drc check'));
+  assert.ok(commands.includes('ext2spice lvs'));
+  assert.ok(commands.includes('ext2spice -o '+name+'-lvs.spice'));
+  assert.ok(commands.includes('ext2spice cthresh 0'));
+  assert.ok(commands.includes('ext2spice rthresh 0'));
+  assert.ok(commands.includes('ext2spice -o '+name+'-pex.spice'));
+  assert.ok(commands.indexOf('ext2spice cthresh 0')>
+   commands.indexOf('ext2spice -o '+name+'-lvs.spice'));
+  assert.ok(commands.includes('gds write '+name));
+ }
+ assert.throws(()=>makeMagicLvsAndPexCommands('made_up_q4_cell'),/Known named Q4/);
 });
