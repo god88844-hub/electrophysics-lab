@@ -2,6 +2,7 @@
 import {runNgspice,detectNgspiceFailure,parseWrdata} from '../bench/ngspice-adapter.js';
 import {makeVoltageRails} from './phase73-mvl-devices.js';
 import {requireSafeNetlistSOA,MOS_SOA_LIMITS} from './phase73-soa.js';
+import {verifyDeckTerminalSOA} from './phase73-deck-node-soa.js';
 export const PHASE74_FORMAT='invention-lab/phase74-mvl-noise-crosstalk/1';
 const finite=(n,label)=>{if(typeof n!=='number'||!Number.isFinite(n))throw Error(label+' must be finite');return n;};
 const sorted=a=>a.every((x,i)=>i===0||a[i-1]<x);
@@ -105,6 +106,15 @@ export async function runMvlNgspiceMeasurements({exe,dcDeck,transientDeck,
    return {format:PHASE74_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
     reason:'device-instance-to-terminal-sample-inventory-does-not-match-spice-deck',
     verifiedPdk:false,physicalQualification:false};
+  for(const [kind,deck] of [['dc',dcDeck],['transient',transientDeck]]){
+   const originalBounds=verifyDeckTerminalSOA({
+    deck,profile:soaNetlist.profile,devices:soaNetlist.devices});
+   if(originalBounds.status!=='SOA_MODEL_RANGE_SCREEN_PASS')
+    return {format:PHASE74_FORMAT,status:originalBounds.status,
+     reason:kind+'-source-derived-terminal-soa-rejected',
+     sourceBoundSOA:originalBounds,
+     verifiedPdk:false,physicalQualification:false};
+  }
   const checked=requireSafeNetlistSOA(soaNetlist);
   if(checked.status!=='SOA_MODEL_RANGE_SCREEN_PASS')
    return {format:PHASE74_FORMAT,status:checked.status,
