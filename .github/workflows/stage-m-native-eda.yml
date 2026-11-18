@@ -1,0 +1,105 @@
+name: Stage M native SKY130A Magic Netgen ngspice acceptance attempt
+on:
+  pull_request:
+  push:
+    branches: [stage-m/phase73-77-foundry-guarded]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject nonexistent PDK devices and verify candidate subcircuit boundaries
+        run: node --test tests/stage-m-q4-sources.test.mjs
+  native-q4-drc-lvs-pex:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    needs: source-inventory
+    env:
+      PDK_ROOT: /usr/local/share/pdk
+      STAGE_M_ORIGINAL_SKY130_MODELS: /tmp/stage-m-skywater-pr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact native build prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            ngspice git make gcc g++ autoconf automake libtool \
+            m4 tcsh tcl-dev tk-dev libx11-dev libxpm-dev \
+            libcairo2-dev libncurses-dev libreadline-dev zlib1g-dev
+          ngspice --version
+      - name: Build source-commit-pinned native Magic
+        run: |
+          git clone -q https://github.com/RTimothyEdwards/magic.git /tmp/stage-m-magic
+          git -C /tmp/stage-m-magic checkout --detach 4205ad22bf919cc183af997b60c21140fd6d6fa9
+          test "$(git -C /tmp/stage-m-magic rev-parse HEAD)" = 4205ad22bf919cc183af997b60c21140fd6d6fa9
+          cd /tmp/stage-m-magic
+          ./configure --prefix=/usr/local
+          make -j2
+          sudo make install
+          magic --version
+      - name: Build source-commit-pinned native Netgen
+        run: |
+          git clone -q https://github.com/RTimothyEdwards/netgen.git /tmp/stage-m-netgen
+          git -C /tmp/stage-m-netgen checkout --detach e2a49567d5e3e451d51130de0227678be31f32e0
+          test "$(git -C /tmp/stage-m-netgen rev-parse HEAD)" = e2a49567d5e3e451d51130de0227678be31f32e0
+          cd /tmp/stage-m-netgen
+          ./configure --prefix=/usr/local
+          make -j2
+          sudo make install
+          command -v netgen
+      - name: Checkout exact original SKY130 device-model commit
+        run: |
+          git clone -q https://github.com/google/skywater-pdk-libs-sky130_fd_pr.git "$STAGE_M_ORIGINAL_SKY130_MODELS"
+          git -C "$STAGE_M_ORIGINAL_SKY130_MODELS" checkout --detach f62031a1be9aefe902d6d54cddd6f59b57627436
+          test "$(git -C "$STAGE_M_ORIGINAL_SKY130_MODELS" rev-parse HEAD)" = f62031a1be9aefe902d6d54cddd6f59b57627436
+          node scripts/phase73-source-check.mjs
+      - name: Build source-pinned open_pdks Magic technology and Netgen setup
+        run: |
+          git clone -q https://github.com/fossi-foundation/open-pdks.git /tmp/stage-m-open-pdks
+          git -C /tmp/stage-m-open-pdks checkout --detach 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d
+          test "$(git -C /tmp/stage-m-open-pdks rev-parse HEAD)" = 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d
+          cd /tmp/stage-m-open-pdks
+          ./configure --enable-sky130-pdk --with-sky130-local-path="$PDK_ROOT"
+          make -j2
+          sudo make install
+          test -s "$PDK_ROOT/sky130A/libs.tech/magic/sky130A.magicrc"
+          test -s "$PDK_ROOT/sky130A/libs.tech/netgen/sky130A_setup.tcl"
+      - name: Record actual PDK/tool provenance and fail on missing mismatch corner
+        run: |
+          mkdir -p benchmarks/evidence/stage-m-native-eda
+          {
+            echo "magic=$(git -C /tmp/stage-m-magic rev-parse HEAD)"
+            echo "netgen=$(git -C /tmp/stage-m-netgen rev-parse HEAD)"
+            echo "open_pdks=$(git -C /tmp/stage-m-open-pdks rev-parse HEAD)"
+            echo "sky130_original=$(git -C "$STAGE_M_ORIGINAL_SKY130_MODELS" rev-parse HEAD)"
+            echo "ngspice=$(command -v ngspice)"
+          } > benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
+          lib="$PDK_ROOT/sky130A/libs.ref/sky130_fd_pr/spice/sky130.lib.spice"
+          test -s "$lib"
+          grep -Eq '^[[:space:]]*\.lib[[:space:]]+tt_mm([[:space:]]|$)' "$lib"
+          grep -Eq 'mc_mm_switch' "$lib"
+          sha256sum "$lib" >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
+          echo 'tt_mm name and mismatch parameter present, NOT statistically calibrated' >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
+      - name: Run native layout DRC and LVS with separately extracted full PEX
+        run: bash scripts/stage-m-native-eda.sh
+      - name: Mandatory physical, statistical and ALU acceptance must stay fail-closed
+        run: |
+          echo "No approved source-bound 1000-trial postlayout MC or 100-trial ALU comparison is available." >&2
+          echo "Stage M Level-1 = INSUFFICIENT_MODEL_DATA; Level-2 = UNQUALIFIED_NO_GO" >&2
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage-m-real-native-eda-unqualified-evidence
+          path: benchmarks/evidence/stage-m-native-eda/
+          if-no-files-found: warn
