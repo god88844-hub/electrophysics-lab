@@ -2,12 +2,15 @@
 // component body envelopes; not a routed wire length or pin-to-pin distance.
 import {dimensionedAssembly} from './dimensioned-cad.js';
 import {physicalWireAssumptions} from './physical-wire.js';
+import {inspectPhysicalHarnesses} from './physical-routing.js';
 export const ROUTING_CHECK_FORMAT='invention-lab/cad-wire-clearance/1';
 const gap=(a0,a1,b0,b1)=>Math.max(0,a0-b1,b0-a1);
 export function inspectConductorClearances(diagram){
  if(!diagram||!Array.isArray(diagram.wires))
   throw Error('Physical clearance requires a canonical diagram');
  const cad=dimensionedAssembly(diagram),physical=physicalWireAssumptions(diagram);
+ const routing=inspectPhysicalHarnesses(diagram);
+ const byRoute=new Map(routing.routes.map(r=>[r.wireId,r]));
  if(physical.status==='no-input'||cad.status==='no-input')
   return {format:ROUTING_CHECK_FORMAT,status:'insufficient-input',
    checks:[],wiresNotChecked:diagram.wires.map(w=>w.id),impossible:[],
@@ -23,13 +26,23 @@ export function inspectConductorClearances(diagram){
   const z=gap(a.bounds.z0,a.bounds.z1,b.bounds.z0,b.bounds.z1);
   const minimumBodyGapMm=Math.hypot(x,y,z);
   const enteredConductorLengthMm=spec.lengthM*1000;
-  const impossible=enteredConductorLengthMm+1e-9<minimumBodyGapMm;
+  const routed=byRoute.get(w.id);
+  const minimumRequiredLengthMm=routed?.routedLengthMm??minimumBodyGapMm;
+  const impossible=enteredConductorLengthMm+1e-9<minimumBodyGapMm||
+   !!routed?.violations.length;
   checks.push({wireId:w.id,fromBlockId:a.id,toBlockId:b.id,
-   minimumBodyGapMm,enteredConductorLengthMm,impossible,
-   isPinToPinLength:false,physicalPinsMapped:false,
+   minimumBodyGapMm,minimumRequiredLengthMm,enteredConductorLengthMm,impossible,
+   isPinToPinLength:!!routed,physicalPinsMapped:!!routed,
+   userAuthoredPolylineMm:routed?.routedLengthMm??null,
+   routeObstacleIds:routed?.obstacleIds??[],
    routingValidated:false,physicalValidation:'none'});
  }
- return {format:ROUTING_CHECK_FORMAT,status:'lower-bound-only',
-  checks,wiresNotChecked,impossible:checks.filter(x=>x.impossible).map(x=>x.wireId),
-  physicalPinCoordinatesKnown:false,physicallyRouted:false,physicalValidation:'none'};
+ return {format:ROUTING_CHECK_FORMAT,
+  status:routing.routes.length?'explicit-route-model-only':'lower-bound-only',
+  checks,wiresNotChecked,
+  impossible:checks.filter(x=>x.impossible).map(x=>x.wireId),
+  physicalPinCoordinatesKnown:routing.terminals.length>0,
+  explicitPolylineRoutes:routing.routes.length,
+  missingPhysicalRoutes:routing.missingRoutes,
+  physicallyRouted:false,physicalValidation:'none'};
 }
