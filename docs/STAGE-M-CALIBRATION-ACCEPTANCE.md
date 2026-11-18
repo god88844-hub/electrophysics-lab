@@ -13,3 +13,21 @@ The PDK manifest now pins **28 original upstream source files**, including 20 ad
 5. Obtain independent calibration and holdout reviews with pinned trusted signoff roots. Only then may the existing `makeLevel1Passport` issue a genuinely calibrated Wilson-interval virtual yield. Level-2 physical signoff requires *different, authenticated physical silicon measurements*.
 
 **Current status:** these inputs are absent; a requested `<60%` to `>92%` calibrated demonstration cannot be proven honestly. Do not merge or tag a full 96-phase qualified release based on synthetic tests.
+
+## Implemented source-bound model and SOA preflight
+
+The working Stage M branch now implements `phase73-soa.js` with four-terminal MOS node-bias checks, plus `phase74-noise-margins.js` gates so a foundry-model/ngspice deck cannot execute without a matching device-instance SOA inventory. The exact Q4 rail profiles are:
+
+| Process/device family | Logic rails (V) | At +10% supply ripple |
+| --- | --- | --- |
+| SKY130 1.8 V core NMOS/PMOS, LVT/HVT | 0, 0.6, 1.2, 1.8 | **SOA_OXIDE_OVERSTRESS**: 1.98 V exceeds 1.95 V documented model limit |
+| GF180MCU 3.3 V thin oxide | 0, 1.1, 2.2, 3.3 | 3.63 V reaches published 3.63 V gate-oxide operating ceiling; further full HCI, terminal and temperature checks remain required |
+| SKY130 5 V gate / 10.5 V drain extended MOS | 0, 1.1, 2.2, 3.3 | 3.63 V is below published 5.5 V gate and 11 V drain model-range limits, but independent PDK/DRC admission is still missing |
+
+These are **operating-model screens**, not proven semiconductor breakdown voltages or automatically valid 4/8-digit transistor ALUs. The script `stage-m-alu-harness.js` maps 4/8-digit binary, ternary, Q4 candidate workloads to exact PDK transistor model identities, and will assemble a *provided original* transistor-level digit-cell subcircuit into a SPICE batch testbench. It **does not invent** a correct Q4 adder, quantizer, multiplexer, or cell layout.
+
+The original source-locked SKY130 `models/sky130.lib.spice` at commit `f62031a1be9aefe902d6d54cddd6f59b57627436` exposes named `.lib tt`, `.lib ss`, and `.lib ff` sections, **not** a named `.lib tt_mm` section. It references device-level `mismatch.corner.spice` files, but inclusion alone does not establish a statistically characterized wafer Monte Carlo distribution or justify renaming `tt` to `tt_mm`. `inspectDeclaredModelCorners` rejects absent requested corners. A compatible *separately pinned* open_pdks transformation and verified statistical switches would be required to claim `tt_mm`.
+
+`stage-m-foundry-spice.js` inspects complete transitive model includes (and verifies all available pinned original Git blobs), rejects untrusted missing paths, then admits native ngspice only after a compatible source-bound SOA report. It does not issue model calibration by itself. The current pinned 28 files do not constitute a complete, independent foundry statistical calibration.
+
+`phase77-magic-netgen.js` can execute original-MAG Magic DRC/extraction and Netgen LVS when a legitimate PDK tech, a real cell-specific `.mag`, transistor schematic SPICE and Netgen setup file have been supplied. No valid Q4 transistor-cell original `.mag` or GDS/ruledeck exists in this Stage M evidence set. **No physical DRC, LVS, extracted post-layout noise sweep, or 1000-trial calibrated ngspice manufacturing yield has been demonstrated.** Therefore the entire Stage M release gate remains NO-GO.
