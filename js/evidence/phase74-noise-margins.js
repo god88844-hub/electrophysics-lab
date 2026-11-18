@@ -106,6 +106,11 @@ export async function runMvlNgspiceMeasurements({exe,dcDeck,transientDeck,
    return {format:PHASE74_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
     reason:'device-instance-to-terminal-sample-inventory-does-not-match-spice-deck',
     verifiedPdk:false,physicalQualification:false};
+  const checked=requireSafeNetlistSOA(soaNetlist);
+  if(checked.status!=='SOA_MODEL_RANGE_SCREEN_PASS')
+   return {format:PHASE74_FORMAT,status:checked.status,
+    reason:'native-ngspice-blocked-by-soa',
+    soa:checked,verifiedPdk:false,physicalQualification:false};
   for(const [kind,deck] of [['dc',dcDeck],['transient',transientDeck]]){
    const originalBounds=verifyDeckTerminalSOA({
     deck,profile:soaNetlist.profile,devices:soaNetlist.devices});
@@ -115,11 +120,6 @@ export async function runMvlNgspiceMeasurements({exe,dcDeck,transientDeck,
      sourceBoundSOA:originalBounds,
      verifiedPdk:false,physicalQualification:false};
   }
-  const checked=requireSafeNetlistSOA(soaNetlist);
-  if(checked.status!=='SOA_MODEL_RANGE_SCREEN_PASS')
-   return {format:PHASE74_FORMAT,status:checked.status,
-    reason:'native-ngspice-blocked-by-soa',
-    soa:checked,verifiedPdk:false,physicalQualification:false};
  }
  const results=[];
  for(const [kind,deck,expectedVectors] of [['dc',dcDeck,dcVectorCount],['transient',transientDeck,transientVectorCount]]){
