@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: '22'
       - name: Reject nonexistent PDK devices and verify candidate subcircuit boundaries
-        run: node --test tests/stage-m-q4-sources.test.mjs
+        run: node --test tests/stage-m-q4-sources.test.mjs tests/stage-m-native-monte-carlo.test.mjs
   native-q4-drc-lvs-pex:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -135,6 +135,8 @@ jobs:
           node scripts/stage-m-mm-corner-audit.mjs
           sha256sum "$lib" >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
           echo 'tt_mm section inspected; explicit deck mc_mm_switch=1 still required; calibration UNKNOWN' >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
+      - name: Export exact 4000 primitive and 2400 ALU trial plan (not executed)
+        run: node scripts/stage-m-native-campaign-plan.mjs
       - name: Run native layout DRC and LVS with separately extracted full PEX
         run: bash scripts/stage-m-native-eda.sh
       - name: Mandatory physical, statistical and ALU acceptance must stay fail-closed
