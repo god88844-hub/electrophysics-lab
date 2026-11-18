@@ -133,7 +133,9 @@ export function verifyProfileSOA(profile){
 }
 export function requireSafeNetlistSOA({profile,devices,corner='tt'}={}){
  if(profile?.format!==SOA_FORMAT||!Array.isArray(devices)||
-    !['tt','ss','ff','tt_mm'].includes(corner))
+    !(profile.pdk==='GF180MCU'?
+      ['typical','ss','ff'].includes(corner):
+      ['tt','ss','ff','tt_mm'].includes(corner)))
   throw Error('Explicit candidate foundry profile and corner required');
  if(devices.length<1||devices.length>100000)
   return {format:SOA_FORMAT,status:'SOA_INSUFFICIENT_NODE_BOUNDS',
