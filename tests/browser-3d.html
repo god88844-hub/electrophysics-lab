@@ -63,6 +63,8 @@ try{
   wireSetup.toggle.click();
   assert(wireSetup.panel.hidden===false,'Physical wire editing panel failed to open');
   assert(wireSetup.select.options.length===d.wires.length,'Physical wire choices are not canonical');
+  wireSetup.select.value=d.wires.at(-1).id;
+  wireSetup.select.dispatchEvent(new Event('change',{bubbles:true}));
   wireSetup.apply.click();
   const savedWire=d.meta.physicalLayout?.wires?.[wireSetup.select.value];
   assert(savedWire?.material==='copper'&&savedWire.lengthMm===100,
@@ -82,6 +84,8 @@ try{
     'Coupled DC solver must not activate for non-analog Logic Lab');
   assert(eng.selector.options.length===d.blocks.length,
     'CAD picker must use canonical design components');
+  eng.selector.value=a.id;
+  eng.selector.dispatchEvent(new Event('change',{bubbles:true}));
   eng.save.click();
   assert(d.meta.dimensionedCAD?.parts?.[eng.selector.value]?.widthMm===20,
     'True-scale mm CAD dimensions not saved to canonical design JSON');
