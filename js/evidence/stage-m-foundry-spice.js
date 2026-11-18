@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import {loadSourceManifest,verifyPinnedGitBlob} from './phase73-pdk-provenance.js';
 import {runNgspice,detectNgspiceFailure} from '../bench/ngspice-adapter.js';
 import {requireSafeNetlistSOA} from './phase73-soa.js';
+import {verifyPinnedGitModelTree} from './phase73-pinned-git-tree.js';
 import {verifyDeckTerminalSOA} from './phase73-deck-node-soa.js';
 export const PDK_CLOSURE_FORMAT='invention-lab/phase73-pdk-dependency-closure/1';
 const SPICE_ALU_STATUS='UNVERIFIED_SPICE_NOT_CALIBRATED';
@@ -97,11 +98,19 @@ export async function inspectPinnedPdkClosure({
  }
  const all=[...checked.values()].sort((a,b)=>a.path.localeCompare(b.path));
  const complete=missing.length===0&&unresolved.length===0;
- const independentlyPinned=all.every(x=>x.pinnedToUpstreamCommit);
+ const individuallyPinned=all.every(x=>x.pinnedToUpstreamCommit);
+ const gitModelTree=complete&&!individuallyPinned?
+  await verifyPinnedGitModelTree({root,expectedCommit:source.commit,
+   relativeFiles:all.map(x=>x.path)}):
+  {status:individuallyPinned?'EVERY_MODEL_BLOB_MANIFEST_PINNED':'CLOSURE_INCOMPLETE'};
+ const independentlyPinned=individuallyPinned||
+  gitModelTree.status==='PINNED_GIT_TREE_VERIFIED';
  return {format:PDK_CLOSURE_FORMAT,pdk,sourceCommit:source.commit,
   status:complete?'MODEL_FILES_PRESENT_NOT_CALIBRATED':'INSUFFICIENT_MODEL_DATA',
   filesChecked:all.length,pinnedFiles:all.filter(x=>x.pinnedToUpstreamCommit).length,
   allTransitiveFilesPinnedToOriginalCommit:independentlyPinned,
+  completeGitTreeIdentityVerified:gitModelTree.status==='PINNED_GIT_TREE_VERIFIED',
+  gitModelTreeEvidence:gitModelTree,
   missing:missing.sort(),unresolved:unresolved.sort(),
   files:all,totalBytes,calibrationVerified:false,
   independentlyCharacterizedWaferStatisticsAvailable:false,
