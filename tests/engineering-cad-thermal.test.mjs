@@ -27,7 +27,7 @@ test('Explicit mm assembly envelopes and geometry scale are versioned and JSON-s
  assert.equal(mesh.scaleMmPerWorld,CAD_MM_PER_WORLD);
  assert.equal(mesh.physicalValidation,'none');
  assert.equal(mesh.cadEnvelopeOnly,true);
- assert.equal(mesh.triangles.length,72*2);
+ assert.equal(mesh.triangles.length,216*2);
  assert.ok(mesh.triangles.every(Number.isFinite));
  assert.deepEqual(Diagram.fromJSON(d.toJSON()).toJSON(),d.toJSON());
  assert.equal(dimensionedAssembly(Diagram.fromJSON(d.toJSON())).parts.length,2);
