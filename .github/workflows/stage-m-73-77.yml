@@ -30,6 +30,7 @@ jobs:
           tests/stage-m-integration.test.mjs
           tests/stage-m-signoff-readiness.test.mjs
           tests/phase73-soa.test.mjs
+          tests/phase73-deck-node-soa.test.mjs
           tests/phase73-pdk-execution.test.mjs
           tests/phase74-soa-spice-guard.test.mjs
           tests/phase77-magic-netgen-real.test.mjs
