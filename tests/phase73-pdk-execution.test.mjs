@@ -4,7 +4,7 @@ import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {inspectPinnedPdkClosure,runSOAGuardedFoundryDeck,planRealMultiCornerSPICE,
- inspectDeclaredModelCorners}
+ inspectDeclaredModelCorners,bindSPICEDeviceInstances}
  from '../js/evidence/stage-m-foundry-spice.js';
 import {makeFoundryRailProfile} from '../js/evidence/phase73-soa.js';
 
@@ -63,4 +63,22 @@ test('an unpinned tt_mm library corner cannot be substituted with tt silently',(
  assert.deepEqual(r.missing,['tt_mm']);
  assert.equal(r.status,'INSUFFICIENT_MODEL_DATA');
  assert.equal(r.mismatchDistributionIndependentlyCalibrated,false);
+});
+
+test('claims must bind to exact transistor instance IDs in the SPICE deck',()=>{
+ const deck='* foundry model bindings\n'+
+  'Xn d g 0 0 sky130_fd_pr__nfet_01v8 w=1 l=0.15\n'+
+  'Xp d g vdd vdd sky130_fd_pr__pfet_01v8 w=2 l=0.15\n.end';
+ const models=[
+  {instance:'Xn',model:'sky130_fd_pr__nfet_01v8'},
+  {instance:'Xp',model:'sky130_fd_pr__pfet_01v8'}
+ ];
+ const r=bindSPICEDeviceInstances({deck,devices:models});
+ assert.equal(r.status,'SOA_DECK_INSTANCE_INVENTORY_MATCHED');
+ assert.equal(r.dynamicWaveformSOAVerified,false);
+ assert.equal(bindSPICEDeviceInstances({deck,devices:[models[0]]}).status,
+  'SOA_INSUFFICIENT_NODE_BOUNDS');
+ assert.equal(bindSPICEDeviceInstances({deck,devices:[
+  {...models[0],instance:'Xfake'},models[1]]}).status,
+  'SOA_INSUFFICIENT_NODE_BOUNDS');
 });
