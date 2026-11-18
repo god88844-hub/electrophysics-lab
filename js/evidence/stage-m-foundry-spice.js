@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import {loadSourceManifest,verifyPinnedGitBlob} from './phase73-pdk-provenance.js';
 import {runNgspice,detectNgspiceFailure} from '../bench/ngspice-adapter.js';
 import {requireSafeNetlistSOA} from './phase73-soa.js';
+import {verifyDeckTerminalSOA} from './phase73-deck-node-soa.js';
 export const PDK_CLOSURE_FORMAT='invention-lab/phase73-pdk-dependency-closure/1';
 const SPICE_ALU_STATUS='UNVERIFIED_SPICE_NOT_CALIBRATED';
 const hex=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
@@ -174,6 +175,14 @@ export async function runSOAGuardedFoundryDeck({
    reason:'missing-MOS-to-SPICE-instance-source-binding',
    soa,binding,ngspiceExecuted:false,
    level1Status:'INSUFFICIENT_MODEL_DATA',
+   physicalQualification:'UNQUALIFIED_NO_GO'};
+ const deckSOA=verifyDeckTerminalSOA({deck,devices,profile});
+ if(deckSOA.status!=='SOA_MODEL_RANGE_SCREEN_PASS')
+  return {status:deckSOA.status,
+   reason:'source-derived-transistor-voltage-bounds-failed-before-ngspice',
+   soa,deckSOA,ngspiceExecuted:false,
+   level1Status:'INSUFFICIENT_MODEL_DATA',
+   simulatedPhysicalBuildSuccessPercent:'UNKNOWN',
    physicalQualification:'UNQUALIFIED_NO_GO'};
  const closure=await inspectPinnedPdkClosure({pdkRoot,pdk:profile.pdk});
  if(closure.status!=='MODEL_FILES_PRESENT_NOT_CALIBRATED'||
