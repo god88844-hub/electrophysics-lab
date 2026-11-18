@@ -30,9 +30,10 @@ test('End heatsinks create a nonuniform longitudinal temperature and remove ener
  approx(cooled.energyBalanceResidualJ,0,1e-8);
 });
 test('Insulating jacket reduces exposed cooling and increases temperature',()=>{
- const bare=simulateSegmentedWireThermal({...spec,assumedCurrentA:2},env);
+ const highConvection={...env,heatTransferWm2K:1000};
+ const bare=simulateSegmentedWireThermal({...spec,assumedCurrentA:2},highConvection);
  const jacket=simulateSegmentedWireThermal({...spec,assumedCurrentA:2},{
-  ...env,jacketThicknessMm:1,jacketThermalConductivityWmK:0.02});
+  ...highConvection,jacketThicknessMm:1,jacketThermalConductivityWmK:0.02});
  assert.ok(jacket.meanTemperatureC>bare.meanTemperatureC);
  assert.ok(jacket.jacketResistanceKWPerSegment>0);
 });
