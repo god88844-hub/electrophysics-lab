@@ -29,7 +29,7 @@ for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
   export STAGE_M_CELL="$cell" STAGE_M_SCHEMATIC="$PWD/$cell.spice"
   # Real Magic geometry placement, real DRC, extraction and GDS generation.
   # Never convert nonzero tool status or nonzero DRC to a simulated pass.
-  magic -dnull -noconsole -rcfile "$TECH" < "$repo/scripts/stage-m-magic-layout.tcl" \
+  magic -dnull -noconsole -T sky130A -rcfile "$TECH" < "$repo/scripts/stage-m-magic-layout.tcl" \
     > "$cell-magic.log" 2>&1 || {
       cat "$cell-magic.log" >&2
       echo "MAGIC_DRC_OR_GEOMETRY_FAILED $cell" >> "$out/STATUS.txt"
