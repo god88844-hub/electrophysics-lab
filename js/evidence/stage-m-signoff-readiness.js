@@ -5,6 +5,7 @@ import {PDK_DEVICE_CATALOG,makeVoltageRails,validateDeviceOperatingEnvelope}
 import {makeLevel1Passport} from './phase76-virtual-passport.js';
 import {generateMvlStandardCellCandidates} from './phase77-mvl-layout.js';
 import {PHASE75_FORMAT} from './phase75-monte-carlo.js';
+import {makeFoundryRailProfile,verifyProfileSOA} from './phase73-soa.js';
 export const STAGE_M_READINESS_FORMAT='invention-lab/stage-m-calibrated-readiness/1';
 
 const roles=Object.freeze({
@@ -35,8 +36,15 @@ export function inspectStageMReadiness({
   reasons.push('missing-immutable-foundry-model-manifest');
  // Explicit Q4 0..3.3 V and ±10% supply ripple. Never imply 1.8 V
  // SKY130 threshold devices are safe at these absolute voltages.
- const nominalMaxV=radix===4?3.3:radix===3?1.8:1.8;
- const rails=makeVoltageRails({base:radix,maximumV:nominalMaxV});
+ const profile=makeFoundryRailProfile({id:foundry==='SKY130'?
+   'sky130-core-1v8':'gf180-core-3v3',radix,rippleFraction:.1,
+  temperatureC:125});
+ const rails=makeVoltageRails({base:radix,maximumV:profile.railsV.at(-1)});
+ const soa=verifyProfileSOA(profile);
+ if(soa.status==='SOA_OXIDE_OVERSTRESS')
+  reasons.push('SOA_OXIDE_OVERSTRESS');
+ if(soa.status!=='SOA_PROFILE_SCREEN_PASS')
+  reasons.push('device-terminal-stress-envelope-requires-design-rework');
  const deviceIdentifiers=foundry==='SKY130'?
   roles[radix===2?'binary':radix===3?'ternary':'q4']:
   ['gf180_nfet_03v3','gf180_pfet_03v3'];
@@ -64,7 +72,8 @@ export function inspectStageMReadiness({
   monteCarlo,noiseMargin,layout,statisticalCalibration,independentReview});
  return {
   format:STAGE_M_READINESS_FORMAT,designId,foundry,radix,width,
-  railsV:rails.rails,rippleFractions:[-.1,0,.1],
+  railsV:profile.nominalRailsV,soAMaximumRippleRailsV:rails.rails,
+  profileId:profile.id,soa, rippleFractions:[-.1,0,.1],
   temperatureCornersC:[-40,25,85,125],
   modelIdentifiers:deviceIdentifiers,
   deviceEnvelopes,
