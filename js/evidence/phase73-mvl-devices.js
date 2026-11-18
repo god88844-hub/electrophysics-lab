@@ -80,6 +80,37 @@ export function buildMvlPrimitive({kind,rails}){
  return {kind,base:rails.base,railsV:rails.rails.slice(),
   status:'FUNCTIONAL_ONLY',transistorNetlist:null,spiceCalibrated:false};
 }
+
+// Functional voltage detector/shifter, not a transistor implementation.
+// Unknown analog state propagates UNKNOWN rather than snapping to a rail.
+export function evaluateMvlPrimitive({kind,sourceRails,targetRails=null,
+ inputVoltages,guardBandV=0}={}){
+ if(!['detector','level-shifter','identity','complement','min','max'].includes(kind))
+  throw Error('Unsupported MVL primitive kind');
+ if(!sourceRails||!Array.isArray(sourceRails.rails)||!Number.isInteger(sourceRails.base))
+  throw Error('Explicit source radix rails required');
+ const inputs=kind==='min'||kind==='max'?2:1;
+ if(!Array.isArray(inputVoltages)||inputVoltages.length!==inputs)
+  throw Error('Incorrect MVL input count');
+ const decoded=inputVoltages.map(v=>decodeVoltage(v,sourceRails,{guardBandV}));
+ if(decoded.some(x=>x.status!=='RESOLVED'))
+  return {status:'UNKNOWN',reason:'input-state-ambiguous-or-out-of-rails',
+   outputVoltageV:null,logicLevel:null,model:'ideal-functional-only'};
+ let level=decoded[0].level;
+ if(kind==='complement')level=sourceRails.base-1-level;
+ if(kind==='min')level=Math.min(...decoded.map(x=>x.level));
+ if(kind==='max')level=Math.max(...decoded.map(x=>x.level));
+ const outputRails=targetRails??sourceRails;
+ if(outputRails.base!==sourceRails.base||!Array.isArray(outputRails.rails)||
+    outputRails.rails.length!==sourceRails.base)
+  throw Error('Source and destination base must match for an ideal level-shifter');
+ return {status:'RESOLVED_FUNCTIONAL_ONLY',logicLevel:level,
+  logicalValue:outputRails.balancedTernary?level-1:level,
+  outputVoltageV:outputRails.rails[level],
+  model:'ideal-functional-only',transistorNetlist:null,
+  foundryCalibrated:false,physicalValidation:'none'};
+}
+
 export function evaluateRadixAlu({base,width,a,b,operation}){
  if(!Number.isInteger(base)||base<2||base>16||![4,8].includes(width))
   throw Error('ALU supports 4- and 8-digit radix 2..16 functional tests');
