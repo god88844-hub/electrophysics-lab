@@ -86,10 +86,12 @@ jobs:
           } > benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
           lib="$PDK_ROOT/sky130A/libs.ref/sky130_fd_pr/spice/sky130.lib.spice"
           test -s "$lib"
-          grep -Eq '^[[:space:]]*\.lib[[:space:]]+tt_mm([[:space:]]|$)' "$lib"
-          grep -Eq 'mc_mm_switch' "$lib"
+          export STAGE_M_PROCESSED_SKY130_LIB="$lib"
+          export STAGE_M_OPEN_PDKS_SOURCE=/tmp/stage-m-open-pdks
+          export STAGE_M_MISMATCH_AUDIT_REPORT="$PWD/benchmarks/evidence/stage-m-native-eda/mm-declaration-audit.json"
+          node scripts/stage-m-mm-corner-audit.mjs
           sha256sum "$lib" >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
-          echo 'tt_mm name and mismatch parameter present, NOT statistically calibrated' >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
+          echo 'tt_mm switch declaration verified only; statistical calibration remains UNKNOWN' >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
       - name: Run native layout DRC and LVS with separately extracted full PEX
         run: bash scripts/stage-m-native-eda.sh
       - name: Mandatory physical, statistical and ALU acceptance must stay fail-closed
