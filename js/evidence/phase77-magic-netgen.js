@@ -107,10 +107,20 @@ export async function runMagicNetgenCandidate({
    magicExecuted:true,netgenExecuted:false,magic,
    physicalQualification:'UNQUALIFIED_NO_GO'};
  }
+ const generatedGDS=join(dirname,name+'.gds');
+ let originalGDS=null;
+ try{originalGDS=await checkedFile(generatedGDS,'.gds',100000000);}
+ catch{/* a Magic exit=0 alone does not guarantee a complete GDSII */ }
+ const drcReportPath=join(dirname,name+'-magic-drc-report.txt');
+ await writeFile(drcReportPath,magic.stdout+'\n'+magic.stderr,'utf8');
+ const drcReport=await checkedFile(drcReportPath,'.txt',2000000);
  const resultPath=join(dirname,name+'-netgen-lvs.txt');
  const netgen=await runProcess({executable:netgenExec,
   args:['-batch','lvs',extracted+' '+name,
    schematicPath+' '+name,netgenSetupPath,resultPath],cwd:dirname});
+ let lvsReport=null;
+ try{lvsReport=await checkedFile(resultPath,'.txt',2000000);}
+ catch{/* absent report remains NO-GO */}
  // Never parse a naked exit code as a foundry-reviewed signoff. Actual
  // device mappings, rule deck identity, DRC count and report contents must
  // be verified separately and independently.
@@ -120,6 +130,14 @@ export async function runMagicNetgenCandidate({
   magicExitCode:magic.exitCode,netgenExitCode:netgen.exitCode,
   magicLog:magic.stdout.slice(-10000),
   netgenLog:netgen.stdout.slice(-10000),
+  originalMagSha256:audit.inputFiles.find(x=>x.path===resolve(magPath))?.sha256??null,
+  originalSchematicSha256:audit.inputFiles.find(x=>x.path===resolve(schematicPath))?.sha256??null,
+  generatedGdsSha256:originalGDS?.sha256??null,
+  generatedGdsPath:originalGDS?.path??null,
+  drcReportSha256:drcReport.sha256,
+  drcReportPath,
+  lvsReportSha256:lvsReport?.sha256??null,
+  lvsReportPath:lvsReport?.path??null,
   extractedNetlistSha256:extractedFile.sha256,
   extractedNetlistPath:extracted,
   rawReportPath:resultPath,
