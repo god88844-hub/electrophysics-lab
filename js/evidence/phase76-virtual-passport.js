@@ -13,7 +13,8 @@ export function wilson95(successes,attempts){
  const center=(p+z2/(2*attempts))/denom;
  const radius=Z95*Math.sqrt(p*(1-p)/attempts+z2/(4*attempts*attempts))/denom;
  return {confidence:0.95,method:'Wilson-score',
-  lower:Math.max(0,center-radius),upper:Math.min(1,center+radius)};
+  lower:successes===0?0:Math.max(0,center-radius),
+  upper:successes===attempts?1:Math.min(1,center+radius)};
 }
 export function makeLevel1Passport({
  designId,modelIdentifiers=[],monteCarlo,noiseMargin,layout,
