@@ -103,3 +103,21 @@ test('LDO contractual ripple above five percent fails closed even if voltage rem
   rippleFraction:.1});
  assert.equal(verifyProfileSOA(actual).status,'SOA_OXIDE_OVERSTRESS');
 });
+
+test('a forged or out-of-regulation foundry profile cannot bypass the native netlist SOA gate',()=>{
+ const original=makeFoundryRailProfile({id:'sky130-core-1v8'});
+ const devices=[{model:original.polarityModels.n,samples:[
+  {gateV:1.8,drainV:1.8,sourceV:0,bodyV:0}]}];
+ const forged={...original,railsV:[0,.1,.2,.3],
+  deviceModels:[original.polarityModels.n]};
+ const result=requireSafeNetlistSOA({profile:forged,devices});
+ assert.equal(result.status,'SOA_INSUFFICIENT_NODE_BOUNDS');
+ assert.equal(result.reason,'mutated-or-self-attested-rail-device-profile');
+ const unregulatedLDO=makeFoundryRailProfile({id:'sky130-core-1v8',
+  rippleFraction:.06});
+ assert.equal(requireSafeNetlistSOA({profile:unregulatedLDO,devices}).status,
+  'SOA_REGULATOR_RIPPLE_SPEC_EXCEEDED');
+ const overstress=makeFoundryRailProfile({id:'sky130-core-1v8',rippleFraction:.1});
+ assert.equal(requireSafeNetlistSOA({profile:overstress,devices}).status,
+  'SOA_OXIDE_OVERSTRESS');
+});
