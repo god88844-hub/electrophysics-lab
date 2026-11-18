@@ -18,9 +18,13 @@ echo "Purging queued/in-progress runs on $repo branch $branch"
 echo "Excluding this cleanup workflow run $self_run_id"
 cancelled=0
 for pass in $(seq 1 30); do
+  filter='.workflow_runs[] | select(.head_branch == "stage-m/phase73-77-foundry-guarded") | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending" or .status == "requested")'
+  if [[ -n "$preserve_sha" ]]; then
+    filter="$filter | select(.head_sha != \"$preserve_sha\")"
+  fi
   ids="$(gh api --paginate \
     "repos/$repo/actions/runs?branch=$branch&per_page=100" \
-    --jq '.workflow_runs[] | select(.head_branch == "stage-m/phase73-77-foundry-guarded") | select(.head_sha != env.STAGE_M_PRESERVE_SHA) | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending" or .status == "requested") | .id')"
+    --jq "$filter | .id")"
   if [[ -z "$ids" ]]; then
     echo "Older-head queue drained (same-head runs preserved when requested)"
     echo "Accepted cancellation requests: $cancelled"
