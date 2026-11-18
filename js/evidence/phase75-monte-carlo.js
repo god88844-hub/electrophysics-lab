@@ -84,7 +84,15 @@ export async function runFoundryMonteCarlo({
     return {index:i,tempC:process.tempC,verdict:'INVALID_SPICE_RESULT',
      reason:'SOA_INSUFFICIENT_NODE_BOUNDS',
      delayS:null,staticPowerW:null,dynamicPowerW:null};
-   const claimed=requireSafeNetlistSOA(soaNetlist);
+   const corner=soaNetlist.corner??(
+    soaNetlist.profile.pdk==='SKY130'?'tt':null);
+   const libraryCorners=[...deck.matchAll(/^\s*\.lib\s+\S+\s+([A-Za-z0-9_]+)\s*$/gmi)]
+    .map(m=>m[1].toLowerCase());
+   if(!corner||libraryCorners.length!==1||libraryCorners[0]!==corner)
+    return {index:i,tempC:process.tempC,verdict:'INVALID_SPICE_RESULT',
+     reason:'SOA_INSUFFICIENT_NODE_BOUNDS_UNMATCHED_PDK_CORNER',
+     delayS:null,staticPowerW:null,dynamicPowerW:null};
+   const claimed=requireSafeNetlistSOA({...soaNetlist,corner});
    const actual=claimed.status==='SOA_MODEL_RANGE_SCREEN_PASS'?
     verifyDeckTerminalSOA({deck,devices:soaNetlist.devices,
      profile:soaNetlist.profile}):claimed;
