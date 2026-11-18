@@ -76,6 +76,18 @@ async function runProcess({executable,args,cwd,stdin='',timeoutMs=120000}){
   child.stdin.end(stdin);
  });
 }
+export function makeMagicLvsAndPexCommands(name){
+ if(!id(name)||!REQUIRED_Q4_CUSTOM_CELLS.includes(name))
+  throw Error('Known named Q4 transistor cell required for native Magic commands');
+ return [
+  'drc on','drc check','drc count total',
+  'extract all','ext2spice lvs',
+  'ext2spice -o '+name+'-lvs.spice',
+  'ext2spice cthresh 0','ext2spice rthresh 0',
+  'ext2spice -o '+name+'-pex.spice',
+  'gds write '+name,'quit -noprompt',''
+ ].join('\\n').replaceAll('\\n','\n');
+}
 export async function runMagicNetgenCandidate({
  name,magPath,schematicPath,magicRcPath,netgenSetupPath,
  magicExec='magic',netgenExec='netgen'
@@ -88,14 +100,7 @@ export async function runMagicNetgenCandidate({
  // Magic's "ext2spice lvs" explicitly suppresses C and R parasitics.
  // Generate *two* netlists: the device LVS version and a separate PEX
  // version with both extraction thresholds restored to zero.
- const script=[
-  'drc on','drc check','drc count total',
-  'extract all','ext2spice lvs',
-  'ext2spice -o '+name+'-lvs.spice',
-  'ext2spice cthresh 0','ext2spice rthresh 0',
-  'ext2spice -o '+name+'-pex.spice',
-  'gds write '+name,'quit -noprompt',''
- ].join('\n');
+ const script=makeMagicLvsAndPexCommands(name);
  const magic=await runProcess({executable:magicExec,
   args:['-dnull','-noconsole','-rcfile',magicRcPath,name],cwd:dirname,
   stdin:script});
