@@ -145,7 +145,7 @@ export class Scene3DView {
     this.wireSetup=attachPhysicalWireEditor(this.root,this.controls,()=>this.diagram,
       ()=>onPhysicalLayoutChange(),message=>this.onError(message));
     this.engineering=attachEngineeringWorkbench(this.root,this.controls,()=>this.diagram,
-      ()=>onPhysicalLayoutChange(),message=>this.onError(message),()=>this.requestRender());
+      ()=>onPhysicalLayoutChange(),message=>this.onError(message),()=>this.fit());
     this.available=false;this._raf=0;
     try {
       this.gl=this.canvas.getContext('webgl',{antialias:true,alpha:false});
@@ -319,6 +319,15 @@ export class Scene3DView {
   }
   fit(){
     if(!this.diagram)return;
+    if(this.engineering?.mode){
+      try{
+        const cad=dimensionedCADMesh(dimensionedAssembly(this.diagram));
+        this.center=[cad.center.x,0,cad.center.z];
+        this.distance=clip(cad.span*1.9+3,7,150);
+        this.requestRender();
+        return;
+      }catch(e){this.onError('CAD camera fit failed: '+e.message);}
+    }
     const scene=this.scene();
     this.center=[scene.center.x,0,scene.center.z];
     this.distance=clip(scene.span*1.9+3,7,150);
@@ -366,8 +375,11 @@ export class Scene3DView {
     const x=clientX-bounds.left,y=clientY-bounds.top;
     const cam=this.camera();
     let hit=null,best=44*44;
-    for(const block of this.scene().blocks){
-      const pt=this.project({x:block.x,y:block.height/2,z:block.z},cam.matrix);
+    const cadParts=this.engineering.mode?dimensionedAssembly(this.diagram).parts:null;
+    const candidates=cadParts||this.scene().blocks;
+    for(const block of candidates){
+      const pt=this.project(cadParts?{x:block.xMm/20,y:(block.yMm+block.heightMm/2)/20,z:block.zMm/20}
+        :{x:block.x,y:block.height/2,z:block.z},cam.matrix);
       if(!pt)continue;
       const d=(x-pt.x)**2+(y-pt.y)**2;
       if(d<best){hit=block.id;best=d;}
@@ -375,7 +387,8 @@ export class Scene3DView {
     return hit;
   }
   pickPort(clientX,clientY){
-    if(!this.diagram)return null;
+    // CAD envelopes have no validated pad footprints or physical port coordinates.
+    if(!this.diagram||this.engineering.mode)return null;
     const rect=this.canvas.getBoundingClientRect();
     const x=clientX-rect.left,y=clientY-rect.top,cam=this.camera();
     let nearest=null,best=17*17;
@@ -434,7 +447,9 @@ export class Scene3DView {
   _up(e){
     const d=this.drag;this.drag=null;
     if(!d)return;
-    if(d.mode==='move'&&d.moved&&d.selected){
+    if(d.mode==='move'&&d.moved&&d.selected&&this.engineering.mode){
+      this.onError('Shift-drag schematic movement disabled in mm CAD mode; edit explicit mm fields.');
+    } else if(d.mode==='move'&&d.moved&&d.selected){
       const point=this.designAt(e.clientX,e.clientY);
       this.onMove(d.selected,point.x,point.y);
     }
