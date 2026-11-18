@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {makeFoundryRailProfile,verifyMosTerminalSOA,
- verifyProfileSOA,requireSafeNetlistSOA,MOS_SOA_LIMITS}
+ verifyProfileSOA,verifyRailRippleCorners,requireSafeNetlistSOA,MOS_SOA_LIMITS}
  from '../js/evidence/phase73-soa.js';
 
 test('Q4 SKY130 core uses exact physically sized 600mV logic rails',()=>{
@@ -70,4 +70,36 @@ test('binary and ternary rail assignment changes with the device voltage profile
  assert.deepEqual(y.nominalRailsV,[0,.9,1.8]);
  assert.throws(()=>makeFoundryRailProfile({id:'unsafe-sky130-3v3'}));
  assert.throws(()=>makeFoundryRailProfile({rippleFraction:.15}));
+});
+
+test('all 12 regulator ripple x temperature corners are inside published device operating model screens',()=>{
+ const cases=[
+  {id:'sky130-core-1v8',rails:[0,.6,1.2,1.8],maximum:1.89,ripple:.05},
+  {id:'sky130-core-1v65-unregulated',rails:[0,.55,1.1,1.65],maximum:1.815,ripple:.1},
+  {id:'gf180-core-3v3',rails:[0,1.1,2.2,3.3],maximum:3.63,ripple:.1},
+  {id:'sky130-thick-3v3',rails:[0,1.1,2.2,3.3],maximum:3.63,ripple:.1}
+ ];
+ for(const {id,rails,maximum,ripple} of cases){
+  const p=makeFoundryRailProfile({id,radix:4});
+  assert.deepEqual(p.nominalRailsV,rails,id);
+  assert.ok(Math.abs(p.railsV.at(-1)-maximum)<1e-10,id);
+  assert.equal(p.maximumSpecifiedRippleFraction,ripple,id);
+  const result=verifyRailRippleCorners({id,radix:4});
+  assert.equal(result.caseCount,12,id);
+  assert.equal(result.status,'SOA_ALL_DECLARED_RIPPLE_CORNERS_PASS',id);
+  assert.ok(result.cases.every(x=>x.modelSOA==='SOA_PROFILE_SCREEN_PASS'
+   &&x.terminalViolations===0),id);
+  assert.equal(result.physicalQualification,'UNQUALIFIED_NO_GO');
+ }
+ assert.equal(MOS_SOA_LIMITS.sky130_fd_pr__nfet_01v8.maxGateV,1.95);
+});
+test('LDO contractual ripple above five percent fails closed even if voltage remains below oxide screen',()=>{
+ const profile=makeFoundryRailProfile({id:'sky130-core-1v8',radix:4,
+  rippleFraction:.06});
+ assert.ok(profile.railsV.at(-1)<1.95);
+ assert.equal(verifyProfileSOA(profile).status,'SOA_REGULATOR_RIPPLE_SPEC_EXCEEDED');
+ assert.equal(profile.rippleSpecificationMet,false);
+ const actual=makeFoundryRailProfile({id:'sky130-core-1v8',
+  rippleFraction:.1});
+ assert.equal(verifyProfileSOA(actual).status,'SOA_OXIDE_OVERSTRESS');
 });
