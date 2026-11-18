@@ -32,6 +32,15 @@ try{
   const input=portPoint3D(scene.blocks.find(x=>x.id===b.id),'a','in');
   assert(out && input,'3D ports missing');
   const viewer=app.scene3d;
+  assert(viewer.experimentPanel?.querySelector('input[type="range"]'),
+    '3D simulator-linked experiment panel missing');
+  assert(viewer.experimentExport?.disabled,
+    'Cannot save experiment data before running the solver');
+  viewer.setExperiment(d,{ok:false,problems:['No simulated evidence']});
+  assert(viewer.experimentStatus.textContent.includes('No simulated evidence'),
+    'Unsuccessful solver trace must be labeled unavailable');
+  assert(viewer.experimentExport.disabled,
+    'Rejected simulation must not become downloadable evidence');
   const clickPort=point=>{
     const pos=viewer.project(point);
     assert(pos,'port projected behind camera');
