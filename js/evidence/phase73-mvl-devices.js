@@ -26,10 +26,10 @@ const devices=[
  ['sky130_nfet_lvt','SKY130','sky130_fd_pr__nfet_01v8_lvt','nmos','lvt',1.8],
  ['sky130_pfet_standard','SKY130','sky130_fd_pr__pfet_01v8','pmos','standard',1.8],
  ['sky130_pfet_hvt','SKY130','sky130_fd_pr__pfet_01v8_hvt','pmos','hvt',1.8],
- ['sky130_poly_resistor','SKY130','sky130_fd_pr__res_generic_po','resistor','standard',1.8],
+ ['sky130_poly_resistor','SKY130','sky130_fd_pr__res_high_po','resistor','standard',1.8],
  ['gf180_nfet_03v3','GF180MCU','gf180mcu_fd_pr__nfet_03v3','nmos','standard',3.3],
  ['gf180_pfet_03v3','GF180MCU','gf180mcu_fd_pr__pfet_03v3','pmos','standard',3.3],
- ['gf180_poly_resistor','GF180MCU','gf180mcu_fd_pr__res','resistor','standard',3.3]
+ ['gf180_resistor_unresolved','GF180MCU',null,'resistor','unresolved',3.3]
 ];
 export const PDK_DEVICE_CATALOG=Object.freeze(devices.map(([id,pdk,modelName,kind,thresholdClass,nominalSupplyV])=>Object.freeze({
  id,pdk,modelName,kind,thresholdClass,nominalSupplyV,
@@ -39,6 +39,9 @@ export const PDK_DEVICE_CATALOG=Object.freeze(devices.map(([id,pdk,modelName,kin
  // The peak-voltage envelope, statistical params, actual local library hashes,
  // valid temperatures and actual cell implementation need independent verification.
  verifiedPeakVoltageV:null,verifiedTemperatureC:null,
+ // A modelName may be null when the exact upstream SPICE subcircuit
+ // has not been independently mapped; never invent a device name.
+
  localModelSha256:null,validatedStatisticalDistribution:false,
  fittedFromSilicon:false,hasVerifiedCellImplementation:false
 })));
