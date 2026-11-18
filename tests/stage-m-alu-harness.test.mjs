@@ -68,3 +68,22 @@ test('ALU source harness requires exact foundry process corners and preserves un
   corner:'tt_mm',radix:4,width:8});
  assert.equal(sky.level1Status,'INSUFFICIENT_MODEL_DATA');
 });
+
+test('ALU generated PDK stimulus uses nominal regulated Q4 codes, not the +5% LDO peak',()=>{
+ const c=assembleFoundryALUCandidate({foundry:'SKY130',radix:4,width:4});
+ assert.deepEqual(c.profile.nominalRailsV,[0,.6,1.2,1.8]);
+ assert.ok(Math.abs(c.profile.worstCaseSupplyEnvelopeV.maximum-1.89)<1e-12);
+ assert.equal(c.profile.regulationMode,'LDO_REGULATED');
+ assert.equal(c.soa.status,'SOA_PROFILE_SCREEN_PASS');
+ const unregulated=assembleFoundryALUCandidate({foundry:'SKY130',radix:4,width:4,
+  railProfileId:'sky130-core-1v65-unregulated'});
+ assert.deepEqual(unregulated.profile.nominalRailsV,[0,.55,1.1,1.65]);
+ assert.ok(Math.abs(unregulated.profile.worstCaseSupplyEnvelopeV.maximum-1.815)<1e-12);
+ assert.equal(unregulated.soa.status,'SOA_PROFILE_SCREEN_PASS');
+ const thick=assembleFoundryALUCandidate({foundry:'SKY130',radix:4,width:4,
+  railProfileId:'sky130-thick-3v3'});
+ assert.equal(thick.profile.nominalRailsV.at(-1),3.3);
+ assert.equal(thick.soa.status,'SOA_PROFILE_SCREEN_PASS');
+ assert.throws(()=>assembleFoundryALUCandidate({foundry:'GF180MCU',
+  railProfileId:'sky130-core-1v8',corner:'typical'}),/Invalid foundry/);
+});
