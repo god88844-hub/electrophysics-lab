@@ -5,7 +5,7 @@ import {Diagram} from '../js/core/diagram.js';
 import {setCADEnvelope,dimensionedAssembly,dimensionedCADMesh,CAD_MM_PER_WORLD}
  from '../js/scene/dimensioned-cad.js';
 import {simulateWireThermal} from '../js/scene/wire-electrothermal.js';
-import {compareWireMeasurements} from '../js/scene/wire-measurement-check.js';
+import {compareWireMeasurements,fitWireResistanceScale} from '../js/scene/wire-measurement-check.js';
 import {evaluatePhysicalWire} from '../js/scene/physical-wire.js';
 const near=(a,b,err=1e-9)=>assert.ok(Math.abs(a-b)<=err,String(a)+' != '+String(b));
 const conductor={material:'copper',lengthMm:100,diameterMm:.5,temperatureC:20,assumedCurrentA:2};
@@ -111,4 +111,32 @@ test('No source, no holdout, duplicate rows or fake measurement number is reject
  assert.throws(()=>compareWireMeasurements([row,row2],{...meta,source:'fake'}));
  assert.throws(()=>compareWireMeasurements([row,row2],{...meta,holdoutIds:['z']}));
  assert.throws(()=>compareWireMeasurements([row,{...row2,observedOhm:NaN}],meta));
+});
+
+test('Candidate calibration estimates correction on development only and preserves untouched holdout',()=>{
+ const base=evaluatePhysicalWire(conductor).resistanceOhm;
+ const rows=[
+  {id:'fit1',spec:conductor,observedOhm:base*1.1},
+  {id:'fit2',spec:{...conductor,lengthMm:200},observedOhm:base*2.2},
+  {id:'blind',spec:conductor,observedOhm:base*.8}
+ ];
+ const options={source:'dated laboratory records with raw source IDs',instrument:'bench meter serial 8',
+  uncertaintyOhm:.001,holdoutIds:['blind']};
+ const fitted=fitWireResistanceScale(rows,options);
+ near(fitted.candidateParameters.resistanceScale,1.1,1e-10);
+ near(fitted.independentHoldout.meanAbsoluteErrorOhm,.3*base,1e-12);
+ assert.equal(fitted.modelParametersFitted,true);
+ assert.equal(fitted.independentProvenanceAuthenticated,false);
+ assert.equal(fitted.realWorldBuildSuccessPercent,null);
+ assert.equal(fitted.correctedRows.find(x=>x.id==='blind').role,'holdout');
+ const changed=fitWireResistanceScale(rows.map(r=>r.id==='blind'?{...r,observedOhm:base*3}:r),options);
+ near(changed.candidateParameters.resistanceScale,1.1,1e-10);
+ assert.notEqual(changed.independentHoldout.meanAbsoluteErrorOhm,fitted.independentHoldout.meanAbsoluteErrorOhm);
+});
+test('Candidate calibration rejects unidentifiable or implausible parameters',()=>{
+ const base={source:'dated laboratory records with raw source IDs',instrument:'bench meter',
+  uncertaintyOhm:.001,holdoutIds:['hold']};
+ const spec=conductor;
+ assert.throws(()=>fitWireResistanceScale([{id:'train',spec,observedOhm:0},
+  {id:'hold',spec,observedOhm:0}],base),/plausibility/);
 });
