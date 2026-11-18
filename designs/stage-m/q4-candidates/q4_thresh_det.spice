@@ -2,7 +2,7 @@
 * Targets LDO +/-5% (1.89 V maximum). No DRC/LVS/PEX/SPICE corner evidence.
 * MOS X-instance pin order: drain gate source bulk; w/l in micrometres.
 * The native runner must separately authenticate the PDK and all devices.
-* Requested 0.30, 0.90, 1.50 V are target trips, NOT MEASURED.
+* Skewed comparator target trip-points: 0.30/0.90/1.50 V (NOT MEASURED).
 .subckt q4_thresh_det vin t1 t2 t3 vdd vss
 Xn_lo trip_lo vin vss vss sky130_fd_pr__nfet_01v8_lvt w=8.00 l=0.35
 Xp_lo trip_lo vin vdd vdd sky130_fd_pr__pfet_01v8_hvt w=0.60 l=0.35
