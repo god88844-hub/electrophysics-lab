@@ -10,13 +10,17 @@ test('Public source app path maps to well-known classes and hides internal paths
   '/tests/phase65-project-history.test.mjs','/%252e%252e/.git/config','/js/%2eenv','/js/%252eenv','/js/exploit.exe'])
   assert.throws(()=>normalizeRequestPath(pathName),pathName);
 });
-test('Symlink escape blocked and real app entrypoint resolves',async()=>{
+test('Symlink escape blocked and real app entrypoint resolves',async(t)=>{
  const resolved=await resolveServablePath('/index.html');assert.equal(resolved.relative,'index.html');
  const root=await mkdtemp(path.join(tmpdir(),'ilab-hardening-'));
- try{await symlink('/etc/passwd',path.join(root,'leak'));
-   await symlink('/etc/passwd',path.join(root,'index.html'));
-   await assert.rejects(()=>resolveServablePath('/index.html',root),/Symbolic link/);
- }finally{await rm(root,{recursive:true,force:true});}
+ const outside=await mkdtemp(path.join(tmpdir(),'ilab-outside-'));
+ try{
+  const secret=path.join(outside,'private.txt');
+  await writeFile(secret,'must not be served');
+  try{await symlink(secret,path.join(root,'index.html'),'file');}
+  catch(e){if(['EPERM','EACCES','ENOTSUP'].includes(e.code)){t.skip('Symlink creation requires Windows developer mode or elevated privileges');return;}throw e;}
+  await assert.rejects(()=>resolveServablePath('/index.html',root),/Symbolic link/);
+ }finally{await rm(root,{recursive:true,force:true});await rm(outside,{recursive:true,force:true});}
 });
 test('Server source includes allowlist checks and required HTTP security headers',async()=>{
  const source=await readFile(new URL('../serve.mjs',import.meta.url),'utf8');

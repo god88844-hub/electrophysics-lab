@@ -6,7 +6,7 @@ const original=JSON.parse(readFileSync(new URL('../benchmarks/phase12/iris-mlp.j
 const source=readFileSync(new URL('../benchmarks/phase12/iris.csv',import.meta.url),'utf8');
 const copy=()=>structuredClone(original);
 test('Phase 12: full licensed UCI Iris dataset is present with 150 source measurements',()=>{
-  const lines=source.trim().split('\n');
+  const lines=source.trim().split(/\r?\n/);
   assert.equal(lines[0],'150,4,setosa,versicolor,virginica');
   assert.equal(lines.length,151);
   const classes=[0,0,0];
@@ -28,7 +28,7 @@ test('Phase 12: reproducible stratified 120/30 holdout with no training leakage'
   assert.equal(new Set([...result.trainIndices,...result.testIndices]).size,150);
   assert.deepEqual([0,1,2].map(c=>result.labels.filter(x=>x===c).length),[10,10,10]);
   for(let i=0;i<30;i++){
-    const sourceRow=source.trim().split('\n')[f.split.testIndices[i]+1].split(',').map(Number);
+    const sourceRow=source.trim().split(/\r?\n/)[f.split.testIndices[i]+1].split(',').map(Number);
     assert.deepEqual(f.split.holdoutRawFeatures[i],sourceRow.slice(0,4));
     assert.equal(f.split.holdoutLabels[i],sourceRow[4]);
   }

@@ -314,3 +314,50 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
 .skip-link{position:absolute;top:-90px;left:8px;z-index:1000;background:#142b47;color:white;padding:10px}
 .skip-link:focus{top:6px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}}
+
+
+/* Physically evocative, but explicitly non-physical, procedural 3D workbench. */
+.scene3d-root {
+  background: radial-gradient(ellipse at 48% 25%, #153247 0%, #0b1b2a 57%, #050c14 100%);
+}
+.scene3d-controls {
+  position: absolute;top:16px;left:16px;z-index:3;
+  display:flex;flex-wrap:wrap;gap:6px;max-width:calc(100% - 32px);
+  padding:6px;background:rgba(6,19,30,.89);
+  border:1px solid #426176;border-radius:10px;
+  box-shadow:0 9px 28px rgba(0,0,0,.35);
+}
+.scene3d-controls button {
+  font:600 11px/1.2 system-ui,sans-serif;cursor:pointer;color:#d1e4ee;
+  border:1px solid #334c5b;background:#172f3d;border-radius:6px;
+  padding:8px 11px;min-height:34px;
+}
+.scene3d-controls button:hover,.scene3d-controls button:focus-visible {
+  border-color:#79d6dd;color:#fff;
+}
+.scene3d-controls button[aria-pressed="true"] {
+  color:#9df0dc;border-color:#4cae9b;background:#153b3d;
+}
+.scene3d-qualification {
+  position:absolute;right:15px;top:18px;z-index:2;
+  color:#9bc6d0;font:650 10px/1.5 system-ui,sans-serif;
+  letter-spacing:.08em;text-align:right;max-width:210px;
+  text-shadow:0 1px 6px #000;
+  pointer-events:none;
+}
+.scene3d-selection-card {
+  position:absolute;right:16px;bottom:57px;z-index:2;
+  padding:10px 12px;max-width:260px;font:12px/1.45 system-ui,sans-serif;
+  color:#daeff6;background:rgba(8,23,33,.94);
+  border:1px solid #4b7082;border-left:3px solid #46c7c6;
+  border-radius:8px;box-shadow:0 7px 20px #0006;
+  pointer-events:none;
+}
+.scene3d-selection-card[hidden] { display:none; }
+.scene3d-help {font-size:11px;max-width:calc(100% - 24px);width:auto;letter-spacing:.012em; }
+@media (max-width:750px) {
+  .scene3d-controls {left:8px;top:8px;gap:3px;padding:4px;}
+  .scene3d-controls button {padding:6px;min-height:32px;}
+  .scene3d-qualification {right:8px;top:65px;max-width:170px;font-size:9px;}
+  .scene3d-selection-card {right:8px;bottom:72px;}
+}
