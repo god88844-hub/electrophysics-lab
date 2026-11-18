@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {inspectOriginalCustomCellFiles,runMagicNetgenCandidate,evaluatePostLayoutSignoff}
+import {inspectOriginalCustomCellFiles,runMagicNetgenCandidate,evaluatePostLayoutSignoff,
+ runQ4CellLayoutBatch,REQUIRED_Q4_CUSTOM_CELLS}
  from '../js/evidence/phase77-magic-netgen.js';
 test('lack of authentic MAG, extracted SPICE and PDK rule decks cannot fabricate GDS or DRC',async()=>{
  const r=await inspectOriginalCustomCellFiles({name:'q4_mux'});
@@ -38,4 +39,18 @@ test('source-file headers are inspected but a syntactically plausible mock canno
   assert.equal(no.status,'INSUFFICIENT_MODEL_DATA');
   assert.equal(no.physicalQualification,'UNQUALIFIED_NO_GO');
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('four-cell Q4 layout batch refuses to invent MAG/GDS/DRC/LVS sources or artifact hashes',async()=>{
+ const names=['q4_inv','q4_thresh_det','q4_mux4','q4_half_adder'];
+ assert.deepEqual(REQUIRED_Q4_CUSTOM_CELLS,names);
+ assert.rejects(()=>runQ4CellLayoutBatch({cells:[{name:'q4_inv'}]}),/four distinct/);
+ const candidate=await runQ4CellLayoutBatch({cells:names.map(name=>({name}))});
+ assert.equal(candidate.status,'INSUFFICIENT_MODEL_DATA');
+ assert.equal(candidate.records.length,4);
+ assert.equal(candidate.nativeToolsInvoked,false);
+ assert.equal(candidate.allOutputHashesPresent,false);
+ assert.equal(candidate.physicalQualification,'UNQUALIFIED_NO_GO');
+ assert.ok(candidate.records.every(x=>x.magicExecuted===false));
+ assert.ok(candidate.records.every(x=>x.status==='INSUFFICIENT_MODEL_DATA'));
 });
