@@ -184,6 +184,8 @@ const approvedChangedPath=(p)=>(
  p==='.github/workflows/physical-harness-3d.yml'||
  p==='js/scene/manufacturer-cad-intake.js'||p==='tests/manufacturer-cad-intake.test.mjs'||
  p==='docs/MANUFACTURER-CAD-INTAKE.md'||p==='.github/workflows/manufacturer-cad-intake.yml'||
+ p==='js/scene/imported-obj-geometry.js'||p==='tests/imported-obj-geometry.test.mjs'||
+ p==='docs/IMPORTED-OBJ-3D-COMPONENTS.md'||p==='.github/workflows/imported-obj-3d.yml'||
  p==='tests/segmented-wire-thermal.test.mjs'||p==='docs/SEGMENTED-WIRE-THERMAL.md'||
  p==='.github/workflows/segmented-wire-thermal.yml'||
  p==='js/scene/experiment-trace.js'||p==='tests/experiment-trace.test.mjs'||
