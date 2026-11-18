@@ -120,3 +120,12 @@ test('A reserved synthetic resistor ID collision fails without corrupting origin
  assert.throws(()=>solveCoupledWireDC(d,env),/reserved physical resistor component ID collision/i);
  assert.equal(JSON.stringify(d.toJSON()),before);
 });
+
+test('Dense MNA work budget fails closed before an expensive interactive solve',()=>{
+ const {d}=circuit();
+ for(let i=0;i<70;i++)d.addBlock('chip.RES',{id:'extra-unwired-'+i});
+ const before=JSON.stringify(d.toJSON());
+ assert.throws(()=>solveCoupledWireDC(d,{...env,durationS:5,stepS:.01}),
+  /computational budget/);
+ assert.equal(JSON.stringify(d.toJSON()),before);
+});
