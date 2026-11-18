@@ -30,3 +30,19 @@ test('incorrect transistor-instance mapping cannot attest another circuit',async
    samples:[{gateV:1.8,drainV:1.8,sourceV:0,bodyV:0}]}]}});
  assert.equal(x.status,'SOA_INSUFFICIENT_NODE_BOUNDS');
 });
+
+test('a forged safe SOA device sample cannot hide an actual 3.3V deck source',async()=>{
+ const profile=makeFoundryRailProfile({id:'sky130-core-1v8'});
+ const physicalDeck='* source envelope independent of caller claims\n'+
+  'VDD d 0 3.3\nVG g 0 1.8\n'+
+  'Xn d g 0 0 sky130_fd_pr__nfet_01v8 w=1 l=0.15\n.end\n';
+ const x=await runMvlNgspiceMeasurements({
+  exe:'/missing/does-not-exist/ngspice',dcDeck:physicalDeck,
+  transientDeck:physicalDeck,
+  soaNetlist:{profile,devices:[{instance:'Xn',
+   model:'sky130_fd_pr__nfet_01v8',
+   samples:[{gateV:1.8,drainV:1.8,sourceV:0,bodyV:0}]}]}});
+ assert.equal(x.status,'SOA_OXIDE_OVERSTRESS');
+ assert.equal(x.verifiedPdk,false);
+ assert.equal(x.reason,'dc-source-derived-terminal-soa-rejected');
+});
