@@ -38,6 +38,10 @@ function inputs(diagram,environment){
  const maxTemperatureC=bounded(environment.maxTemperatureC??150,-40,150,'Limit temperature °C');
  const count=Math.ceil(durationS/stepS);
  if(count>500)throw Error('DC thermal coupling restricted to 500 time steps');
+ // Dense MNA factorization scales superlinearly; reject expensive browser runs.
+ const matrixBudget=diagram.blocks.length+diagram.wires.length*2;
+ if(count*matrixBudget**3>10_000_000)
+  throw Error('Coupled DC computational budget exceeded; shorten run or simplify circuit');
  const physical=physicalWireAssumptions(diagram);
  if(physical.wires.length!==diagram.wires.length||physical.status!=='model-only')
   throw Error('Every canonical wire needs a saved physical conductor specification');
