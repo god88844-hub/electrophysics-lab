@@ -203,6 +203,8 @@ p==='js/evidence/stage-m-signoff-readiness.js'||
  p==='tests/phase73-pdk-execution.test.mjs'||
  p==='tests/phase74-soa-spice-guard.test.mjs'||
  p==='tests/phase77-magic-netgen-real.test.mjs'||
+ p==='js/evidence/stage-m-alu-harness.js'||
+ p==='tests/stage-m-alu-harness.test.mjs'||
  p==='README.md'||p==='package.json');
 const unexpectedChanges=changes.filter(p=>!approvedChangedPath(p));
 const paths=execFileSync('git',['ls-files','-z']).toString('utf8').split('\0').filter(Boolean).sort();
