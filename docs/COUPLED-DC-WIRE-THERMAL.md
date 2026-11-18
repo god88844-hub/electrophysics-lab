@@ -24,3 +24,7 @@ Only basic linear DC circuits are accepted for now: resistors, DC voltage/curren
 
 ## Planned next validations
 Connect authentic dated raw four-wire resistance / thermocouple measurements, source-hash and instrument calibration records, blind held-out operating points, and an independent circuit reference such as Ngspice with matched wire topology. Use discrepancies and uncertainty to define a **bounded validated operating envelope**; unknown remains unknown outside it.
+
+## Independent electrical-solver check
+
+The dedicated `Independent Ngspice coupled DC wire reference` workflow installs actual Ngspice on Linux. It constructs a physically equivalent **three-conductor closed DC series network**, runs the separate Ngspice numerical solver, and checks the first-sample source current of the augmented JavaScript MNA model to a declared absolute tolerance of `2e-5 A`. It requires all three canonical wires to have explicit lengths, metal diameters and contact resistance, and fails if the independent source current is absent. This verifies a **single linear electrical topology** in software; it does **not** establish temperature-dependent or physical measurement accuracy.
