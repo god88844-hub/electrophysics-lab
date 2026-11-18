@@ -1,5 +1,5 @@
 import {setCADEnvelope,dimensionedAssembly} from './dimensioned-cad.js';
-import {simulateWireThermal} from './wire-electrothermal.js';
+import {simulateWireThermal,simulateSegmentedWireThermal} from './wire-electrothermal.js';
 import {solveCoupledWireDC} from './coupled-wire-dc.js';
 import {compareWireMeasurements,fitWireResistanceScale} from './wire-measurement-check.js';
 function numericField(d,name,value){
@@ -51,6 +51,16 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  const thermalButton=d.createElement('button');thermalButton.type='button';
  thermalButton.dataset.action='run-wire-thermal';thermalButton.textContent='Simulate wire temperature';
  const thermalResult=d.createElement('output');thermalResult.setAttribute('aria-live','polite');
+  const segmentedHeading=d.createElement('strong');segmentedHeading.textContent='Segmented 1D heat transfer (model only)';
+  const segments=numericField(d,'Thermal segments (2–32)',6);
+  const jacket=numericField(d,'Jacket thickness (mm)',0);
+  const jacketK=numericField(d,'Jacket conductivity (W/m/K)',0.2);
+  const endA=numericField(d,'Terminal A heat sink (W/K)',0);
+  const endB=numericField(d,'Terminal B heat sink (W/K)',0);
+  const segmentedButton=d.createElement('button');segmentedButton.type='button';
+  segmentedButton.dataset.action='run-segmented-wire-thermal';
+  segmentedButton.textContent='Simulate 1D wire heat transfer';
+  const segmentedResult=d.createElement('output');segmentedResult.setAttribute('aria-live','polite');
  const coupled=d.createElement('button');coupled.type='button';
  coupled.dataset.action='run-coupled-wire-dc';coupled.textContent='Run coupled DC current + heat';
  const coupledReadout=d.createElement('output');coupledReadout.setAttribute('aria-live','polite');
@@ -70,7 +80,9 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  fit.textContent='Fit candidate model (development only)';
  panel.append(title,note,selector,...fields.map(f=>f.wrapper),save,toggle,report,
   thermalHeading,wireSelect,ambient.wrapper,h.wrapper,duration.wrapper,step.wrapper,
-  contact.wrapper,thermalButton,thermalResult,coupled,coupledReadout,
+  contact.wrapper,thermalButton,thermalResult,
+   segmentedHeading,segments.wrapper,jacket.wrapper,jacketK.wrapper,endA.wrapper,endB.wrapper,
+   segmentedButton,segmentedResult,coupled,coupledReadout,
   compareHeading,compareNote,observations,source,instrument,uncertainty.wrapper,held,compare,fit,evidence);
  const update=()=>{
   const diagram=diagramAccessor();const prior=selector.value,oldWire=wireSelect.value;
@@ -80,6 +92,7 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
   if([...selector.options].some(o=>o.value===prior))selector.value=prior;
   if([...wireSelect.options].some(o=>o.value===oldWire))wireSelect.value=oldWire;
   save.disabled=!selector.options.length;thermalButton.disabled=!wireSelect.options.length;
+   segmentedButton.disabled=!wireSelect.options.length;
   coupled.disabled=diagram?.lab!=='chip'||!wireSelect.options.length;
   load();
  };
@@ -120,6 +133,28 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
     simulation.finalPowerW.toPrecision(4)+' W; MODEL ONLY, no hardware measurements.';
   }catch(e){thermalResult.textContent='Cannot simulate: '+e.message;onError(e.message);}
  });
+  segmentedButton.addEventListener('click',()=>{
+   try{
+    const diagram=diagramAccessor(),id=wireSelect.value;
+    if(!diagram?.wires?.some(w=>w.id===id))throw Error('Choose a canonical wire');
+    const spec=diagram.meta?.physicalLayout?.wires?.[id];
+    if(!spec)throw Error('Save explicit wire dimensions and assumed current first');
+    const f=[ambient,h,duration,step,contact,segments,jacket,jacketK,endA,endB]
+     .map(x=>x.input.value);
+    if(f.some(v=>!v.trim()))throw Error('All segmented thermal parameters required');
+    const s=simulateSegmentedWireThermal(spec,{
+     ambientC:Number(f[0]),heatTransferWm2K:Number(f[1]),durationS:Number(f[2]),
+     stepS:Number(f[3]),contactResistanceOhm:Number(f[4]),
+     segments:Number(f[5]),jacketThicknessMm:Number(f[6]),
+     jacketThermalConductivityWmK:Number(f[7]),
+     endAConductanceWPerK:Number(f[8]),endBConductanceWPerK:Number(f[9])});
+    segmentedResult.textContent='1D axial + jacket and end sinks: '+s.segments+
+     ' segments; maximum '+s.peakTemperatureC.toFixed(3)+' °C; mean '+
+     s.meanTemperatureC.toFixed(3)+' °C; final resistance '+
+     s.finalResistanceOhm.toPrecision(5)+' Ω; energy residual '+
+     s.energyBalanceResidualJ.toExponential(2)+' J. MODEL ONLY; no physical validation.';
+   }catch(e){segmentedResult.textContent='1D simulation unavailable: '+e.message;onError(e.message);}
+  });
  coupled.addEventListener('click',()=>{
   try{
    const diagram=diagramAccessor();
@@ -166,5 +201,5 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  });
  update();
  return {panel,button,selector,fields,save,toggle,report,wireSelect,thermalButton,
-  thermalResult,coupled,coupledReadout,compare,fit,evidence,sync:update,get mode(){return mode;}};
+  thermalResult,segmentedButton,segmentedResult,coupled,coupledReadout,compare,fit,evidence,sync:update,get mode(){return mode;}};
 }
