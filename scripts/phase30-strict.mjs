@@ -190,6 +190,8 @@ try{
  p==='js/scene/detailed-cad-mesh.js'||p==='tests/physical-routing-3d.test.mjs'||
  p==='docs/PHYSICAL-SCALE-3D-TERMINALS.md'||
  p==='.github/workflows/physical-harness-3d.yml'||
+ p==='tests/segmented-wire-thermal.test.mjs'||p==='docs/SEGMENTED-WIRE-THERMAL.md'||
+ p==='.github/workflows/segmented-wire-thermal.yml'||
  p==='js/scene/experiment-trace.js'||p==='tests/experiment-trace.test.mjs'||
  p==='docs/EXPERIMENT-TRACE-3D.md'||p==='.github/workflows/experiment-trace-3d.yml'||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
