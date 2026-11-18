@@ -76,6 +76,10 @@ try{
     'Dimensioned engineering workbench unavailable');
   eng.button.click();
   assert(eng.panel.hidden===false,'Engineering panel did not open');
+  assert(eng.coupled?.dataset.action==='run-coupled-wire-dc',
+    'Engineering mode lacks opt-in circuit/thermal solver');
+  assert(eng.coupled.disabled===true,
+    'Coupled DC solver must not activate for non-analog Logic Lab');
   assert(eng.selector.options.length===d.blocks.length,
     'CAD picker must use canonical design components');
   eng.save.click();
