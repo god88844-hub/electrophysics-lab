@@ -84,7 +84,7 @@ export function inspectStageMReadiness({
   monteCarlo,noiseMargin,layout,statisticalCalibration,independentReview});
  return {
   format:STAGE_M_READINESS_FORMAT,designId,foundry,radix,width,
-  railsV:profile.nominalRailsV,soAMaximumRippleRailsV:rails.rails,
+  railsV:profile.nominalRailsV,soAMaximumRippleRailsV:profile.railsV,
   profileId:profile.id,soa, rippleFractions:[-.1,0,.1],
   temperatureCornersC:[-40,25,85,125],
   modelIdentifiers:deviceIdentifiers,
