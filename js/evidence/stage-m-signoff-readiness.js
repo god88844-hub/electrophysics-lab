@@ -16,14 +16,21 @@ const roles=Object.freeze({
 const distinct=a=>[...new Set(a)].sort();
 
 export function inspectStageMReadiness({
- manifest,foundry='SKY130',width=8,radix=4,
+ manifest,foundry='SKY130',width=8,radix=4,railProfileId=null,
  monteCarlo=null,noiseMargin=null,layout=null,
  statisticalCalibration=null,independentReview=null
 }={}){
  if(!['SKY130','GF180MCU'].includes(foundry)||
     ![4,8].includes(width)||![2,3,4].includes(radix))
   throw Error('Known foundry, 4/8 digit width and binary/ternary/Q4 radix required');
- const designId='stage-m-'+foundry.toLowerCase()+'-r'+radix+'-alu'+width;
+ const profileName=railProfileId??(foundry==='SKY130'?
+   'sky130-core-1v8':'gf180-core-3v3');
+ if(!['sky130-core-1v8','sky130-thick-3v3','gf180-core-3v3'].includes(profileName)||
+    (foundry==='GF180MCU')!==(profileName==='gf180-core-3v3'))
+  throw Error('Foundry rail profile does not match the requested PDK');
+ const designId='stage-m-'+foundry.toLowerCase()+
+  (profileName==='sky130-thick-3v3'?'-thick':'')+
+  '-r'+radix+'-alu'+width;
  const reasons=[];
  if(manifest?.format!=='invention-lab/phase73-pinned-pdk-sources/1'||
     manifest.calibrationStatus!=='VALIDATED'||
@@ -34,24 +41,29 @@ export function inspectStageMReadiness({
  if(!source||!Array.isArray(source.entries)||source.entries.length<2||
     source.entries.some(x=>!/^[a-f0-9]{40}$/.test(x.gitBlobSha1||'')))
   reasons.push('missing-immutable-foundry-model-manifest');
- // Explicit Q4 0..3.3 V and ±10% supply ripple. Never imply 1.8 V
- // SKY130 threshold devices are safe at these absolute voltages.
- const profile=makeFoundryRailProfile({id:foundry==='SKY130'?
-   'sky130-core-1v8':'gf180-core-3v3',radix,rippleFraction:.1,
-  temperatureC:125});
- const rails=makeVoltageRails({base:radix,maximumV:profile.railsV.at(-1)});
+ // Exactly one +10% ripple in the SOA check; do not apply ripple twice.
+ // The selected device family owns the nominal 1.8V or 3.3V model limits.
+ const profile=makeFoundryRailProfile({id:profileName,radix,
+  rippleFraction:.1,temperatureC:125});
+ const rails=makeVoltageRails({base:radix,
+  maximumV:profile.nominalRailsV.at(-1)});
  const soa=verifyProfileSOA(profile);
  if(soa.status==='SOA_OXIDE_OVERSTRESS')
   reasons.push('SOA_OXIDE_OVERSTRESS');
  if(soa.status!=='SOA_PROFILE_SCREEN_PASS')
   reasons.push('device-terminal-stress-envelope-requires-design-rework');
- const deviceIdentifiers=foundry==='SKY130'?
-  roles[radix===2?'binary':radix===3?'ternary':'q4']:
-  ['gf180_nfet_03v3','gf180_pfet_03v3'];
+ const deviceIdentifiers=profileName==='sky130-thick-3v3'?
+  ['sky130_nfet_g5v0d10v5','sky130_pfet_g5v0d10v5']:
+  foundry==='SKY130'?
+   roles[radix===2?'binary':radix===3?'ternary':'q4']:
+   ['gf180_nfet_03v3','gf180_pfet_03v3'];
  const deviceEnvelopes=deviceIdentifiers.map(deviceId=>
   validateDeviceOperatingEnvelope(deviceId,{rails,temperatureC:125,
    supplyRippleFraction:.1}));
- if(deviceEnvelopes.some(x=>x.nominalExceeded))
+ // Nominal-supply overshoot is not automatically oxide overstress when the
+ // PDK explicitly allows a +10% excursion (GF180 thin oxide: 3.63V).
+ if(soa.status==='SOA_OXIDE_OVERSTRESS'&&
+    deviceEnvelopes.some(x=>x.nominalExceeded))
   reasons.push('10-percent-supply-ripple-exceeds-declared-nominal-device-voltage');
  if(deviceEnvelopes.some(x=>x.usableForTransistorSimulation!==true))
   reasons.push('device-voltage-temperature-and-absolute-rating-unverified');
