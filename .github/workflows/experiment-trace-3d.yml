@@ -1,0 +1,31 @@
+name: Simulation-linked 3D experiment playback and evidence integrity
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  trace-integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Simulator-connected trace and physical evidence boundaries
+        run: node --test tests/experiment-trace.test.mjs
+      - name: Real WebGL workspace smoke
+        run: node scripts/browser-smoke.mjs
+  native-windows-trace:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/experiment-trace.test.mjs

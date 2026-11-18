@@ -989,7 +989,11 @@ export class App {
     this.log(`▶ Running ${lab.label}: ${diagram.name}…`);
     try {
       const result = await lab.run(diagram);
+      if(this.state.labId!==labId||this.diagrams[labId]!==diagram){
+        this.log('Discarded stale simulation from an edited or switched design.','warn');return;
+      }
       this.lastResult = result;
+      if(SCENE_LABS.has(labId))this.scene3d.setExperiment(diagram,result);
       this.switchOutputTab('scope');
       this.scope.renderResult(labId, result, diagram);
       if (result.ok === false) {
@@ -997,6 +1001,8 @@ export class App {
       }
       for (const w of result.warnings || []) this.log(`⚠ ${w}`, 'warn');
     } catch (e) {
+      if(SCENE_LABS.has(labId)&&this.diagrams[labId]===diagram)
+        this.scene3d.setExperiment(diagram,{ok:false,problems:[e.message]});
       this.log(`✘ ${e.message}`, 'err');
       this._setVerdict('fail');
       return;

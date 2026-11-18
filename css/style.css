@@ -361,3 +361,38 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
   .scene3d-qualification {right:8px;top:65px;max-width:170px;font-size:9px;}
   .scene3d-selection-card {right:8px;bottom:72px;}
 }
+
+
+/* Simulator-backed, explicitly non-physical 3D instrument readout. */
+.scene3d-experiment-panel{
+  position:absolute;left:13px;bottom:56px;z-index:4;width:min(345px,calc(100% - 26px));
+  padding:11px 12px;border:1px solid #477789;border-radius:10px;
+  background:rgba(6,22,33,.95);color:#e0f3fa;
+  box-shadow:0 12px 35px #0009;font:11px/1.4 system-ui,sans-serif;
+  max-height:min(270px,58%);overflow:auto;
+}
+.scene3d-experiment-title{font-size:11px;font-weight:800;letter-spacing:.09em;color:#86e5da;}
+.scene3d-experiment-status{font-size:11px;color:#a9c4cc;margin:3px 0 7px;}
+.scene3d-experiment-timeline{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.scene3d-experiment-timeline button{
+  min-width:29px;height:29px;cursor:pointer;border:1px solid #467b81;
+  border-radius:6px;background:#173b47;color:#cafcff;
+}
+.scene3d-experiment-timeline button:disabled{opacity:.4;cursor:default;}
+.scene3d-experiment-timeline input[type=range]{flex:1;min-width:35px;accent-color:#7debc4;}
+.scene3d-experiment-time{font-variant-numeric:tabular-nums;white-space:nowrap;color:#d6fbfa;}
+.scene3d-experiment-readings{display:grid;gap:3px;max-height:88px;overflow:auto;}
+.scene3d-experiment-reading{display:flex;justify-content:space-between;gap:12px;padding:3px 5px;background:#122e3b;border-radius:4px;}
+.scene3d-experiment-reading span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.scene3d-experiment-reading strong{color:#88f4cd;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.scene3d-experiment-empty{color:#8aa5b0;}
+.scene3d-experiment-panel > button{
+  margin-top:8px;padding:5px 8px;font:600 11px system-ui,sans-serif;
+  border:1px solid #466e7a;border-radius:6px;color:#d5eff9;background:#1a3749;
+  cursor:pointer;
+}
+.scene3d-experiment-panel > button:disabled{opacity:.45;cursor:default;}
+.scene3d-experiment-qualifier{font-size:9px;letter-spacing:.025em;color:#dcbf80;margin-top:7px;}
+@media(max-width:680px){
+  .scene3d-experiment-panel{bottom:51px;left:8px;width:min(295px,calc(100% - 16px));max-height:43%;}
+}

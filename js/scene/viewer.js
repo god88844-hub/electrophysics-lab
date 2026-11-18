@@ -2,6 +2,7 @@
 // This renderer is visualization/editing only. It never claims physical fidelity.
 import { sceneFromDiagram, worldToDesign, portPoint3D } from './layout.js';
 import { experimentBenchMesh } from './experiment-bench.js';
+import { captureExperimentTrace,isExperimentCurrent,experimentReadingsAt,exportExperimentRecord } from './experiment-trace.js';
 
 const VERT = `attribute vec3 aPosition;
 attribute vec3 aColor;
@@ -77,6 +78,7 @@ export class Scene3DView {
   constructor(container,{onSelect=()=>{},onMove=()=>{},onConnect=()=>{},onError=()=>{}}={}){
     this.container=container;this.onSelect=onSelect;this.onMove=onMove;this.onConnect=onConnect;this.onError=onError;
     this.diagram=null;this.selectedId=null;this.wireSource=null;
+    this.experiment=null;this.experimentIndex=0;this.experimentPlaying=false;this.experimentRAF=0;this.experimentTickAt=0;
     this.focusIds=null;this.focusLabel=null;
     this.yaw=0.65;this.pitch=0.78;this.distance=12;this.center=[0,0,0];
     this.root=document.createElement('div');this.root.className='scene3d-root';
@@ -100,7 +102,42 @@ export class Scene3DView {
     this.qualification.textContent='ILLUSTRATIVE 3D WORKBENCH  ·  REAL HARDWARE NOT VERIFIED';
     this.selectionCard=document.createElement('div');this.selectionCard.className='scene3d-selection-card';
     this.selectionCard.hidden=true;
-    this.root.append(this.canvas,this.overlay,this.controls,this.qualification,this.selectionCard,this.notice);
+
+    this.experimentPanel=document.createElement('section');
+    this.experimentPanel.className='scene3d-experiment-panel';
+    this.experimentPanel.setAttribute('aria-label','Simulation-linked 3D experiment instruments');
+    const heading=document.createElement('div');
+    heading.className='scene3d-experiment-title';
+    heading.textContent='SIMULATION INSTRUMENTS';
+    this.experimentStatus=document.createElement('div');
+    this.experimentStatus.className='scene3d-experiment-status';
+    this.experimentStatus.setAttribute('role','status');
+    const timeline=document.createElement('div');timeline.className='scene3d-experiment-timeline';
+    this.experimentPlay=document.createElement('button');
+    this.experimentPlay.type='button';this.experimentPlay.textContent='▶';
+    this.experimentPlay.setAttribute('aria-label','Play simulated trace');
+    this.experimentPlay.addEventListener('click',()=>this.toggleExperimentPlayback());
+    this.experimentSlider=document.createElement('input');
+    this.experimentSlider.type='range';this.experimentSlider.min='0';
+    this.experimentSlider.max='0';this.experimentSlider.step='1';this.experimentSlider.value='0';
+    this.experimentSlider.setAttribute('aria-label','Experiment timeline sample');
+    this.experimentSlider.addEventListener('input',()=>{
+      this.stopExperimentPlayback();this.experimentIndex=Number(this.experimentSlider.value);
+      this.updateExperimentPanel();this.requestRender();
+    });
+    this.experimentTime=document.createElement('span');this.experimentTime.className='scene3d-experiment-time';
+    timeline.append(this.experimentPlay,this.experimentSlider,this.experimentTime);
+    this.experimentReadouts=document.createElement('div');
+    this.experimentReadouts.className='scene3d-experiment-readings';
+    this.experimentExport=document.createElement('button');this.experimentExport.type='button';
+    this.experimentExport.textContent='Save experiment JSON';
+    this.experimentExport.addEventListener('click',()=>this.downloadExperiment());
+    const qualifier=document.createElement('div');qualifier.className='scene3d-experiment-qualifier';
+    qualifier.textContent='SIMULATOR OUTPUT ONLY · NOT PHYSICAL MEASUREMENT';
+    this.experimentPanel.append(heading,this.experimentStatus,timeline,
+      this.experimentReadouts,this.experimentExport,qualifier);
+    this.root.append(this.canvas,this.overlay,this.controls,this.qualification,this.selectionCard,this.experimentPanel,this.notice);
+    this.updateExperimentPanel();
     container.appendChild(this.root);
     this.available=false;this._raf=0;
     try {
@@ -138,6 +175,95 @@ export class Scene3DView {
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(this.root);
   }
+
+  stopExperimentPlayback(){
+    this.experimentPlaying=false;this.experimentTickAt=0;
+    if(this.experimentRAF){cancelAnimationFrame(this.experimentRAF);this.experimentRAF=0;}
+    if(this.experimentPlay)this.experimentPlay.textContent='▶';
+  }
+  toggleExperimentPlayback(){
+    if(!this.experiment||!isExperimentCurrent(this.experiment,this.diagram)||
+       this.experiment.axis.length<2)return;
+    if(this.experimentPlaying){this.stopExperimentPlayback();return;}
+    this.experimentPlaying=true;this.experimentPlay.textContent='❚❚';
+    const tick=(now)=>{
+      this.experimentRAF=0;
+      if(!this.experimentPlaying)return;
+      if(!this.experimentTickAt)this.experimentTickAt=now;
+      // Explicitly illustrative time-lapse playback, not physical wall-clock timing.
+      if(now-this.experimentTickAt>=180){
+        const n=this.experiment.axis.length;
+        this.experimentIndex=(this.experimentIndex+1)%n;
+        this.experimentTickAt=now;
+        this.updateExperimentPanel();this.requestRender();
+      }
+      this.experimentRAF=requestAnimationFrame(tick);
+    };
+    this.experimentRAF=requestAnimationFrame(tick);
+  }
+  setExperiment(diagram,result){
+    if(!diagram||diagram!==this.diagram)return;
+    this.stopExperimentPlayback();
+    try {this.experiment=captureExperimentTrace(diagram,result);}
+    catch(e){
+      this.experiment={status:'unavailable',reason:'Trace unavailable: '+String(e.message)};
+    }
+    this.experimentIndex=0;this.updateExperimentPanel();this.requestRender();
+  }
+  updateExperimentPanel(){
+    if(!this.experimentPanel)return;
+    const current=this.experiment&&isExperimentCurrent(this.experiment,this.diagram);
+    const e=current?this.experiment:null;
+    if(this.experiment&&!current&&this.experiment.status==='ready'){
+      this.stopExperimentPlayback();this.experiment=null;
+    }
+    this.experimentStatus.textContent=e
+      ? 'Model: '+e.analysis+' · '+e.sourceSamples+' solver samples · physical validity UNKNOWN'
+      : this.experiment?.reason||'Press ▶ Run to connect solver readings';
+    const size=e?.axis.length||0;
+    this.experimentSlider.disabled=size<2;
+    this.experimentSlider.max=String(Math.max(0,size-1));
+    this.experimentIndex=Math.max(0,Math.min(this.experimentIndex,Math.max(0,size-1)));
+    this.experimentSlider.value=String(this.experimentIndex);
+    this.experimentPlay.disabled=size<2;
+    this.experimentExport.disabled=!e;
+    const step=e?.axis[this.experimentIndex];
+    this.experimentTime.textContent=e
+      ? (Number.isFinite(step)?Number(step).toPrecision(5):'—')+' '+e.axisUnit+
+        ' · '+(this.experimentIndex+1)+'/'+size
+      : 'No trace';
+    this.experimentReadouts.replaceChildren();
+    const readings=e?experimentReadingsAt(e,this.experimentIndex,{
+      selectedBlockId:this.selectedId,limit:5
+    }):[];
+    for(const item of readings){
+      const line=document.createElement('div');line.className='scene3d-experiment-reading';
+      const label=document.createElement('span');label.textContent=item.label;
+      const value=document.createElement('strong');
+      value.textContent=(typeof item.value==='number'
+        ? Number(item.value).toPrecision(5):String(item.value))+' '+item.unit;
+      line.append(label,value);this.experimentReadouts.append(line);
+    }
+    if(!readings.length){
+      const p=document.createElement('div');p.className='scene3d-experiment-empty';
+      p.textContent=e?.reason||'Add a connected probe or voltmeter to collect readings.';
+      this.experimentReadouts.appendChild(p);
+    }
+  }
+  downloadExperiment(){
+    if(!this.experiment||!isExperimentCurrent(this.experiment,this.diagram)){
+      this.onError('No current trace. Run the simulator after modifying the design.');return;
+    }
+    try{
+      const record=exportExperimentRecord(this.experiment,this.diagram);
+      const bytes=JSON.stringify(record,null,2);
+      const uri=URL.createObjectURL(new Blob([bytes],{type:'application/json'}));
+      const a=document.createElement('a');a.href=uri;
+      a.download='invention-lab-'+this.diagram.lab+'-simulated-experiment.json';
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(uri),1000);
+    }catch(e){this.onError('Experiment export failed: '+e.message);}
+  }
   setCameraPreset(mode){
     switch(mode){
       case 'isometric':this.yaw=.65;this.pitch=.78;break;
@@ -151,19 +277,24 @@ export class Scene3DView {
     this.requestRender();
   }
   activate(value){
+    if(!value)this.stopExperimentPlayback();
     this.root.style.display=value?'block':'none';
     if(value)this.resize();
   }
   mount(diagram){
+    this.stopExperimentPlayback();this.experiment=null;this.experimentIndex=0;
     this.diagram=diagram;this.selectedId=null;this.wireSource=null;
-    this.focusIds=null;this.focusLabel=null;this.fit();
+    this.focusIds=null;this.focusLabel=null;this.fit();this.updateExperimentPanel();
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
     if(this.focusIds && ![...this.focusIds].some(id=>this.diagram?.block(id))){
       this.focusIds=null;this.focusLabel=null;
     }
-    this.requestRender();
+    if(this.experiment&&!isExperimentCurrent(this.experiment,this.diagram)){
+      this.stopExperimentPlayback();this.experiment=null;
+    }
+    this.updateExperimentPanel();this.requestRender();
   }
   scene(){
     return sceneFromDiagram(this.diagram,{visibleBlockIds:this.focusIds});
@@ -356,6 +487,16 @@ export class Scene3DView {
       ctx.fillStyle='#80dfea';
       ctx.fillText(label,pos.x,pos.y);
     }
+    const currentTrace=isExperimentCurrent(this.experiment,this.diagram)?this.experiment:null;
+    const measuredByBlock=new Map();
+    for(const track of currentTrace?.tracks||[]){
+      if(track.blockId&&!measuredByBlock.has(track.blockId)){
+        const value=track.values[this.experimentIndex];
+        if(value!==undefined)
+          measuredByBlock.set(track.blockId,
+            (typeof value==='number'?value.toPrecision(4):String(value))+' '+track.unit);
+      }
+    }
     ctx.font='12px system-ui,sans-serif';
     for(const b of scene.blocks){
       const pos=this.project({x:b.x,y:b.height+0.28,z:b.z},cam.matrix);
@@ -366,7 +507,18 @@ export class Scene3DView {
       ctx.fillRect(pos.x-width/2,pos.y-15,width,19);
       ctx.fillStyle=b.id===this.selectedId?'#ffdc85':'#dceaf7';
       ctx.fillText(label,pos.x,pos.y-1);
+      if(measuredByBlock.has(b.id)){
+        const value=measuredByBlock.get(b.id);
+        ctx.font='bold 11px system-ui,sans-serif';
+        const w=ctx.measureText(value).width+12;
+        ctx.fillStyle='rgba(9,43,42,.95)';
+        ctx.fillRect(pos.x-w/2,pos.y+3,w,19);
+        ctx.fillStyle='#8cfbd4';
+        ctx.fillText(value,pos.x,pos.y+17);
+        ctx.font='12px system-ui,sans-serif';
+      }
     }
+    this.updateExperimentPanel();
     const selected=this.diagram.block(this.selectedId);
     this.selectionCard.hidden=!selected;
     if(selected){
