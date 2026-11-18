@@ -112,8 +112,10 @@ test('Zero supply current produces no fictitious wire heat and preserves build-u
  assert.equal(r.independentPhysicalEvidence,'none');
 });
 test('A reserved synthetic resistor ID collision fails without corrupting original design',()=>{
- const {d}=circuit();
- d.addBlock('chip.RES',{id:'__physical_r_0'});
+ const {d,load}=circuit();
+ const old=load.id;load.id='__physical_r_0';
+ for(const w of d.wires){if(w.from.block===old)w.from.block=load.id;
+  if(w.to.block===old)w.to.block=load.id;}
  const before=JSON.stringify(d.toJSON());
  assert.throws(()=>solveCoupledWireDC(d,env),/reserved physical resistor component ID collision/i);
  assert.equal(JSON.stringify(d.toJSON()),before);
