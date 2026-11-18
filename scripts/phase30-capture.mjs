@@ -193,6 +193,7 @@ const approvedChangedPath=(p)=>(
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
  p==='js/evidence/phase73-mvl-devices.js'||p==='tests/phase73-mvl-devices.test.mjs'||p==='benchmarks/phase73/pdk-sources.json'||p==='js/evidence/phase73-pdk-provenance.js'||p==='scripts/phase73-source-check.mjs'||p==='tests/phase73-pdk-provenance.test.mjs'||p==='js/evidence/phase74-noise-margins.js'||p==='tests/phase74-noise-margins.test.mjs'||p==='tests/phase74-ngspice-real.test.mjs'||p==='js/evidence/phase75-monte-carlo.js'||p==='tests/phase75-monte-carlo.test.mjs'||p==='js/evidence/phase76-virtual-passport.js'||p==='tests/phase76-virtual-passport.test.mjs'||p==='js/evidence/phase77-mvl-layout.js'||p==='tests/phase77-mvl-layout.test.mjs'||p==='tests/stage-m-integration.test.mjs'||p==='docs/STAGE-M-73-77.md'||p==='.github/workflows/stage-m-73-77.yml'||
 p==='js/evidence/stage-m-signoff-readiness.js'||
+ p==='js/evidence/phase73-deck-node-soa.js'||p==='tests/phase73-deck-node-soa.test.mjs'||
  p==='tests/stage-m-signoff-readiness.test.mjs'||
  p==='scripts/stage-m-signoff-readiness.mjs'||
  p==='docs/STAGE-M-CALIBRATION-ACCEPTANCE.md'||
