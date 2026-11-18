@@ -199,7 +199,8 @@ try{
  p==='js/scene/experiment-trace.js'||p==='tests/experiment-trace.test.mjs'||
  p==='docs/EXPERIMENT-TRACE-3D.md'||p==='.github/workflows/experiment-trace-3d.yml'||
  p==='js/ui/app.js'||p==='tests/browser-3d.html'||
- p==='README.md'||p==='package.json';
+ p==='js/evidence/phase73-mvl-devices.js'||p==='tests/phase73-mvl-devices.test.mjs'||p==='benchmarks/phase73/pdk-sources.json'||p==='js/evidence/phase73-pdk-provenance.js'||p==='scripts/phase73-source-check.mjs'||p==='tests/phase73-pdk-provenance.test.mjs'||p==='js/evidence/phase74-noise-margins.js'||p==='tests/phase74-noise-margins.test.mjs'||p==='tests/phase74-ngspice-real.test.mjs'||p==='js/evidence/phase75-monte-carlo.js'||p==='tests/phase75-monte-carlo.test.mjs'||p==='js/evidence/phase76-virtual-passport.js'||p==='tests/phase76-virtual-passport.test.mjs'||p==='js/evidence/phase77-mvl-layout.js'||p==='tests/phase77-mvl-layout.test.mjs'||p==='tests/stage-m-integration.test.mjs'||p==='docs/STAGE-M-73-77.md'||p==='.github/workflows/stage-m-73-77.yml'||
+p==='README.md'||p==='package.json';
  const unexpectedChanges=changes.filter(x=>!allowed(x)),missingHistoricalCommits=[];
  for(const p of policy.stack)try{
   execFileSync('git',['merge-base','--is-ancestor',p.headSha,'HEAD'],{stdio:'ignore'});
