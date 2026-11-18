@@ -48,3 +48,28 @@ test('source measurements and options are never modified',()=>{
  const original=structuredClone(rows),options=structuredClone(opts);
  fit(rows,opts);assert.deepEqual(rows,original);assert.deepEqual(opts,options);
 });
+
+test('local CLI reports holdout results and refuses untrusted malformed inputs',async()=>{
+ const {mkdtemp,writeFile,rm}=await import('node:fs/promises');
+ const {tmpdir}=await import('node:os');
+ const {join}=await import('node:path');
+ const {fileURLToPath}=await import('node:url');
+ const {spawnSync}=await import('node:child_process');
+ const folder=await mkdtemp(join(tmpdir(),'invention-thermal-'));
+ const script=fileURLToPath(new URL('../scripts/wire-thermal-holdout.mjs',import.meta.url));
+ try{
+  const file=join(folder,'observations.json');
+  await writeFile(file,JSON.stringify({rows,options:opts}));
+  const okay=spawnSync(process.execPath,[script,file],{encoding:'utf8'});
+  assert.equal(okay.status,0,okay.stderr);
+  const result=JSON.parse(okay.stdout);
+  assert.equal(result.holdout.count,2);
+  assert.equal(result.realWorldAccuracyClaim,'none');
+  await writeFile(file,JSON.stringify({rows,options:{...opts,holdoutIds:[]}}));
+  const bad=spawnSync(process.execPath,[script,file],{encoding:'utf8'});
+  assert.notEqual(bad.status,0);
+  assert.match(bad.stderr,/withheld/);
+  const url=spawnSync(process.execPath,[script,'https://example.invalid/data.json'],{encoding:'utf8'});
+  assert.notEqual(url.status,0);
+ }finally{await rm(folder,{recursive:true,force:true});}
+});

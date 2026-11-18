@@ -6,6 +6,7 @@ import { attachPhysicalWireEditor } from './wire-setup-ui.js';
 import { attachEngineeringWorkbench } from './engineering-ui.js';
 import { dimensionedAssembly,dimensionedCADMesh } from './dimensioned-cad.js';
 import { detailedCADMesh } from './detailed-cad-mesh.js';
+import {objTrianglesForPart} from './imported-obj-geometry.js';
 import { inspectPhysicalHarnesses } from './physical-routing.js';
 import { attachPhysicalRoutingEditor } from './physical-routing-ui.js';
 import { captureExperimentTrace,isExperimentCurrent,experimentReadingsAt,exportExperimentRecord } from './experiment-trace.js';
@@ -84,6 +85,7 @@ export class Scene3DView {
   constructor(container,{onSelect=()=>{},onMove=()=>{},onConnect=()=>{},onError=()=>{},onPhysicalLayoutChange=()=>{}}={}){
     this.container=container;this.onSelect=onSelect;this.onMove=onMove;this.onConnect=onConnect;this.onError=onError;
     this.diagram=null;this.selectedId=null;this.wireSource=null;
+    this.importedCADMeshes=new Map(); // transient display-only; never serialized
     this.experiment=null;this.experimentIndex=0;this.experimentPlaying=false;this.experimentRAF=0;this.experimentTickAt=0;
     this.focusIds=null;this.focusLabel=null;
     this.yaw=0.65;this.pitch=0.78;this.distance=12;this.center=[0,0,0];
@@ -148,7 +150,11 @@ export class Scene3DView {
     this.wireSetup=attachPhysicalWireEditor(this.root,this.controls,()=>this.diagram,
       ()=>onPhysicalLayoutChange(),message=>this.onError(message));
     this.engineering=attachEngineeringWorkbench(this.root,this.controls,()=>this.diagram,
-      ()=>onPhysicalLayoutChange(),message=>this.onError(message),()=>this.fit());
+      ()=>{this.importedCADMeshes.clear();onPhysicalLayoutChange();},
+      message=>this.onError(message),()=>this.fit(),(blockId,mesh)=>{
+       if(!this.diagram?.blocks?.some(b=>b.id===blockId))throw Error('Missing canonical component');
+       this.importedCADMeshes.set(blockId,mesh);this.requestRender();
+      });
     this.physicalRouting=attachPhysicalRoutingEditor(this.root,this.controls,()=>this.diagram,
       ()=>onPhysicalLayoutChange(),message=>this.onError(message));
     this.available=false;this._raf=0;
@@ -296,6 +302,7 @@ export class Scene3DView {
   mount(diagram){
     this.stopExperimentPlayback();this.experiment=null;this.experimentIndex=0;
     this.diagram=diagram;this.selectedId=null;this.wireSource=null;
+    this.importedCADMeshes.clear();
     this.focusIds=null;this.focusLabel=null;this.fit();this.updateExperimentPanel();
     this.wireSetup.sync({keepSelection:false});this.engineering.sync();this.physicalRouting.sync();
   }
@@ -306,6 +313,15 @@ export class Scene3DView {
     }
     if(this.experiment&&!isExperimentCurrent(this.experiment,this.diagram)){
       this.stopExperimentPlayback();this.experiment=null;
+    }
+    // A changed or removed mm envelope automatically invalidates its transient mesh.
+    if(this.importedCADMeshes.size){
+      try{
+       const parts=new Map(dimensionedAssembly(this.diagram).parts.map(p=>[p.id,p]));
+       for(const [id,obj] of this.importedCADMeshes){
+        try{objTrianglesForPart(obj,parts.get(id));}catch{this.importedCADMeshes.delete(id);}
+       }
+      }catch{this.importedCADMeshes.clear();}
     }
     this.wireSetup.sync();this.engineering.sync();this.physicalRouting.sync();
     this.updateExperimentPanel();this.requestRender();
@@ -480,7 +496,8 @@ export class Scene3DView {
     let geometry=experimentBenchMesh(scene,{selectedId:this.selectedId});
     if(this.engineering.mode){
       try{geometry=detailedCADMesh(dimensionedAssembly(this.diagram),{
-        selectedId:this.selectedId,routing:inspectPhysicalHarnesses(this.diagram)});}
+        selectedId:this.selectedId,routing:inspectPhysicalHarnesses(this.diagram),
+        importedMeshes:this.importedCADMeshes});}
       catch(error){this.onError('Invalid dimensional CAD: '+error.message);return;}
     }
     const tri=geometry.triangles,lines=geometry.lines;

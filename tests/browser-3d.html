@@ -89,10 +89,42 @@ try{
   eng.save.click();
   assert(d.meta.dimensionedCAD?.parts?.[eng.selector.value]?.widthMm===20,
     'True-scale mm CAD dimensions not saved to canonical design JSON');
+
+  // Actual browser File input -> parser -> viewer triangles; no diagram mutation.
+  assert(eng.objFile?.type==='file'&&eng.objButton?.dataset.action==='preview-local-obj',
+    'Local millimetre OBJ upload controls missing from 3D workbench');
+  const objFixture=`v -10 0 -6
+v 10 0 -6
+v 10 0 6
+v -10 0 6
+v -10 8 -6
+v 10 8 -6
+v 10 8 6
+v -10 8 6
+f 1 2 3 4
+f 5 8 7 6
+f 1 5 6 2
+f 2 6 7 3
+f 3 7 8 4
+f 4 8 5 1`;
+  const objFiles=new DataTransfer();
+  objFiles.items.add(new File([objFixture],'fixture.obj',{type:'text/plain'}));
+  eng.objFile.files=objFiles.files;
+  const priorJSON=JSON.stringify(d.toJSON());
+  eng.objButton.click();await pause(50);
+  assert(viewer.importedCADMeshes.has(a.id),
+    'Local OBJ was not admitted into transient 3D preview');
+  assert(eng.report.textContent.includes('Local geometry preview only'),
+    'OBJ preview was incorrectly presented as physically qualified');
+  assert(JSON.stringify(d.toJSON())===priorJSON,
+    'OBJ preview mutated canonical circuit or design metadata');
+
   eng.toggle.click();
   assert(eng.mode===true,'Dimensioned CAD view did not activate');
   viewer.render();
   assert(gl.getError()===gl.NO_ERROR,'Dimensioned CAD rendering failed');
+  assert(viewer.importedCADMeshes.get(a.id).faces.length===12,
+    'Imported mm OBJ mesh not used by the true-scale WebGL scene');
   eng.toggle.click();
   assert(eng.mode===false,'Could not return to original 3D bench');
   eng.thermalButton.click();

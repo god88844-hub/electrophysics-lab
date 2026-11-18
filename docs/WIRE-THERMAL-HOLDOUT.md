@@ -9,3 +9,7 @@ Inputs require source, instrument and operator claims, but these claims are not 
 Limitations: a single space-uniform convection coefficient, no fitted emissivity, radiation, phase change, measured end-sink boundary conditions, independently calibrated instruments, confirmed sensor placement, or independent physical holdout. Synthetic tests confirm algorithm behavior only, **not** that any simulation matches real hardware.
 
 Run \`node --test tests/wire-thermal-holdout.test.mjs\`.
+
+## Local command-line evaluation
+
+Save one local JSON object with `rows` (observations as described above) and `options` (source, instrument, operator, holdoutIds and optional coefficient bounds), then run `node scripts/wire-thermal-holdout.mjs observations.json`. Standard output is a JSON report; failure is nonzero. No network request or file upload occurs. The command does **not** verify instrument authenticity or independent holdout provenance.
