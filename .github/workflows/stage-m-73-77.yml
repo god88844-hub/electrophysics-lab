@@ -1,0 +1,60 @@
+name: Stage M multi-radix research gates
+on:
+  push:
+    branches: [stage-m/phase73-77-foundry-guarded, main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  stage-m-logic:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify 73–77 model and passport test suite
+        run: >-
+          node --test
+          tests/phase73-mvl-devices.test.mjs
+          tests/phase73-pdk-provenance.test.mjs
+          tests/phase74-noise-margins.test.mjs
+          tests/phase75-monte-carlo.test.mjs
+          tests/phase76-virtual-passport.test.mjs
+          tests/phase77-mvl-layout.test.mjs
+          tests/stage-m-integration.test.mjs
+      - name: Validate pure module syntax
+        run: >-
+          node --check js/evidence/phase73-mvl-devices.js
+      - name: Run all existing Node test suites
+        run: npm test
+  upstream-pdk-original-bytes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check source-locked original SKY130 and GF180 MCU model bytes
+        run: node scripts/phase73-source-check.mjs
+  real-ngspice-adapter:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the independent ngspice executable
+        run: sudo apt-get update && sudo apt-get install -y ngspice
+      - name: Execute genuine DC and transient reference-only ngspice analysis
+        env:
+          PHASE74_SPICE_REQUIRED: '1'
+          NGSPICE_EXEC: /usr/bin/ngspice
+        run: node --test tests/phase74-ngspice-real.test.mjs
