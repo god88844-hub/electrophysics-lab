@@ -204,6 +204,13 @@ p==='js/evidence/stage-m-signoff-readiness.js'||
  p==='tests/stage-m-signoff-readiness.test.mjs'||
  p==='scripts/stage-m-signoff-readiness.mjs'||
  p==='docs/STAGE-M-CALIBRATION-ACCEPTANCE.md'||
+ p==='js/evidence/phase73-soa.js'||
+ p==='js/evidence/stage-m-foundry-spice.js'||
+ p==='js/evidence/phase77-magic-netgen.js'||
+ p==='tests/phase73-soa.test.mjs'||
+ p==='tests/phase73-pdk-execution.test.mjs'||
+ p==='tests/phase74-soa-spice-guard.test.mjs'||
+ p==='tests/phase77-magic-netgen-real.test.mjs'||
  p==='README.md'||p==='package.json';
  const unexpectedChanges=changes.filter(x=>!allowed(x)),missingHistoricalCommits=[];
  for(const p of policy.stack)try{
