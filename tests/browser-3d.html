@@ -56,6 +56,21 @@ try{
   assert(d.wires.length===count+1,'3D click-to-wire did not update real Diagram');
   assert(d.wires.at(-1).from.block===a.id && d.wires.at(-1).to.block===b.id,
     '3D connection endpoints did not match canonical ports');
+  // Physical-wire setup is optional metadata, NOT silently inferred from the 3D pixels.
+  const wireSetup=viewer.wireSetup;
+  assert(wireSetup?.toggle?.dataset.action==='wire-physics',
+    '3D workspace lacks physical wire material setup');
+  wireSetup.toggle.click();
+  assert(wireSetup.panel.hidden===false,'Physical wire editing panel failed to open');
+  assert(wireSetup.select.options.length===d.wires.length,'Physical wire choices are not canonical');
+  wireSetup.apply.click();
+  const savedWire=d.meta.physicalLayout?.wires?.[wireSetup.select.value];
+  assert(savedWire?.material==='copper'&&savedWire.lengthMm===100,
+    '3D wire setup did not persist explicit dimensions in original design');
+  assert(wireSetup.result.textContent.includes('MODEL ONLY'),
+    'Material calculator falsely asserted hardware-validated measurements');
+  wireSetup.toggle.click();
+
 
   // Phase29: the SAME editable 3D component exposes only bounded, truthful
   // model provenance. Historical references NEVER validate this diagram.
