@@ -95,7 +95,9 @@ export function assembleFoundryALUCandidate({
 }={}){
  const profileName=modeMap[foundry];
  if(!profileName||![4,8].includes(width)||![2,3,4].includes(radix)||
-    !['tt','ss','ff'].includes(corner))
+    !(foundry==='GF180MCU'?
+      ['typical','ss','ff'].includes(corner):
+      ['tt','tt_mm','ss','ff'].includes(corner)))
   throw Error('Invalid foundry/corner/ALU configuration');
  const profile=makeFoundryRailProfile({id:profileName,radix,
   rippleFraction,temperatureC});
