@@ -5,6 +5,9 @@ import { experimentBenchMesh } from './experiment-bench.js';
 import { attachPhysicalWireEditor } from './wire-setup-ui.js';
 import { attachEngineeringWorkbench } from './engineering-ui.js';
 import { dimensionedAssembly,dimensionedCADMesh } from './dimensioned-cad.js';
+import { detailedCADMesh } from './detailed-cad-mesh.js';
+import { inspectPhysicalHarnesses } from './physical-routing.js';
+import { attachPhysicalRoutingEditor } from './physical-routing-ui.js';
 import { captureExperimentTrace,isExperimentCurrent,experimentReadingsAt,exportExperimentRecord } from './experiment-trace.js';
 
 const VERT = `attribute vec3 aPosition;
@@ -146,6 +149,8 @@ export class Scene3DView {
       ()=>onPhysicalLayoutChange(),message=>this.onError(message));
     this.engineering=attachEngineeringWorkbench(this.root,this.controls,()=>this.diagram,
       ()=>onPhysicalLayoutChange(),message=>this.onError(message),()=>this.fit());
+    this.physicalRouting=attachPhysicalRoutingEditor(this.root,this.controls,()=>this.diagram,
+      ()=>onPhysicalLayoutChange(),message=>this.onError(message));
     this.available=false;this._raf=0;
     try {
       this.gl=this.canvas.getContext('webgl',{antialias:true,alpha:false});
@@ -292,7 +297,7 @@ export class Scene3DView {
     this.stopExperimentPlayback();this.experiment=null;this.experimentIndex=0;
     this.diagram=diagram;this.selectedId=null;this.wireSource=null;
     this.focusIds=null;this.focusLabel=null;this.fit();this.updateExperimentPanel();
-    this.wireSetup.sync({keepSelection:false});this.engineering.sync();
+    this.wireSetup.sync({keepSelection:false});this.engineering.sync();this.physicalRouting.sync();
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
@@ -302,7 +307,7 @@ export class Scene3DView {
     if(this.experiment&&!isExperimentCurrent(this.experiment,this.diagram)){
       this.stopExperimentPlayback();this.experiment=null;
     }
-    this.wireSetup.sync();this.engineering.sync();
+    this.wireSetup.sync();this.engineering.sync();this.physicalRouting.sync();
     this.updateExperimentPanel();this.requestRender();
   }
   scene(){
@@ -474,7 +479,8 @@ export class Scene3DView {
     // It is a visualization layer, never a second netlist or physical solver.
     let geometry=experimentBenchMesh(scene,{selectedId:this.selectedId});
     if(this.engineering.mode){
-      try{geometry=dimensionedCADMesh(dimensionedAssembly(this.diagram),{selectedId:this.selectedId});}
+      try{geometry=detailedCADMesh(dimensionedAssembly(this.diagram),{
+        selectedId:this.selectedId,routing:inspectPhysicalHarnesses(this.diagram)});}
       catch(error){this.onError('Invalid dimensional CAD: '+error.message);return;}
     }
     const tri=geometry.triangles,lines=geometry.lines;
@@ -556,11 +562,11 @@ export class Scene3DView {
     if(selected){
       const appearance=scene.blocks.find(b=>b.id===selected.id);
       this.selectionCard.textContent=(appearance?.label||selected.type)+
-        '  ·  '+selected.type+(this.engineering.mode?'  ·  entered mm CAD envelope (not manufacturing geometry)'
+        '  ·  '+selected.type+(this.engineering.mode?'  ·  physical-scale generic part proxy (not manufacturer CAD)'
           :'  ·  illustrative model (not dimensional CAD)');
     }
     this.notice.textContent=this.wireSource
       ? `CONNECTING ${this.wireSource.blockId}.${this.wireSource.portId} → select an input socket`
-      : `${this.focusLabel ? this.focusLabel+' · ' : ''}${this.engineering.mode?'DIMENSIONED CAD ENVELOPES (20 mm/unit) · MODEL ONLY':'3D EXPERIMENT WORKBENCH'} · ${scene.blocks.length} modules · ${scene.wires.length} connected harnesses · drag orbit · Shift+drag move · click terminals to wire · wheel zoom`;
+      : `${this.focusLabel ? this.focusLabel+' · ' : ''}${this.engineering.mode?'PARAMETRIC 3D HARDWARE PROXIES (20 mm/unit) · '+geometry.harnessCount+' explicit harnesses · MODEL ONLY':'3D EXPERIMENT WORKBENCH'} · ${scene.blocks.length} modules · ${scene.wires.length} connected harnesses · drag orbit · Shift+drag move · click terminals to wire · wheel zoom`;
   }
 }

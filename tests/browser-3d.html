@@ -63,6 +63,8 @@ try{
   wireSetup.toggle.click();
   assert(wireSetup.panel.hidden===false,'Physical wire editing panel failed to open');
   assert(wireSetup.select.options.length===d.wires.length,'Physical wire choices are not canonical');
+  wireSetup.select.value=d.wires.at(-1).id;
+  wireSetup.select.dispatchEvent(new Event('change',{bubbles:true}));
   wireSetup.apply.click();
   const savedWire=d.meta.physicalLayout?.wires?.[wireSetup.select.value];
   assert(savedWire?.material==='copper'&&savedWire.lengthMm===100,
@@ -82,6 +84,8 @@ try{
     'Coupled DC solver must not activate for non-analog Logic Lab');
   assert(eng.selector.options.length===d.blocks.length,
     'CAD picker must use canonical design components');
+  eng.selector.value=a.id;
+  eng.selector.dispatchEvent(new Event('change',{bubbles:true}));
   eng.save.click();
   assert(d.meta.dimensionedCAD?.parts?.[eng.selector.value]?.widthMm===20,
     'True-scale mm CAD dimensions not saved to canonical design JSON');
@@ -97,6 +101,53 @@ try{
   assert(d.meta.dimensionedCAD?.format==='invention-lab/dimensioned-cad-envelope/1',
     'CAD schema provenance missing');
   eng.button.click();
+  // The physical-scale view now displays distinct hardware proxies and only
+  // explicitly entered mm terminal-to-terminal conductor paths.
+  eng.selector.value=b.id;
+  eng.selector.dispatchEvent(new Event('change',{bubbles:true}));
+  eng.fields[0].input.value='60';
+  eng.save.click();
+  assert(d.meta.dimensionedCAD?.parts?.[b.id]?.xMm===60,
+    'Second real-scale component envelope not saved');
+  const routingEditor=viewer.physicalRouting;
+  assert(routingEditor?.toggle?.dataset.action==='physical-routes',
+    'Physical terminal and conductor route editor missing');
+  routingEditor.toggle.click();
+  assert(!routingEditor.panel.hidden,'Physical harness panel failed to open');
+  routingEditor.blocks.value=a.id;
+  routingEditor.blocks.dispatchEvent(new Event('change',{bubbles:true}));
+  routingEditor.ports.value='out';
+  routingEditor.ports.dispatchEvent(new Event('change',{bubbles:true}));
+  routingEditor.coordinates[0].input.value='10';
+  routingEditor.coordinates[1].input.value='4';
+  routingEditor.coordinates[2].input.value='0';
+  routingEditor.saveTerminal.click();
+  routingEditor.blocks.value=b.id;
+  routingEditor.blocks.dispatchEvent(new Event('change',{bubbles:true}));
+  routingEditor.ports.value='a';
+  routingEditor.ports.dispatchEvent(new Event('change',{bubbles:true}));
+  routingEditor.coordinates[0].input.value='-10';
+  routingEditor.coordinates[1].input.value='4';
+  routingEditor.coordinates[2].input.value='0';
+  routingEditor.saveTerminal.click();
+  assert(Object.keys(d.meta.physicalRouting?.terminals||{}).length===2,
+    'Explicit canonical physical terminal coordinates not persisted');
+  routingEditor.wires.value=d.wires.at(-1).id;
+  routingEditor.wires.dispatchEvent(new Event('change',{bubbles:true}));
+  routingEditor.waypoints.value='[]';
+  routingEditor.saveHarness.click();
+  assert(d.meta.physicalRouting?.routes?.[d.wires.at(-1).id],
+    'Physical route cannot be saved using canonical wire endpoints');
+  assert(routingEditor.routeMessage.textContent.includes('Route 40'),
+    'Correct 40 mm physical conductor route not calculated');
+  routingEditor.toggle.click();
+  eng.toggle.click();
+  assert(eng.mode===true,'True-scale 3D view did not reactivate');
+  viewer.render();
+  assert(gl.getError()===gl.NO_ERROR,'Real-size physical proxy and conductor draw failed');
+  assert(viewer.notice.textContent.includes('1 explicit harnesses'),
+    '3D scene did not render the true-scale explicit conductor route');
+  eng.toggle.click();
 
 
   // Phase29: the SAME editable 3D component exposes only bounded, truthful
