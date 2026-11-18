@@ -7,6 +7,7 @@ import { attachEngineeringWorkbench } from './engineering-ui.js';
 import { dimensionedAssembly,dimensionedCADMesh } from './dimensioned-cad.js';
 import { detailedCADMesh } from './detailed-cad-mesh.js';
 import { inspectPhysicalHarnesses } from './physical-routing.js';
+import { attachPhysicalRoutingEditor } from './physical-routing-ui.js';
 import { captureExperimentTrace,isExperimentCurrent,experimentReadingsAt,exportExperimentRecord } from './experiment-trace.js';
 
 const VERT = `attribute vec3 aPosition;
@@ -148,6 +149,8 @@ export class Scene3DView {
       ()=>onPhysicalLayoutChange(),message=>this.onError(message));
     this.engineering=attachEngineeringWorkbench(this.root,this.controls,()=>this.diagram,
       ()=>onPhysicalLayoutChange(),message=>this.onError(message),()=>this.fit());
+    this.physicalRouting=attachPhysicalRoutingEditor(this.root,this.controls,()=>this.diagram,
+      ()=>onPhysicalLayoutChange(),message=>this.onError(message));
     this.available=false;this._raf=0;
     try {
       this.gl=this.canvas.getContext('webgl',{antialias:true,alpha:false});
@@ -294,7 +297,7 @@ export class Scene3DView {
     this.stopExperimentPlayback();this.experiment=null;this.experimentIndex=0;
     this.diagram=diagram;this.selectedId=null;this.wireSource=null;
     this.focusIds=null;this.focusLabel=null;this.fit();this.updateExperimentPanel();
-    this.wireSetup.sync({keepSelection:false});this.engineering.sync();
+    this.wireSetup.sync({keepSelection:false});this.engineering.sync();this.physicalRouting.sync();
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
@@ -304,7 +307,7 @@ export class Scene3DView {
     if(this.experiment&&!isExperimentCurrent(this.experiment,this.diagram)){
       this.stopExperimentPlayback();this.experiment=null;
     }
-    this.wireSetup.sync();this.engineering.sync();
+    this.wireSetup.sync();this.engineering.sync();this.physicalRouting.sync();
     this.updateExperimentPanel();this.requestRender();
   }
   scene(){
