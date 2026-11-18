@@ -58,3 +58,9 @@ test('imported triangles replace procedural body in actual CAD 3D mesh pipeline'
  assert.notDeepEqual(imported.triangles,proxy.triangles);
  assert.ok(imported.triangles.every(Number.isFinite));
 });
+
+test('reject open solids, inconsistent winding and non-manifold doubled faces',()=>{
+ assert.throws(()=>parseMillimetreOBJ(cube.replace('f 4 8 5 1','')),/open, non-manifold|enclosed volume/);
+ assert.throws(()=>parseMillimetreOBJ(cube.replace('f 4 8 5 1','f 1 5 8 4')),/open, non-manifold|enclosed volume/);
+ assert.throws(()=>parseMillimetreOBJ(cube+'\nf 1 2 3'),/open, non-manifold/);
+});
