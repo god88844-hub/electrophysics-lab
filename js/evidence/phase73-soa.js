@@ -26,34 +26,45 @@ export const MOS_SOA_LIMITS=Object.freeze(Object.fromEntries(LIMITS.map(
  temperatureEnvelopeIndependentlyVerified:false})
 ])));
 const PROFILE_MAP=Object.freeze({
- 'sky130-core-1v8':Object.freeze({pdk:'SKY130',nominalV:1.8,
+ 'sky130-core-1v8':Object.freeze({pdk:'SKY130',nominalV:1.8,maximumSpecifiedRippleFraction:.05,regulator:'LDO_REGULATED',
   n:'sky130_fd_pr__nfet_01v8',p:'sky130_fd_pr__pfet_01v8',
   extra:['sky130_fd_pr__nfet_01v8_lvt','sky130_fd_pr__pfet_01v8_hvt']}),
- 'gf180-core-3v3':Object.freeze({pdk:'GF180MCU',nominalV:3.3,
+ 'sky130-core-1v65-unregulated':Object.freeze({pdk:'SKY130',nominalV:1.65,maximumSpecifiedRippleFraction:.1,regulator:'UNREGULATED',
+  n:'sky130_fd_pr__nfet_01v8',p:'sky130_fd_pr__pfet_01v8',
+  extra:['sky130_fd_pr__nfet_01v8_lvt','sky130_fd_pr__pfet_01v8_hvt']}),
+ 'gf180-core-3v3':Object.freeze({pdk:'GF180MCU',nominalV:3.3,maximumSpecifiedRippleFraction:.1,regulator:'SPECIFIED_UNVERIFIED',
   n:'gf180mcu_fd_pr__nfet_03v3',p:'gf180mcu_fd_pr__pfet_03v3',extra:[]}),
- 'sky130-thick-3v3':Object.freeze({pdk:'SKY130',nominalV:3.3,
+ 'sky130-thick-3v3':Object.freeze({pdk:'SKY130',nominalV:3.3,maximumSpecifiedRippleFraction:.1,regulator:'SPECIFIED_UNVERIFIED',
   n:'sky130_fd_pr__nfet_g5v0d10v5',
   p:'sky130_fd_pr__pfet_g5v0d10v5',extra:[]})
 });
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const within=(x,low,high)=>x>=low-1e-10&&x<=high+1e-10;
 export function makeFoundryRailProfile({
- id='sky130-core-1v8',radix=4,rippleFraction=0,temperatureC=25
+ id='sky130-core-1v8',radix=4,rippleFraction=undefined,temperatureC=25
 }={}){
  const source=PROFILE_MAP[id];
- if(!source||![2,3,4].includes(radix)||!finite(rippleFraction)||
-    rippleFraction<-.1||rippleFraction>.1||!finite(temperatureC)||
+ const selectedRippleFraction=rippleFraction===undefined?
+  source?.maximumSpecifiedRippleFraction:rippleFraction;
+ if(!source||![2,3,4].includes(radix)||!finite(selectedRippleFraction)||
+    selectedRippleFraction<-.1||selectedRippleFraction>.1||!finite(temperatureC)||
     temperatureC< -40||temperatureC>125)
   throw Error('Unrecognized bounded foundry rail/corner request');
  const nominal=makeVoltageRails({base:radix,minimumV:0,maximumV:source.nominalV});
- const peak=source.nominalV*(1+rippleFraction);
+ const peak=source.nominalV*(1+selectedRippleFraction);
  const rails=makeVoltageRails({base:radix,minimumV:0,maximumV:peak});
  return {format:SOA_FORMAT,id,pdk:source.pdk,
   pdkSourceCommit:PDK_SOURCES[source.pdk].commit,
   modelLibrary:PDK_SOURCES[source.pdk].modelLibrary,
   deviceModels:[source.n,source.p,...source.extra],polarityModels:{
    n:source.n,p:source.p
-  },radix,temperatureC,rippleFraction,
+  },radix,temperatureC,rippleFraction:selectedRippleFraction,
+  maximumSpecifiedRippleFraction:source.maximumSpecifiedRippleFraction,
+  regulationMode:source.regulator,
+  rippleSpecificationMet:Math.abs(selectedRippleFraction)<=
+   source.maximumSpecifiedRippleFraction+1e-12,
+  worstCaseSupplyEnvelopeV:{minimum:source.nominalV*(1-Math.abs(selectedRippleFraction)),
+   maximum:source.nominalV*(1+Math.abs(selectedRippleFraction))},
   nominalRailsV:nominal.rails,railsV:rails.rails,
   voltageRange:'MODEL_OPERATING_RANGE_NOT_BREAKDOWN_CERTIFICATION',
   completePinnedPdkDependenciesAvailable:false,
@@ -123,11 +134,15 @@ export function verifyProfileSOA(profile){
   return verifyMosTerminalSOA({model,samples});
  });
  const fail=findings.some(x=>x.status==='SOA_OXIDE_OVERSTRESS');
+ const outOfRegulation=profile.rippleSpecificationMet===false;
  return {format:SOA_FORMAT,profileId:profile.id,
   status:fail?'SOA_OXIDE_OVERSTRESS':
    findings.some(x=>x.status!=='SOA_MODEL_RANGE_SCREEN_PASS')?
-    'SOA_INSUFFICIENT_NODE_BOUNDS':'SOA_PROFILE_SCREEN_PASS',
+    'SOA_INSUFFICIENT_NODE_BOUNDS':
+    outOfRegulation?'SOA_REGULATOR_RIPPLE_SPEC_EXCEEDED':'SOA_PROFILE_SCREEN_PASS',
   findings,profile:profile.nominalRailsV,
+  maximumSpecifiedRippleFraction:profile.maximumSpecifiedRippleFraction,
+  rippleSpecificationMet:profile.rippleSpecificationMet,
   note:'Only static worst-case nominal node envelopes; PDK model validity and full transistor nodal stresses remain unverified',
   transistorQualification:false,physicalQualification:'UNQUALIFIED_NO_GO'};
 }
