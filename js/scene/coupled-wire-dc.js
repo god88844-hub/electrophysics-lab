@@ -5,6 +5,7 @@
 // NOT a full thermal FEM, PCB routing analysis or physically calibrated model.
 import {solveDC} from '../labs/chip/engine.js';
 import {physicalWireAssumptions,evaluatePhysicalWire} from './physical-wire.js';
+import {inspectConductorClearances} from './cad-wire-clearance.js';
 export const COUPLED_DC_FORMAT='invention-lab/coupled-wire-dc-thermal/1';
 const MATERIAL_PROPS=Object.freeze({
  copper:{densityKgM3:8960,heatCapacityJKgK:385},
@@ -108,11 +109,18 @@ export function solveCoupledWireDC(diagram,environment){
  const source=JSON.stringify(diagram?.toJSON?.());
  if(source.length>2_000_000)throw Error('Source-bound DC simulation size exceeded');
  const cfg=inputs(diagram,environment);
+ const geometry=inspectConductorClearances(diagram);
+ if(geometry.impossible.length)
+  throw Error('Entered wire length shorter than minimum CAD body separation: '+geometry.impossible.join(', '));
  const baseline=solveDC(diagram);
  if(!baseline.ok)throw Error('Original electrical DC design failed: '+(baseline.problems||[]).join('; '));
  const temperatures=cfg.parts.map(p=>p.temperatureC);
  const totals=cfg.parts.map(()=>({jouleEnergyJ:0,convectionEnergyJ:0,peakTemperatureC:-Infinity}));
- const records=[],warnings=['One lumped thermal node per conductor','No radiation, insulation, mutual heating, or measured contact geometry'];
+ const records=[],warnings=['One lumped thermal node per conductor',
+  'No radiation, insulation, mutual heating, or measured contact geometry',
+  'CAD envelope body-gap check is only a lower bound; physical pins and wire routes are not mapped'];
+ if(geometry.wiresNotChecked.length)
+  warnings.push('No dimensional clearance check for '+geometry.wiresNotChecked.length+' physical wires');
  let elapsed=0,latest;
  for(let n=0;n<=cfg.count;n++){
   for(let i=0;i<cfg.parts.length;i++)cfg.parts[i].temperatureC=temperatures[i];
@@ -157,7 +165,7 @@ export function solveCoupledWireDC(diagram,environment){
  return {format:COUPLED_DC_FORMAT,sourceDesign:JSON.parse(source),
   sourceLab:'chip',mode:'OPT_IN_AUGMENTED_CHIP_DC',
   status:'model-only',baseCircuit:baseline,augmentedCircuit:latest.solve,
-  canonicalWireMapping:latest.mapping,records,wires,
+  canonicalWireMapping:latest.mapping,geometryClearance:geometry,records,wires,
   modelAssumptions:{...environment,ambientC:cfg.ambientC,
    heatTransferWm2K:cfg.heatTransferWm2K,
    contactResistanceOhm:cfg.contactResistanceOhm,
