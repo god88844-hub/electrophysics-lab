@@ -27,6 +27,8 @@ const devices=[
  ['sky130_pfet_standard','SKY130','sky130_fd_pr__pfet_01v8','pmos','standard',1.8],
  ['sky130_pfet_hvt','SKY130','sky130_fd_pr__pfet_01v8_hvt','pmos','hvt',1.8],
  ['sky130_poly_resistor','SKY130','sky130_fd_pr__res_high_po','resistor','standard',1.8],
+ ['sky130_nfet_g5v0d10v5','SKY130','sky130_fd_pr__nfet_g5v0d10v5','nmos','thick-oxide',5.0],
+ ['sky130_pfet_g5v0d10v5','SKY130','sky130_fd_pr__pfet_g5v0d10v5','pmos','thick-oxide',5.0],
  ['gf180_nfet_03v3','GF180MCU','gf180mcu_fd_pr__nfet_03v3','nmos','standard',3.3],
  ['gf180_pfet_03v3','GF180MCU','gf180mcu_fd_pr__pfet_03v3','pmos','standard',3.3],
  ['gf180_resistor_unresolved','GF180MCU',null,'resistor','unresolved',3.3]
