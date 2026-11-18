@@ -139,7 +139,7 @@ function inspectAll(diagram,config){
   }
   if(obstacleIds.length)violations.push('route-intersects-foreign-component-body');
   routes.push({wireId,from:wire.from,to:wire.to,
-   fromTerminal:from,toTerminal:to,waypointsMm,pointsMm,
+   fromTerminal:from,toTerminal:to,waypointsMm:waypoints,pointsMm,
    routedLengthMm,enteredConductorLengthMm,
    excessLengthMm,obstacleIds,violations,material:conductor.material,
    diameterMm:conductor.diameterMm,
