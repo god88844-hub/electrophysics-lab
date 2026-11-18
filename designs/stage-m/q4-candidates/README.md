@@ -25,3 +25,13 @@ Review each candidate as a separate text SPICE library; use only the original PD
 ## Native CI physical verification
 
 The `stage-m-native-eda.yml` workflow compiles pinned Magic, Netgen, and open_pdks tool sources in GitHub Actions and attempts real Magic device geometry generation followed by DRC and Netgen LVS. Its generated layout is only a **device-placement candidate**: Magic’s `netlist_to_layout` is not an automatic router. Native success is rejected unless there are 0 measured Magic DRC errors and all required four-cell Netgen LVS reports actually match. The workflow also requires the processed `tt_mm` section to explicitly set `mc_mm_switch=1`, but this alone is not validated manufacturing statistics. The workflow has an explicit fail-closed final step until the full calibrated post-layout 1,000-trial primitive and 100-trial ALU evidence genuinely exists. Its red status must not be waived for merging.
+
+## 2026-11-19 native CI queue and toolchain evidence
+
+The user-requested prebuilt Volare tag matching original processed open_pdks commit `0c1f82326278a0871f0a1fc4bdacf94c88e78e4d` was not found in the checked public Volare/Ciel release endpoints. Do **not** quietly activate a different PDK version: this would break exact-model provenance. The workflow now installs Ubuntu 24.04's actual `magic`, `netgen-lvs`, and `ngspice` packages; it retains a source-commit-locked `open_pdks` build, cached by source IDs, and records binary SHA-256 hashes/package versions. The cache has **not** been confirmed populated on a runner.
+
+The native Stage M workflow has branch-aware GitHub Actions concurrency with `cancel-in-progress: true`. A new **push** run requests cancellation of superseded runs `44373173980` and `44375448415`, but that request cannot execute while the cancellation step remains queued. Concurrency applies to new matching runs, not retroactively to all old jobs. Do not claim those runs are cancelled until GitHub reports `cancelled`.
+
+The pinned `open_pdks` `runtime/netlist_to_layout.py` is now the entry point for real Magic transistor placement. It **does not route electrical nets**. The Magic script checks actual cell existence, DRC, extracted netlists and GDS; Netgen must show real LVS matches, and missing reports fail. None of this establishes completed routing, post-layout corners, or Level-1 qualification until CI delivers independently verifiable results.
+
+No real `ngspice` Monte Carlo trial logs, noise-margin measurement, 4/8-digit radix ALU circuits, Wilson interval or DRC/LVS-clean four-cell geometry have been demonstrated. Do not report a numerical yield or merge M through Q. Level-1 remains `INSUFFICIENT_MODEL_DATA`, physical fabrication authorization remains `UNQUALIFIED_NO_GO`.
