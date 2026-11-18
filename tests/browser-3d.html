@@ -70,6 +70,29 @@ try{
   assert(wireSetup.result.textContent.includes('MODEL ONLY'),
     'Material calculator falsely asserted hardware-validated measurements');
   wireSetup.toggle.click();
+  // Engineering CAD is a distinct, explicitly dimensioned physical envelope mode.
+  const eng=viewer.engineering;
+  assert(eng?.button?.dataset.action==='engineering-cad',
+    'Dimensioned engineering workbench unavailable');
+  eng.button.click();
+  assert(eng.panel.hidden===false,'Engineering panel did not open');
+  assert(eng.selector.options.length===d.blocks.length,
+    'CAD picker must use canonical design components');
+  eng.save.click();
+  assert(d.meta.dimensionedCAD?.parts?.[eng.selector.value]?.widthMm===20,
+    'True-scale mm CAD dimensions not saved to canonical design JSON');
+  eng.toggle.click();
+  assert(eng.mode===true,'Dimensioned CAD view did not activate');
+  viewer.render();
+  assert(gl.getError()===gl.NO_ERROR,'Dimensioned CAD rendering failed');
+  eng.toggle.click();
+  assert(eng.mode===false,'Could not return to original 3D bench');
+  eng.thermalButton.click();
+  assert(eng.thermalResult.textContent.includes('MODEL ONLY'),
+    'Thermal panel must label its calculated result as model-only');
+  assert(d.meta.dimensionedCAD?.format==='invention-lab/dimensioned-cad-envelope/1',
+    'CAD schema provenance missing');
+  eng.button.click();
 
 
   // Phase29: the SAME editable 3D component exposes only bounded, truthful
