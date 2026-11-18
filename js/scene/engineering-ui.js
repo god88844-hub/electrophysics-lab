@@ -3,6 +3,7 @@ import {parseMillimetreOBJ,objTrianglesForPart} from './imported-obj-geometry.js
 import {simulateWireThermal,simulateSegmentedWireThermal} from './wire-electrothermal.js';
 import {solveCoupledWireDC} from './coupled-wire-dc.js';
 import {compareWireMeasurements,fitWireResistanceScale} from './wire-measurement-check.js';
+import {fitWireThermalConvectionHoldout} from './wire-thermal-holdout.js';
 function numericField(d,name,value){
  const wrapper=d.createElement('label');wrapper.className='scene3d-wire-field';
  const caption=d.createElement('span');caption.textContent=name;
@@ -68,6 +69,23 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
   segmentedButton.dataset.action='run-segmented-wire-thermal';
   segmentedButton.textContent='Simulate 1D wire heat transfer';
   const segmentedResult=d.createElement('output');segmentedResult.setAttribute('aria-live','polite');
+ const heatFitHeading=d.createElement('strong');heatFitHeading.textContent='Candidate thermal calibration (unverified measurements)';
+ const heatFitNote=d.createElement('p');
+ heatFitNote.textContent='Local JSON array of 4–32 observed mean-wire temperatures. Two or more separate holdout IDs required. Fitted convection is not applied automatically or physically certified.';
+ const heatFitRows=d.createElement('textarea');heatFitRows.rows=3;
+ heatFitRows.setAttribute('aria-label','Thermal measurement JSON array');
+ heatFitRows.placeholder='[{"id":"run1","wireSpec":{},"environment":{},"observedMeanTemperatureC":20,"uncertaintyC":0.5}]';
+ const heatFitSource=d.createElement('input');
+ heatFitSource.placeholder='Raw source and collection provenance';heatFitSource.setAttribute('aria-label','Thermal data provenance');
+ const heatFitInstrument=d.createElement('input');
+ heatFitInstrument.placeholder='Instrument model and serial';heatFitInstrument.setAttribute('aria-label','Thermal thermometer instrument');
+ const heatFitOperator=d.createElement('input');
+ heatFitOperator.placeholder='Operator and lab record';heatFitOperator.setAttribute('aria-label','Thermal measurement operator');
+ const heatFitHoldout=d.createElement('input');
+ heatFitHoldout.placeholder='holdout IDs, comma separated';heatFitHoldout.setAttribute('aria-label','Thermal holdout observation IDs');
+ const heatFitButton=d.createElement('button');heatFitButton.type='button';
+ heatFitButton.dataset.action='fit-thermal-convection-holdout';heatFitButton.textContent='Fit convection with excluded holdout';
+ const heatFitResult=d.createElement('output');heatFitResult.setAttribute('aria-live','polite');
  const coupled=d.createElement('button');coupled.type='button';
  coupled.dataset.action='run-coupled-wire-dc';coupled.textContent='Run coupled DC current + heat';
  const coupledReadout=d.createElement('output');coupledReadout.setAttribute('aria-live','polite');
@@ -90,7 +108,10 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
   thermalHeading,wireSelect,ambient.wrapper,h.wrapper,duration.wrapper,step.wrapper,
   contact.wrapper,thermalButton,thermalResult,
    segmentedHeading,segments.wrapper,jacket.wrapper,jacketK.wrapper,endA.wrapper,endB.wrapper,
-   segmentedButton,segmentedResult,coupled,coupledReadout,
+   segmentedButton,segmentedResult,
+   heatFitHeading,heatFitNote,heatFitRows,heatFitSource,heatFitInstrument,
+   heatFitOperator,heatFitHoldout,heatFitButton,heatFitResult,
+   coupled,coupledReadout,
   compareHeading,compareNote,observations,source,instrument,uncertainty.wrapper,held,compare,fit,evidence);
  const update=()=>{
   const diagram=diagramAccessor();const prior=selector.value,oldWire=wireSelect.value;
@@ -179,6 +200,19 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
      s.energyBalanceResidualJ.toExponential(2)+' J. MODEL ONLY; no physical validation.';
    }catch(e){segmentedResult.textContent='1D simulation unavailable: '+e.message;onError(e.message);}
   });
+ heatFitButton.addEventListener('click',()=>{
+  try{
+   const rows=JSON.parse(heatFitRows.value);
+   const result=fitWireThermalConvectionHoldout(rows,{
+    source:heatFitSource.value,instrument:heatFitInstrument.value,
+    operator:heatFitOperator.value,
+    holdoutIds:heatFitHoldout.value.split(',').map(x=>x.trim()).filter(Boolean)});
+   heatFitResult.textContent='Candidate convection h '+
+    result.candidateParameters.heatTransferWm2K.toPrecision(5)+' W/m²/K; holdout RMSE '+
+    result.holdout.rmseC.toPrecision(5)+' °C; holdout observations '+
+    result.holdout.count+'. Development-only fitting. UNVERIFIED PHYSICAL DATA; no independent qualification.';
+  }catch(e){heatFitResult.textContent='Thermal holdout refused: '+e.message;onError(e.message);}
+ });
  coupled.addEventListener('click',()=>{
   try{
    const diagram=diagramAccessor();
@@ -225,5 +259,6 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  });
  update();
  return {panel,button,selector,fields,save,toggle,report,wireSelect,thermalButton,
-  thermalResult,segmentedButton,segmentedResult,coupled,coupledReadout,objFile,objButton,compare,fit,evidence,sync:update,get mode(){return mode;}};
+  thermalResult,segmentedButton,segmentedResult,heatFitRows,heatFitHoldout,heatFitButton,heatFitResult,
+  coupled,coupledReadout,objFile,objButton,compare,fit,evidence,sync:update,get mode(){return mode;}};
 }
