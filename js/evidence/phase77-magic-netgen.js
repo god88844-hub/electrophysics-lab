@@ -125,7 +125,10 @@ export async function runMagicNetgenCandidate({
  catch{/* a Magic exit=0 alone does not guarantee a complete GDSII */ }
  const drcReportPath=join(dirname,name+'-magic-drc-report.txt');
  await writeFile(drcReportPath,magic.stdout+'\n'+magic.stderr,'utf8');
- const drcReport=await checkedFile(drcReportPath,'.txt',2000000);
+ let drcReport=null;
+ try{drcReport=await checkedFile(drcReportPath,'.txt',2000000);}
+ catch{/* missing/empty DRC evidence must remain unqualified */}
+
  const resultPath=join(dirname,name+'-netgen-lvs.txt');
  const netgen=await runProcess({executable:netgenExec,
   args:['-batch','lvs',extractedLVS+' '+name,
@@ -146,7 +149,7 @@ export async function runMagicNetgenCandidate({
   originalSchematicSha256:audit.inputFiles.find(x=>x.path===resolve(schematicPath))?.sha256??null,
   generatedGdsSha256:originalGDS?.sha256??null,
   generatedGdsPath:originalGDS?.path??null,
-  drcReportSha256:drcReport.sha256,
+  drcReportSha256:drcReport?.sha256??null,
   drcReportPath,
   lvsReportSha256:lvsReport?.sha256??null,
   lvsReportPath:lvsReport?.path??null,
