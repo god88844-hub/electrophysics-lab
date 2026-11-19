@@ -1,7 +1,7 @@
 // Phase 75: deterministic, bounded, parallel SPICE Monte Carlo *execution*.
 // Statistical distributions MUST be furnished from independent characterized
 // PDK evidence; a manually supplied sigma is not foundry calibration.
-import {runNgspice,detectNgspiceFailure} from '../bench/ngspice-adapter.js';
+// Node-only ngspice adapter must not enter the browser module graph.
 import {requireSafeNetlistSOA} from './phase73-soa.js';
 import {verifyDeckTerminalSOA} from './phase73-deck-node-soa.js';
 export const PHASE75_FORMAT='invention-lab/phase75-parallel-monte-carlo-spice/1';
@@ -62,6 +62,14 @@ export async function runFoundryMonteCarlo({
    reason:'missing-ngspice-binary-or-deck-generator',trialCount:0,
    physicallyQualified:false};
  seededUniformGenerator(seed);
+ // Browser import cannot spawn native ngspice. Leave all physical evidence
+ // and all statistical qualification explicitly unavailable.
+ if(typeof process==='undefined'&&!_syntheticTrialRunner)
+  return {format:PHASE75_FORMAT,status:'INSUFFICIENT_MODEL_DATA',
+   reason:'ngspice-native-runner-requires-node',trialCount:0,physicallyQualified:false};
+ // Load Node-only process dependencies ONLY when executing an actual trial;
+ // synthetic tests remain non-qualifying and require no calibrated PDK.
+ const {runNgspice,detectNgspiceFailure}=await import('../bench/ngspice-adapter.js');
  const outcomes=Array(trials);
  let cursor=0;
  const runOne=async(i)=>{
