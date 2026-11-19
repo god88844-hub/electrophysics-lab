@@ -99,6 +99,11 @@ proc stage_m_begin_cell {cell bbox port_ymin} {
     array unset ::stage_m_pin_layer
     array unset ::stage_m_port_escape
     set ::stage_m_port_escape_index 0
+    # Parent-owned, uninstanced MOS terminals need their own MET2 tracks.
+    # Original x-based tracks share X between nearby G/B contacts and
+    # short opposing rails (observed 44512687150: v0/v3 at X=15735).
+    set ::stage_m_local_escape_index 0
+    set ::stage_m_local_escape_base [expr {min(0,$xmin)-6*$::stage_m_pitch}]
     set ::stage_m_top [expr {$ymax + 2*$::stage_m_pitch}]
     # A supply rail inside the original source port bank shorts distinct
     # Metal1 ports even when every Metal2 escape column is unique.
@@ -203,6 +208,16 @@ proc stage_m_route_net {net terminals} {
                     $::stage_m_port_escape_index * $step}]
             }
             set route_x $::stage_m_port_escape($name)
+        } elseif {$::stage_m_is_parent} {
+            # This terminal belongs to the uninstanced parent MOS bank.
+            # Unlike a placed child, it cannot use the child's halo tracks.
+            # Allocate a unique, negative-X MET2 escape corridor outside
+            # the parent source bank and away from the routed child bboxes.
+            # All parent crossings still use MET3 and via2; the true
+            # clearance and short checks remain mandatory.
+            incr ::stage_m_local_escape_index
+            set route_x [expr {$::stage_m_local_escape_base -
+                $::stage_m_local_escape_index * [stage_m_u 1.20]}]
         } elseif {[string match {X*/*} $name] &&
                   $layer in {m1 met1 metal1}} {
             if {![info exists ::stage_m_hier_escape($name)]} {
@@ -296,7 +311,14 @@ proc stage_m_finish_cell {cell ports} {
     save $cell
     puts "STAGE_M_LAYOUT_CANDIDATE $cell [llength $::stage_m_nets] nets"
 }
-source $::env(STAGE_M_ROUTE_PLAN)
+# A Tcl error in a sourced route plan must terminate this batch job.
+# Plain "source" errors can leave Magic's stdin interpreter continuing to
+# extract/GDS-write a partially painted, electrically shorted layout.
+if {[catch {source $::env(STAGE_M_ROUTE_PLAN)} route_error options]} {
+    puts stderr "STAGE_M_ROUTE_ABORT cell=$cell reason=$route_error"
+    puts stderr [dict get $options -errorinfo]
+    exit 1
+}
 load $cell
 select top cell
 save $cell

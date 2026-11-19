@@ -200,6 +200,26 @@ class StageMStatic(unittest.TestCase):
         self.assertEqual(set(ranks.values()),{-2,-1,0,1,2})
         self.assertEqual(len(ranks),5)
 
+    def test_parent_local_mos_escapes_are_unique_and_routing_errors_abort(self):
+        script=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        for required in ('set ::stage_m_local_escape_index 0',
+                         'set ::stage_m_local_escape_base',
+                         'incr ::stage_m_local_escape_index',
+                         '$::stage_m_local_escape_index * [stage_m_u 1.20]',
+                         'STAGE_M_ROUTE_ABORT',
+                         'if {[catch {source $::env(STAGE_M_ROUTE_PLAN)} route_error options]}',
+                         'exit 1'):
+            self.assertIn(required,script)
+        # Within the original uninstanced MOS bank, G/B and D/S contacts
+        # can share an x-coordinate while belonging to DIFFERENT nets.
+        same_x=15735
+        base=-6*545
+        step=240
+        routes=[base-(i+1)*step for i in range(18)]
+        self.assertEqual(len(routes),len(set(routes)))
+        self.assertNotIn(same_x,routes)
+        self.assertTrue(all(x<0 for x in routes))
+
     def test_native_port_escape_columns_are_unique_and_copper_checked(self):
         layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
         for token in ('set ::stage_m_port_escape_index 0',
