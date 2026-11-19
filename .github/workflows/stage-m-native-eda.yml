@@ -194,6 +194,12 @@ jobs:
           } > benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
           lib="$PDK_ROOT/sky130A/libs.tech/ngspice/sky130.lib.spice"
           test -s "$lib"
+          # Preserve exact hash-pinned PDK corner declarations for forensic
+          # review even when the strict statistical mismatch audit rejects
+          # them. This is evidence, NOT a model override or gate relaxation.
+          cp -- "$lib" benchmarks/evidence/stage-m-native-eda/processed-sky130.lib.spice
+          sha256sum "$lib" > benchmarks/evidence/stage-m-native-eda/processed-sky130.lib.sha256
+          test "$(sha256sum benchmarks/evidence/stage-m-native-eda/processed-sky130.lib.spice | cut -d' ' -f1)" = "$(cut -d' ' -f1 benchmarks/evidence/stage-m-native-eda/processed-sky130.lib.sha256)"
           export STAGE_M_PROCESSED_SKY130_LIB="$lib"
           # The exact generator source was already verified for physical checking.
           test "$(git -C /tmp/stage-m-open-pdks-audit rev-parse HEAD)" = 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d
