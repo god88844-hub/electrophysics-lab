@@ -9,6 +9,12 @@ from pathlib import Path
 import re
 
 LAYERS={'met1','m1','metal1','li1','locali'}
+# Pinned SKY130 Magic compound contacts ndc/pdc/pc/nsc/psc connect
+# existing diffusion/poly to local interconnect: never allow bare diffusion.
+CONTACT_TO_LI1={
+    'ndiffc':'li1', 'pdiffc':'li1', 'polycont':'li1',
+    'psubdiffcont':'li1', 'nsubdiffcont':'li1',
+}
 
 def circuits(file):
     result={};active=None
@@ -84,6 +90,10 @@ def pin(root,uses,inst,pad):
     hits=labels.get(pad,[])
     if len(hits)!=1:raise ValueError('missing/ambiguous terminal '+inst+'/'+pad)
     layer,x,y=hits[0]
+    # A compound Magic PDK contact IS already local interconnect, unlike
+    # uncontacted ndiff/pdiff/poly. Require the original .mag label, always.
+    if layer in CONTACT_TO_LI1:
+        layer=CONTACT_TO_LI1[layer]
     if layer not in LAYERS:raise ValueError('uncontactable geometry '+inst+'/'+pad+' '+layer)
     a,b,c,d,e,f=trans
     return (layer,a*x+b*y+c,d*x+e*y+f)

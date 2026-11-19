@@ -69,5 +69,33 @@ class StageMStatic(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'noninteger'):
                 mod.mag(file)
 
+    def test_authentic_sky130_contact_to_li1_preserves_bare_diffusion_guard(self):
+        import importlib.util
+        import tempfile
+        from pathlib import Path
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_contacts',ROOT/'scripts'/'stage-m-routing-plan.py')
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            master=root/'mos.mag'
+            labels=[
+                ('ndiffc','D'),('pdiffc','S'),('polycont','G'),
+                ('psubdiffcont','B'),('nsubdiffcont','T')]
+            master.write_text(
+                'magic\ntech sky130A\n<< labels >>\n'+
+                ''.join(f'rlabel {layer} 0 {i*10} 2 {i*10+2} 0 {name}\n'
+                        for i,(layer,name) in enumerate(labels))+
+                '<< end >>\n')
+            uses={'Xn':['mos',[1,0,10,0,1,20]]}
+            for _,name in labels:
+                self.assertEqual(module.pin(root,uses,'Xn',name)[0],'li1')
+            master.write_text(
+                'magic\ntech sky130A\n<< labels >>\n'
+                'rlabel ndiff 0 0 2 2 0 D\n<< end >>\n')
+            with self.assertRaisesRegex(ValueError,'uncontactable'):
+                module.pin(root,uses,'Xn','D')
+
 if __name__=='__main__':
     unittest.main()
