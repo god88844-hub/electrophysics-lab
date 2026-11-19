@@ -51,6 +51,50 @@ class PostRoutePlacementTests(unittest.TestCase):
             updated=placer.inspect_mag(root/'parent.mag')[2]
             self.assertEqual(len(updated),2)
 
+    def test_uninstanced_mos_rows_are_spaced_after_native_reflow(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);source=self._fixture(root)
+            mos=root/'sky130_fd_pr__nfet_01v8_X.mag'
+            mos.write_text('magic\ntech sky130A\n'
+                           '<< metal1 >>\nrect -200 -300 200 300\n'
+                           '<< labels >>\n<< end >>\n')
+            original=(root/'parent.mag').read_text()
+            # The importer first placed two un-routed MOS instances atop
+            # each other; the genuine MOS local bbox includes negative Y.
+            original=original.replace('<< labels >>',
+                'use sky130_fd_pr__nfet_01v8_X Xn1\n'
+                'transform 1 0 0 0 1 0\nbox -200 -300 200 300\n'
+                'use sky130_fd_pr__nfet_01v8_X Xn2\n'
+                'transform 1 0 15 0 1 10\nbox -200 -300 200 300\n'
+                '<< labels >>')
+            (root/'parent.mag').write_text(original)
+            data=placer.place_parent(root,source,'parent',2.0,0.01,
+                root/'bbox-report.json')
+            rows=data['parentMosRows']
+            self.assertEqual(len(rows),2)
+            self.assertGreaterEqual(data['parentMosRowGapDbu'],272)
+            self.assertGreaterEqual(rows[1]['translatedBBox'][1]-
+                rows[0]['translatedBBox'][3],data['parentMosRowGapDbu'])
+            self.assertEqual(rows[0]['translatedBBox'][0],
+                             rows[1]['translatedBBox'][0])
+            self.assertTrue(all(c['translatedBBox'][1]>
+                                rows[-1]['translatedBBox'][3] for c in data['children']))
+
+    def test_halo_includes_routed_port_track_banks(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);source=self._fixture(root)
+            data=placer.place_parent(root,source,'parent',2.0,0.01,
+                root/'bbox-report.json')
+            # Two child pins, each may escape by 0.70 um per index.
+            # 2.0 um base halo plus two two-pin track banks.
+            self.assertEqual(data['haloDbu'],200)
+            self.assertGreaterEqual(data['routingChannelDbu'],200+2*2*70)
+            children=[(c['instance'],tuple(c['translatedBBox']))
+                      for c in data['children']]
+            self.assertTrue(placer.check_halo(children,data['routingChannelDbu']))
+            for child in data['children']:
+                self.assertEqual(len(child['childPostRouteSha256']),64)
+
     def test_reject_overlap_and_halo_violation(self):
         with self.assertRaisesRegex(ValueError,'STAGE_M_CHILD_BBOX_COLLISION'):
             placer.check_halo([('Xleft',(0,0,100,100)),

@@ -127,15 +127,67 @@ def place_parent(mag_dir, source, cell, halo_um, scale_um, report):
               'stage':'LEAF_NO_HIERARCHICAL_INSTANCE','children':[]}
         Path(report).write_text(json.dumps(data,indent=2)+'\n')
         return data
-    # Keep fixed MOS transistors, static parent metal and real port pads
-    # untouched. Place routed child instances beyond all fixed geometry.
-    for use in uses:
-        if use not in children:
-            static=merge_bbox(static,transform_bbox(use['box'],use['transform']))
+    # The original importer packed UNROUTED parent MOS devices into a dense
+    # bank; their distinct D/S nets share the same Y, and neighbouring G/B
+    # contacts can be separated by less than a MET3 routing width.
+    # Spread parent-owned MOS devices into individual rows using their REAL
+    # native device master footprints before routing child/parent signals.
+    # A row is at least 2.72 um beyond the last complete device envelope.
     if static is None:
-        raise ValueError('parent lacks authentic fixed placement geometry')
-    cursor_x = static[2]+2*halo
-    cursor_y = static[3]+2*halo
+        raise ValueError('parent lacks authentic fixed port-bank geometry')
+    static_root=tuple(static)
+    row_gap=max(math.ceil(2.72/scale_um),halo)
+    fixed_mos=[u for u in uses if u not in children]
+    if any(not u['master'].startswith('sky130_fd_pr__') for u in fixed_mos):
+        raise ValueError('unrecognized parent-owned instance in source geometry')
+    mos_cursor_y=static[3]+row_gap
+    mos_column_x=static[2]+2*row_gap
+    fixed_records=[]
+    prior=None
+    for use in sorted(fixed_mos,key=lambda item:item['instance']):
+        masterpath=root/(use['master']+'.mag')
+        if not masterpath.is_file():
+            raise ValueError('native MOS cell absent for row reflow '+use['master'])
+        bbox=actual_bbox(masterpath)
+        a,b,_,d,e,_=use['transform']
+        if abs(a*e-b*d)!=1:
+            raise ValueError('invalid MOS native orientation '+use['instance'])
+        transformed=transform_bbox(bbox,(a,b,0,d,e,0))
+        dx=mos_column_x-transformed[0]
+        dy=mos_cursor_y-transformed[1]
+        transform=(a,b,dx,d,e,dy)
+        translated=transform_bbox(bbox,transform)
+        if translated[0]!=mos_column_x or translated[1]!=mos_cursor_y:
+            raise ValueError('MOS negative-origin compensation failed')
+        if prior is not None and translated[1]-prior[3]<row_gap:
+            raise ValueError('parent MOS rows violate route clearance')
+        use['transform']=transform
+        use['box']=bbox
+        lines[use['transform_idx']]='transform '+' '.join(map(str,transform))+'\n'
+        lines[use['box_idx']]='box '+' '.join(map(str,bbox))+'\n'
+        static=merge_bbox(static,translated)
+        fixed_records.append({'instance':use['instance'],'master':use['master'],
+                              'sourceSha256':sha256(masterpath),'translatedBBox':translated})
+        prior=translated
+        mos_cursor_y=translated[3]+row_gap
+    # Horizontal parent MET2 escapes can occupy multiple 0.70 um tracks
+    # on BOTH sides of an inter-child channel. A 2 um bbox halo alone
+    # leaves these imported wires inside the previous routed child's
+    # bounding box. Reserve track width for *both* neighbours plus 2 um.
+    pin_counts={}
+    for line in Path(source).read_text().splitlines():
+        mat=re.match(r'^\s*\.subckt\s+(\S+)\s+(.+)$',line,re.I)
+        if mat:
+            if mat.group(1) in pin_counts:
+                raise ValueError('duplicate source subcircuit for halo allocation')
+            pin_counts[mat.group(1)]=len(mat.group(2).split())
+    if not all(u['master'] in pin_counts and pin_counts[u['master']]>0 for u in children):
+        raise ValueError('child source pin count required for routed channel')
+    max_pins=max(pin_counts[u['master']] for u in children)
+    track_step=math.ceil(0.70/scale_um)
+    routing_gap=halo+2*max_pins*track_step
+    cursor_x = static[2]+2*routing_gap
+    cursor_y = static[3]+2*routing_gap
     placed=[]
     records=[]
     for use in sorted(children,key=lambda u:u['instance']):
@@ -164,9 +216,12 @@ def place_parent(mag_dir, source, cell, halo_um, scale_um, report):
                         'childPostRouteSha256':sha256(childpath),
                         'childLocalBBox':bbox,'transform':transform,
                         'translatedBBox':translated})
-        cursor_x=translated[2]+halo
-        cursor_y=translated[3]+halo
+        cursor_x=translated[2]+routing_gap
+        cursor_y=translated[3]+routing_gap
     check_halo(placed,halo)
+    # Two independently routed adjacent child port banks must not consume
+    # one another's physical footprint or leave less than 2 um spacing.
+    check_halo(placed,routing_gap)
     if any(box[0] < static[2]+halo or box[1] < static[3]+halo for _,box in placed):
         raise ValueError('child intersects fixed native transistor/port envelope')
     path.write_text(''.join(lines))
@@ -179,7 +234,10 @@ def place_parent(mag_dir, source, cell, halo_um, scale_um, report):
         raise ValueError('post-write child transform mismatch')
     data={'cell':cell,'stage':'BOTTOM_UP_RELOCATED_NOT_DRC_VERIFIED',
           'haloUm':halo_um,'scaleUmPerDbu':scale_um,'haloDbu':halo,
-          'fixedGeometryBBox':static,'children':records,
+          'routingChannelDbu':routing_gap,'maxChildPorts':max_pins,
+          'fixedGeometryBBox':static,'sourcePortBankBBox':static_root,
+          'parentMosRows':fixed_records,'parentMosRowGapDbu':row_gap,
+          'children':records,
           'parentMagSha256':sha256(path)}
     Path(report).write_text(json.dumps(data,indent=2)+'\n')
     return data

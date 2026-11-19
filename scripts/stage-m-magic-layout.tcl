@@ -104,6 +104,11 @@ proc stage_m_begin_cell {cell bbox port_ymin} {
     # short opposing rails (observed 44512687150: v0/v3 at X=15735).
     set ::stage_m_local_escape_index 0
     set ::stage_m_local_escape_base [expr {min(0,$xmin)-6*$::stage_m_pitch}]
+    # Opposite D/S terminals share one transistor row/Y. Route the left
+    # (D) terminal to the left corridor and the right (S) to the right
+    # corridor. This avoids same-row MET3 horizontal shorts in each MOS.
+    set ::stage_m_local_escape_right_index 0
+    set ::stage_m_local_escape_right_base [expr {$xmax+6*$::stage_m_pitch}]
     set ::stage_m_top [expr {$ymax + 2*$::stage_m_pitch}]
     # A supply rail inside the original source port bank shorts distinct
     # Metal1 ports even when every Metal2 escape column is unique.
@@ -215,9 +220,15 @@ proc stage_m_route_net {net terminals} {
             # the parent source bank and away from the routed child bboxes.
             # All parent crossings still use MET3 and via2; the true
             # clearance and short checks remain mandatory.
-            incr ::stage_m_local_escape_index
-            set route_x [expr {$::stage_m_local_escape_base -
-                $::stage_m_local_escape_index * [stage_m_u 1.20]}]
+            if {[string match {*/S} $name]} {
+                incr ::stage_m_local_escape_right_index
+                set route_x [expr {$::stage_m_local_escape_right_base +
+                    $::stage_m_local_escape_right_index * [stage_m_u 1.20]}]
+            } else {
+                incr ::stage_m_local_escape_index
+                set route_x [expr {$::stage_m_local_escape_base -
+                    $::stage_m_local_escape_index * [stage_m_u 1.20]}]
+            }
         } elseif {[string match {X*/*} $name] &&
                   $layer in {m1 met1 metal1}} {
             if {![info exists ::stage_m_hier_escape($name)]} {

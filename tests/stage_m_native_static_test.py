@@ -200,6 +200,25 @@ class StageMStatic(unittest.TestCase):
         self.assertEqual(set(ranks.values()),{-2,-1,0,1,2})
         self.assertEqual(len(ranks),5)
 
+    def test_parent_mos_drain_source_route_opposite_corridors(self):
+        source=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('set ::stage_m_local_escape_right_index 0',source)
+        self.assertIn('set ::stage_m_local_escape_right_base',source)
+        self.assertIn('if {[string match {*/S} $name]} {',source)
+        self.assertIn('incr ::stage_m_local_escape_right_index',source)
+        self.assertIn('incr ::stage_m_local_escape_index',source)
+        # The imported D/S contacts within one MOS row are distinct
+        # physical nets but share Y. They must not overlap on MET3.
+        left_drain=12808
+        right_source=12936
+        left_escape=-3270-240
+        right_escape=76057+3270+240
+        self.assertLess(left_escape,left_drain)
+        self.assertGreater(right_escape,right_source)
+        self.assertLess(left_drain,right_source)
+        # Parent metal3 rectangles stop at their respective D/S contacts.
+        self.assertLess(left_drain+32,right_source-32)
+
     def test_parent_local_mos_escapes_are_unique_and_routing_errors_abort(self):
         script=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
         for required in ('set ::stage_m_local_escape_index 0',
