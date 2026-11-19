@@ -65,6 +65,9 @@ proc stage_m_begin_cell {cell bbox} {
     set ::stage_m_top [expr {$ymax + 2*$::stage_m_pitch}]
     set ::stage_m_bottom [expr {$ymin - 2*$::stage_m_pitch}]
     set ::stage_m_tapx [expr {$xmin - 5*$::stage_m_pitch}]
+    # Source-pinned port pads often share X but sit at different Y positions.
+    # Assign a strictly separate escape column outside ALL device geometry.
+    set ::stage_m_port_escape_base [expr {$::stage_m_tapx - 2*$::stage_m_pitch}]
     stage_m_tap nwell nsdm $::stage_m_tapx $::stage_m_top
     stage_m_tap psub psdm $::stage_m_tapx $::stage_m_bottom
 }
@@ -123,11 +126,29 @@ proc stage_m_route_net {net terminals} {
         }
         stage_m_contact met1 $x $sy $::stage_m_met1w
         stage_m_contact via $x $sy $::stage_m_via
-        stage_m_segment met2 $x $sy $x $y $::stage_m_met2w
-        stage_m_contact met1 $x $y $::stage_m_met1w
-        stage_m_contact via $x $y $::stage_m_via
-        set minx [expr {min($minx,$x)}]
-        set maxx [expr {max($maxx,$x)}]
+        set route_x $x
+        if {[string match {port:*} $name]} {
+            # Native device-placement ports for independent nets often use
+            # exactly the same X; without this escape they short on Metal2.
+            # Lower Y ports escape farther left so no vertical trunk
+            # crosses another port's horizontal escape.
+            set lower [expr {max(0,[lindex $::stage_m_bbox 1] - $sy)}]
+            set route_x [expr {$::stage_m_port_escape_base-$lower}]
+        } elseif {[string match {*/B} $name] &&
+                  $net in {vdd vss v0 v3 VPWR VGND}} {
+            # Diffusion bulk and poly gate contacts for the same transistor
+            # frequently share X. Move bulk/power trunks right before their
+            # vertical run to avoid accidentally connecting gate to bulk.
+            set route_x [expr {$x+[stage_m_u 1.00]}]
+        }
+        if {$route_x != $x} {
+            stage_m_segment met2 $x $sy $route_x $sy $::stage_m_met2w
+        }
+        stage_m_segment met2 $route_x $sy $route_x $y $::stage_m_met2w
+        stage_m_contact met1 $route_x $y $::stage_m_met1w
+        stage_m_contact via $route_x $y $::stage_m_via
+        set minx [expr {min($minx,$route_x)}]
+        set maxx [expr {max($maxx,$route_x)}]
     }
     stage_m_segment met1 $minx $y $maxx $y $::stage_m_met1w
     # Use this physical Metal1 track for the actual SPICE top-level port.
