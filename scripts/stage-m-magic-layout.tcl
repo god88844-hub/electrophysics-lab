@@ -164,7 +164,7 @@ select top cell
 save $cell
 drc on
 drc check
-set count [drc count total]
+set count [drc list count total]
 set f [open "$cell-magic-drc.txt" w]
 puts $f "STAGE_M_DRC_COUNT $cell $count"
 close $f

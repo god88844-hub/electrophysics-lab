@@ -122,6 +122,14 @@ for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
   grep -qx "STAGE_M_DRC_COUNT $cell 0" "$cell-magic-drc.txt" || {
     echo "ZERO_DRC_NOT_PROVEN $cell" >> "$out/STATUS.txt"; exit 1;
   }
+  # Zero DRC alone does not imply correct connectivity. Native Magic
+  # extraction warnings for electrically shorted distinct schematic ports
+  # are fatal and must never be ignored or counted as successful LVS.
+  if grep -Eiq 'Ports? ".*" and ".*" are electrically shorted' "$cell-magic.log"; then
+    grep -Ei 'electrically shorted' "$cell-magic.log" >&2
+    echo "EXTRACTION_ELECTRICAL_SHORTS $cell" >> "$out/STATUS.txt"
+    exit 1
+  fi
   netgen -batch lvs \
     "$PWD/$cell-lvs.spice $cell" "$root/spice/$cell.spice $cell" \
     "$NETGEN" "$PWD/$cell-netgen-lvs.txt" \

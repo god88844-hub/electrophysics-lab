@@ -20,7 +20,7 @@ class StageMStatic(unittest.TestCase):
     def test_tcl_layers_pins_and_physical_checks(self):
         t=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
         for token in ('nwell','nsc','psc','nsdm','psdm','licon1','li1','mcon','met1','met2','via',
-                      'port make','label $p','2.72','0.17','0.15','drc count total',
+                      'port make','label $p','2.72','0.17','0.15','drc list count total',
                       'ext2spice cthresh 0','ext2spice rthresh 0'):
             self.assertIn(token,t)
     def test_mask_labels_are_real_contact_compounds_not_fake_painted_layers(self):
@@ -106,6 +106,32 @@ class StageMStatic(unittest.TestCase):
                 self.assertEqual(count,2*width*(radix*radix+radix+1)+1)
                 self.assertEqual(sum(line.startswith('X') for line in spice.splitlines()),count)
                 self.assertNotIn('VCVS',spice.upper())
+
+    def test_magic_instance_box_transforms_define_real_route_envelope(self):
+        import importlib.util,tempfile
+        from pathlib import Path
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_transformed_magic_bbox',
+            ROOT/'scripts'/'stage-m-routing-plan.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as d:
+            source=Path(d)/'placed.mag'
+            source.write_text('magic\ntech sky130A\n'
+                'use mos A\ntransform 1 0 1000 0 1 2000\n'
+                'box -50 -100 50 100\n'
+                'use mos B\ntransform 1 0 -1000 0 1 -2000\n'
+                'box -50 -100 50 100\n'
+                '<< labels >>\n<< end >>\n')
+            _,_,bbox=mod.mag(source)
+            self.assertEqual(bbox,[-1050,-2100,1050,2100])
+
+    def test_magic_numeric_drc_and_real_short_rejection(self):
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        native=(ROOT/'scripts'/'stage-m-native-eda.sh').read_text()
+        self.assertIn('drc list count total',layout)
+        self.assertIn('EXTRACTION_ELECTRICAL_SHORTS',native)
+        self.assertIn('electrically shorted',native)
 
     def test_engineering_acceptance_never_waives_soa_or_level2(self):
         import json

@@ -78,6 +78,11 @@ def mag(path):
         elif line.startswith('box '):
             b=list(map(int,line.split()[1:]))
             if len(b)==4:
+                # Per-child Magic "box" coordinates are LOCAL to that
+                # instance; the route envelope must use their transforms.
+                # Otherwise supply rails and channels can cross actual FETs.
+                if current and uses.get(current,[None,None])[1] is not None:
+                    b=list(transformed_box(b,uses[current][1]))
                 if box is None:box=b
                 else:box=[min(box[0],b[0]),min(box[1],b[1]),max(box[2],b[2]),max(box[3],b[3])]
     if any(x[1] is None for x in uses.values()):raise ValueError('missing instance transform')
