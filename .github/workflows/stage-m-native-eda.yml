@@ -33,9 +33,9 @@ jobs:
       - name: Verify Stage M shell scripts parse cleanly
         run: |
           bash -n scripts/stage-m-purge-queued-actions.sh scripts/stage-m-native-eda.sh
-          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py scripts/stage-m-four-terminal-soa.py scripts/stage-m-soa-waveform-capture.py scripts/stage-m-trial-decks.py scripts/stage-m-alu-assemble.py
+          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py scripts/stage-m-four-terminal-soa.py scripts/stage-m-soa-waveform-capture.py scripts/stage-m-trial-decks.py scripts/stage-m-alu-assemble.py scripts/stage-m-postroute-placement.py
       - name: Local-equivalent Python SPICE/Tcl/source consistency checks
-        run: python3 -m unittest discover -s tests -p stage_m_native_static_test.py
+        run: python3 -m unittest discover -s tests -p 'stage_m_*test.py'
       - name: Reject nonexistent PDK devices and verify candidate subcircuit boundaries
         run: node --test tests/stage-m-q4-sources.test.mjs tests/stage-m-native-monte-carlo.test.mjs
   native-q4-drc-lvs-pex:

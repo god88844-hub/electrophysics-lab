@@ -66,22 +66,21 @@ if [[ "${STAGE_M_CAMPAIGN_ONLY:-0}" == "1" ]]; then
   exit 0
 fi
 printf '%s\n' "PHYSICAL QUALIFICATION: UNQUALIFIED_NO_GO" > "$out/STATUS.txt"
+# Each hierarchy is routed from the actual SPICE dependency DAG, NOT in
+# source placer order. All children are physically saved before parents are
+# re-laid out. A descendant without zero native DRC cannot be admitted.
 for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
   root="$out/$cell"
   mkdir -p "$root/spice" "$root/mag"
   cp "$src/$cell.spice" "$root/spice/$cell.spice"
   if [[ -L "$root/mag/.magicrc" ]]; then
     test "$(readlink "$root/mag/.magicrc")" = "$TECH" || {
-      echo "Refusing wrong PDK Magic setup link for $cell" >&2
-      exit 1
-    }
+      echo "Refusing wrong pinned Magic setup link" >&2; exit 1; }
   elif [[ -e "$root/mag/.magicrc" ]]; then
-    echo "Refusing unexpected Magic setup file for $cell" >&2
-    exit 1
+    echo "Refusing unexpected Magic setup file" >&2; exit 1
   else
     ln -s "$TECH" "$root/mag/.magicrc"
   fi
-  # Source-backed placement is NOT final routing. Unrouted LVS must fail.
   (
     cd "$root"
     python3 "$GENERATOR" "$root/spice/$cell.spice" sky130 -keep \
@@ -93,43 +92,78 @@ for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
   }
   cd "$root/mag"
   test -s "$cell.mag" || {
-    echo "PLACEMENT_DID_NOT_CREATE_NATIVE_MAG $cell" >> "$out/STATUS.txt"
+    echo "NATIVE_TOP_CELL_MISSING $cell" >> "$out/STATUS.txt"
     exit 1
   }
   python3 "$repo/scripts/stage-m-routing-plan.py" \
     --spice "$root/spice/$cell.spice" --mag-dir "$root/mag" \
-    --cell "$cell" --output "$root/mag/$cell-routes.tcl" \
-    > "$root/mag/$cell-route-plan.log" 2>&1 || {
-      cat "$root/mag/$cell-route-plan.log" >&2
-      echo "NATIVE_SOURCE_BOUND_ROUTE_PLAN_FAILED $cell" >> "$out/STATUS.txt"
-      exit 1
+    --cell "$cell" --emit-order > "$cell-bottomup-order.txt" || {
+      echo "SPICE_HIERARCHY_DAG_INVALID $cell" >> "$out/STATUS.txt"; exit 1
     }
-  export STAGE_M_CELL="$cell" STAGE_M_SCHEMATIC="$root/spice/$cell.spice"
-  export STAGE_M_ROUTE_PLAN="$root/mag/$cell-routes.tcl"
-  magic -dnull -noconsole -T sky130A -rcfile "$TECH" \
-    < "$repo/scripts/stage-m-magic-layout.tcl" \
-    > "$cell-magic.log" 2>&1 || {
-      cat "$cell-magic.log" >&2
-      echo "MAGIC_DRC_OR_EXTRACTION_FAILED $cell" >> "$out/STATUS.txt"
-      exit 1
+  # Use the same Magic technology and CIF coordinate units as geometry
+  # construction: halo microns must never be confused with Magic DBU.
+  scale="$(printf 'puts "STAGE_M_SCALE:[cif scale out]"\nquit -noprompt\n' |
+    magic -dnull -noconsole -T sky130A -rcfile "$TECH" |
+    sed -n 's/^.*STAGE_M_SCALE:\([0-9.eE+-]*\).*$/\1/p' | tail -1)"
+  python3 - "$scale" <<'PY'
+import math,sys
+v=float(sys.argv[1]);assert math.isfinite(v) and v>0
+PY
+  # Every child gets a fresh Magic invocation. Parent files are relocated
+  # against the saved, POST-ROUTE child .mag bounding boxes (negative origins
+  # included), not the source importer's stale instance boxes.
+  while IFS= read -r sub; do
+    test -n "$sub" || continue
+    test -s "$sub.mag" || {
+      echo "UNPLACED_SPICE_CHILD $cell/$sub" >> "$out/STATUS.txt"; exit 1
     }
-  for artifact in "$cell.mag" "$cell.gds" "$cell-lvs.spice" "$cell-pex.spice" "$cell-magic-drc.txt"; do
-    test -s "$artifact" || {
-      echo "NATIVE_OUTPUT_MISSING $cell/$artifact" >> "$out/STATUS.txt"
-      exit 1
+    python3 "$repo/scripts/stage-m-postroute-placement.py" \
+      --mag-dir "$root/mag" --spice "$root/spice/$cell.spice" \
+      --cell "$sub" --halo-um 2.0 --scale-um "$scale" \
+      --report "$sub-postroute-placement.json" || {
+        echo "NATIVE_CHILD_BBOX_OR_HALO_COLLISION $cell/$sub" >> "$out/STATUS.txt"
+        exit 1
+      }
+    python3 "$repo/scripts/stage-m-routing-plan.py" \
+      --spice "$root/spice/$cell.spice" --mag-dir "$root/mag" \
+      --cell "$cell" --only-cell "$sub" --scale-um "$scale" \
+      --output "$sub-routes.tcl" > "$sub-route-plan.log" 2>&1 || {
+        cat "$sub-route-plan.log" >&2
+        echo "NATIVE_BOTTOM_UP_ROUTE_PLAN_FAILED $cell/$sub" >> "$out/STATUS.txt"
+        exit 1
+      }
+    export STAGE_M_CELL="$sub" STAGE_M_TOP_CELL="$cell"
+    export STAGE_M_SCHEMATIC="$root/spice/$cell.spice"
+    export STAGE_M_ROUTE_PLAN="$root/mag/$sub-routes.tcl"
+    magic -dnull -noconsole -T sky130A -rcfile "$TECH" \
+      < "$repo/scripts/stage-m-magic-layout.tcl" \
+      > "$sub-magic.log" 2>&1 || {
+        cat "$sub-magic.log" >&2
+        echo "BOTTOM_UP_MAGIC_DRC_OR_EXTRACT_FAILED $cell/$sub" >> "$out/STATUS.txt"
+        exit 1
+      }
+    for output in "$sub.mag" "$sub.gds" "$sub-lvs.spice" \
+                  "$sub-pex.spice" "$sub-magic-drc.txt"; do
+      test -s "$output" || {
+        echo "BOTTOM_UP_OUTPUT_MISSING $cell/$sub/$output" >> "$out/STATUS.txt"
+        exit 1
+      }
+    done
+    grep -qx "STAGE_M_DRC_COUNT $sub 0" "$sub-magic-drc.txt" || {
+      echo "BOTTOM_UP_DRC_NOT_ZERO $cell/$sub" >> "$out/STATUS.txt"; exit 1
     }
-  done
-  grep -qx "STAGE_M_DRC_COUNT $cell 0" "$cell-magic-drc.txt" || {
-    echo "ZERO_DRC_NOT_PROVEN $cell" >> "$out/STATUS.txt"; exit 1;
-  }
-  # Zero DRC alone does not imply correct connectivity. Native Magic
-  # extraction warnings for electrically shorted distinct schematic ports
-  # are fatal and must never be ignored or counted as successful LVS.
-  if grep -Eiq 'Ports? ".*" and ".*" are electrically shorted' "$cell-magic.log"; then
-    grep -Ei 'electrically shorted' "$cell-magic.log" >&2
-    echo "EXTRACTION_ELECTRICAL_SHORTS $cell" >> "$out/STATUS.txt"
-    exit 1
-  fi
+    if grep -Eiq 'Ports? ".*" and ".*" are electrically shorted' "$sub-magic.log"; then
+      grep -Ei 'electrically shorted' "$sub-magic.log" >&2
+      echo "EXTRACTION_ELECTRICAL_SHORTS $cell/$sub" >> "$out/STATUS.txt"
+      exit 1
+    fi
+    # Write only after the child has been saved and its DRC established;
+    # this is a sequencing marker, NOT a standalone LVS or silicon passport.
+    sha256sum "$sub.mag" "$sub-pex.spice" "$sub-magic-drc.txt" \
+       > "$sub.stage-m-routed"
+  done < "$cell-bottomup-order.txt"
+  # The strict terminal LVS matcher checks the ROOT verdict, not merely any
+  # uniquely matching nested subcell message.
   netgen -batch lvs \
     "$PWD/$cell-lvs.spice $cell" "$root/spice/$cell.spice $cell" \
     "$NETGEN" "$PWD/$cell-netgen-lvs.txt" \
@@ -138,10 +172,6 @@ for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
       echo "NETGEN_LVS_FAILED $cell" >> "$out/STATUS.txt"
       exit 1
     }
-  # Netgen prints results for nested cells before the top-level verdict.
-  # Its previous substring grep could pass the layout even when the root
-  # comparison ends "Netlists do not match". Both extracted top-level
-  # interfaces must also preserve the full unique schematic pin set.
   python3 "$repo/scripts/stage-m-validate-lvs.py" \
     --cell "$cell" --schematic "$root/spice/$cell.spice" \
     --lvs-netlist "$cell-lvs.spice" --pex "$cell-pex.spice" \

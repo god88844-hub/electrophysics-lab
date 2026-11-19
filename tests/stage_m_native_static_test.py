@@ -186,9 +186,9 @@ class StageMStatic(unittest.TestCase):
                       'stage_m_segment met2 $route_x $sy $route_x $y',
                       'set route_x [expr {$x+$::stage_m_hier_escape($name)*[stage_m_u 0.70]}]'):
             self.assertIn(token,layout)
-        self.assertNotIn('stage_m_segment met3 $x $sy $route_x $sy',layout)
+        self.assertIn('stage_m_segment met3 $x $sy $route_x $sy',layout)
         self.assertNotIn('stage_m_segment met2 $x $sy $route_x $sy',layout)
-        self.assertNotIn('stage_m_contact via2 $x $sy',layout)
+        self.assertIn('stage_m_contact via2 $x $sy',layout)
         import importlib.util
         spec=importlib.util.spec_from_file_location('stage_m_router',
             ROOT/'scripts'/'stage-m-routing-plan.py')

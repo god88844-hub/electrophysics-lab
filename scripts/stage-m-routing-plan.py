@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 import re
 
-LAYERS={'met1','m1','metal1','li1','locali'}
+LAYERS={'met1','m1','metal1','li1','locali','met3','metal3'}
 # Pinned SKY130 Magic compound contacts ndc/pdc/pc/nsc/psc connect
 # existing diffusion/poly to local interconnect: never allow bare diffusion.
 CONTACT_TO_LI1={
@@ -170,7 +170,7 @@ def token(x):
         raise ValueError('unsafe SPICE/Tcl identifier '+x)
     return '{'+x+'}'
 
-def render(subs,root,top):
+def dependency_order(subs,top):
     order=[]
     def walk(cell,seen):
         if cell in seen:raise ValueError('recursive SPICE graph')
@@ -179,6 +179,45 @@ def render(subs,root,top):
             if master in subs:walk(master,seen+(cell,))
         order.append(cell)
     walk(top,())
+    return order
+
+def parent_tracks(subs,uses,netmap,root,scale_um):
+    """Route real child top-level terminals into the post-route halo."""
+    import math,runpy
+    if not scale_um or scale_um<=0:
+        raise ValueError('no authenticated Magic PDK micron scale')
+    step=max(1,math.ceil(0.70/scale_um))
+    actual=runpy.run_path(str(Path(__file__).parent/'stage-m-postroute-placement.py'))['actual_bbox']
+    tracks={}
+    library=subs['library']
+    for inst,nets,master in subs['instances']:
+        if master not in library:
+            continue
+        if inst not in uses:
+            raise ValueError('missing actual hierarchical placement '+inst)
+        bound=transformed_box(actual(root/(master+'.mag')),uses[inst][1])
+        ports=library[master]['ports']
+        for index,port in enumerate(ports):
+            ident=inst+'/'+port
+            points=[p for group in netmap.values() for p in group if p[0]==ident]
+            if len(points)!=1:
+                raise ValueError('missing/duplicate actual child port '+ident)
+            x=points[0][2]
+            if abs(x-bound[0])<=abs(bound[2]-x):
+                rx=bound[0]-(index+1)*step
+            else:
+                rx=bound[2]+(index+1)*step
+            if rx==x or ident in tracks:
+                raise ValueError('no separate child halo track '+ident)
+            tracks[ident]=rx
+    return tracks
+
+def render(subs,root,top,only_cell=None,scale_um=None):
+    order=dependency_order(subs,top)
+    if only_cell is not None:
+        if only_cell not in order:
+            raise ValueError('non-DAG selected stage')
+        order=[only_cell]
     output=['# GENERATED from pinned SPICE and native Magic geometry, not synthetic nets.']
     for name in order:
         uses,labels,bbox=mag(root/(name+'.mag'))
@@ -201,11 +240,25 @@ def render(subs,root,top):
         # the transistor-array bbox. In the native detector, t3 was at
         # Y=-1100 while the old ground rail Y=-1126 shorted them in Metal1.
         port_ymin=min(labels[p][0][2] for p in sub['ports'])
+        is_parent=any(master in subs for _,_,master in sub['instances'])
         output+=['load '+token(name),
+                 'set ::stage_m_is_parent '+('1' if is_parent else '0'),
                  'stage_m_begin_cell '+token(name)+' [list '+
                  ' '.join(map(str,bbox))+'] '+str(port_ymin)]
-        for ident,offset in sorted(hierarchical_escape_ranks(netmap).items()):
-            output.append('stage_m_hier_escape '+token(ident)+' '+str(offset))
+        if is_parent:
+            if scale_um is None:
+                raise ValueError('source-bound PDK micron scale required')
+            context=dict(sub,library=subs)
+            tracks=parent_tracks(context,uses,netmap,root,scale_um)
+            for ident,track in sorted(tracks.items()):
+                output.append('stage_m_hier_track '+token(ident)+' '+str(track))
+            # Native MOS pads also need distinct escape ranks in parents.
+            for ident,rank in sorted(hierarchical_escape_ranks(netmap).items()):
+                if ident not in tracks:
+                    output.append('stage_m_hier_escape '+token(ident)+' '+str(rank))
+        else:
+            for ident,offset in sorted(hierarchical_escape_ranks(netmap).items()):
+                output.append('stage_m_hier_escape '+token(ident)+' '+str(offset))
         for net,points in sorted(netmap.items()):
             coords=' '.join('[list '+' '.join(
                 (token(id),token(layer),str(x),str(y),
@@ -218,11 +271,21 @@ def render(subs,root,top):
 
 def main():
     p=argparse.ArgumentParser()
-    for arg in ('spice','mag-dir','cell','output'):p.add_argument('--'+arg,required=True)
+    for arg in ('spice','mag-dir','cell'):
+        p.add_argument('--'+arg,required=True)
+    p.add_argument('--output')
+    p.add_argument('--emit-order',action='store_true')
+    p.add_argument('--only-cell')
+    p.add_argument('--scale-um',type=float)
     a=p.parse_args();subs=circuits(a.spice)
     if a.cell not in subs:raise ValueError('missing selected top-level cell')
-    Path(a.output).write_text(render(subs,Path(a.mag_dir),a.cell))
-    print('STAGE_M_GEOMETRY_ANCHORS_RESOLVED',a.cell)
+    if a.emit_order:
+        print('\n'.join(dependency_order(subs,a.cell)))
+        return
+    if not a.output:raise ValueError('--output required for route plan')
+    Path(a.output).write_text(render(subs,Path(a.mag_dir),a.cell,
+                                     a.only_cell,a.scale_um))
+    print('STAGE_M_GEOMETRY_ANCHORS_RESOLVED',a.only_cell or a.cell)
 
 if __name__=='__main__':
     main()

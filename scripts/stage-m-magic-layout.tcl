@@ -1,12 +1,18 @@
-# Deterministic SKY130A two-layer Q4 candidate routing.
+# Deterministic SKY130A bottom-up Q4 candidate routing. Native DRC/LVS mandatory.
 # Every endpoint originates from actual .mag geometry and SPICE connectivity.
 # DRC and LVS must independently pass. Do not infer signoff from geometry.
 foreach var {STAGE_M_CELL STAGE_M_SCHEMATIC STAGE_M_ROUTE_PLAN} {
     if {![info exists ::env($var)]} {error "STAGE_M_FAIL: $var missing"}
 }
 set cell $::env(STAGE_M_CELL)
-if {$cell ni {q4_thresh_det q4_inv q4_mux4 q4_half_adder}} {
-    error {STAGE_M_FAIL: unknown cell}
+if {![info exists ::env(STAGE_M_TOP_CELL)]} {
+    error "STAGE_M_FAIL: missing selected top-level physical source"
+}
+set top $::env(STAGE_M_TOP_CELL)
+if {$top ni {q4_thresh_det q4_inv q4_mux4 q4_half_adder} ||
+    ($cell ne $top && ![string match "${top}__*" $cell] &&
+     $cell ni {q4_thresh_det q4_inv q4_mux4 q4_half_adder})} {
+    error {STAGE_M_FAIL: non-SPICE hierarchy cell selection}
 }
 if {![file isfile $::env(STAGE_M_SCHEMATIC)] || ![file isfile $::env(STAGE_M_ROUTE_PLAN)] ||
     ![file isfile "$cell.mag"]} {error "STAGE_M_FAIL: no authentic geometry/netlist"}
@@ -18,6 +24,8 @@ proc stage_m_u {um} {expr {int(ceil(double($um)/$::stage_m_scale))}}
 set ::stage_m_pitch [stage_m_u 2.72]
 set ::stage_m_met1w [stage_m_u 0.28]
 set ::stage_m_met2w [stage_m_u 0.28]
+set ::stage_m_met3w [stage_m_u 0.32]
+set ::stage_m_via2 [stage_m_u 0.20]
 # Short source escapes stay on MET1. Vertical trunks stay on MET2;
 # no horizontal shared-Y MET3 buses or unverified extra via2 cuts.
 set ::stage_m_li1w [stage_m_u 0.34]
@@ -86,7 +94,9 @@ proc stage_m_begin_cell {cell bbox port_ymin} {
     set ::stage_m_route_copper {}
     set ::stage_m_route_active_net {}
     array unset ::stage_m_hier_escape
+    array unset ::stage_m_hier_track
     array unset ::stage_m_pin_place
+    array unset ::stage_m_pin_layer
     array unset ::stage_m_port_escape
     set ::stage_m_port_escape_index 0
     set ::stage_m_top [expr {$ymax + 2*$::stage_m_pitch}]
@@ -106,6 +116,13 @@ proc stage_m_hier_escape {name offset} {
         error "STAGE_M_FAIL: invalid or duplicate native hierarchy escape $name"
     }
     set ::stage_m_hier_escape($name) $offset
+}
+proc stage_m_hier_track {name coordinate} {
+    if {![string is integer -strict $coordinate] ||
+        [info exists ::stage_m_hier_track($name)]} {
+        error "STAGE_M_FAIL: duplicate/non-grid hierarchy halo escape $name"
+    }
+    set ::stage_m_hier_track($name) $coordinate
 }
 proc stage_m_route_net {net terminals} {
     if {[llength $terminals] < 2 || [lsearch -exact $::stage_m_nets $net] >= 0} {
@@ -137,7 +154,7 @@ proc stage_m_route_net {net terminals} {
         if {$lx>$x || $rx<$x || $ly>$sy || $ry<$sy || $lx>$rx || $ly>$ry} {
             error "STAGE_M_FAIL: terminal outside native Magic label $name"
         }
-        if {$layer ni {m1 met1 metal1 li1 locali}} {
+        if {$layer ni {m1 met1 metal1 li1 locali met3 metal3}} {
             error "STAGE_M_FAIL: invalid route terminal $name/$layer"
         }
         # Preserve the original Magic contact layer from pinned SKY130A
@@ -151,7 +168,7 @@ proc stage_m_route_net {net terminals} {
             # A bare poly gate has no authenticated contact yet. Paint
             # Magic's composite polycontact (pc), then require native DRC/LVS.
             stage_m_contact pc $x $sy [stage_m_u 0.17]
-        } elseif {$original ni {m1 met1 metal1 li1 locali}} {
+        } elseif {$original ni {m1 met1 metal1 li1 locali met3 metal3}} {
             error "STAGE_M_FAIL: unsupported genuine contact $original"
         }
         if {$layer in {li1 locali}} {
@@ -161,9 +178,17 @@ proc stage_m_route_net {net terminals} {
             stage_m_rect li1 [expr {min($lx,$x-$half)}] [expr {min($ly,$sy-$half)}]                               [expr {max($rx,$x+$half)}] [expr {max($ry,$sy+$half)}]
             stage_m_contact mcon $x $sy $::stage_m_mcon
         }
-        stage_m_contact met1 $x $sy $::stage_m_met1w
+        if {$layer ni {met3 metal3}} {
+            stage_m_contact met1 $x $sy $::stage_m_met1w
+        } else {
+            stage_m_contact met3 $x $sy $::stage_m_met3w
+        }
         set route_x $x
-        if {[string match {port:*} $name]} {
+        if {$::stage_m_is_parent && [info exists ::stage_m_hier_track($name)]} {
+            # This track is outside the saved, actually routed child bbox,
+            # allocated by the deterministic parent halo placer.
+            set route_x $::stage_m_hier_track($name)
+        } elseif {[string match {port:*} $name]} {
             # A port source label may share both source X and a Y region
             # with other external terminals. The prior Y-based offset
             # returned the *same MET2 trunk X* for every port whose
@@ -191,21 +216,54 @@ proc stage_m_route_net {net terminals} {
             # MET1 before rising onto its own MET2 track.
             set route_x [expr {$x+[stage_m_u 1.00]}]
         }
-        if {$route_x != $x} {
-            stage_m_segment met1 $x $sy $route_x $sy $::stage_m_met1w
+        if {$::stage_m_is_parent} {
+            # Parent-level crossings are MET3; connect the real MET1 terminal
+            # to MET2 through a via, and MET2 to MET3 through via2.
+            # Horizontal MET3 leaves the routed child footprint before the
+            # vertical MET2 trunk enters the proven inter-child halo.
+            if {$layer ni {met3 metal3}} {
+                stage_m_contact via $x $sy $::stage_m_via
+                stage_m_contact met2 $x $sy $::stage_m_met2w
+                stage_m_contact via2 $x $sy $::stage_m_via2
+            }
+            if {$route_x != $x} {
+                stage_m_segment met3 $x $sy $route_x $sy $::stage_m_met3w
+            }
+            stage_m_contact met3 $route_x $sy $::stage_m_met3w
+            stage_m_contact met2 $route_x $sy $::stage_m_met2w
+            stage_m_contact via2 $route_x $sy $::stage_m_via2
+            stage_m_segment met2 $route_x $sy $route_x $y $::stage_m_met2w
+            stage_m_contact met2 $route_x $y $::stage_m_met2w
+            stage_m_contact via2 $route_x $y $::stage_m_via2
+        } else {
+            if {$route_x != $x} {
+                stage_m_segment met1 $x $sy $route_x $sy $::stage_m_met1w
+            }
+            # Each leaf uses unique MET2 trunks above its own Li1/MET1 pads.
+            stage_m_contact met1 $route_x $sy $::stage_m_met1w
+            stage_m_contact via $route_x $sy $::stage_m_via
+            stage_m_segment met2 $route_x $sy $route_x $y $::stage_m_met2w
+            stage_m_contact met1 $route_x $y $::stage_m_met1w
+            stage_m_contact via $route_x $y $::stage_m_via
         }
-        # Do not create a MET2 via at the original shared-X Metal1 port:
-        # the via belongs at the unique escaped column only.
-        stage_m_contact met1 $route_x $sy $::stage_m_met1w
-        stage_m_contact via $route_x $sy $::stage_m_via
-        stage_m_segment met2 $route_x $sy $route_x $y $::stage_m_met2w
-        stage_m_contact met1 $route_x $y $::stage_m_met1w
-        stage_m_contact via $route_x $y $::stage_m_via
         set minx [expr {min($minx,$route_x)}]
         set maxx [expr {max($maxx,$route_x)}]
     }
-    stage_m_segment met1 $minx $y $maxx $y $::stage_m_met1w
-    # Use this physical Metal1 track for the actual SPICE top-level port.
+    if {$::stage_m_is_parent} {
+        stage_m_segment met3 $minx $y $maxx $y $::stage_m_met3w
+        if {$net in {vdd v3 VPWR vss v0 VGND}} {
+            # Parent bus is MET3 while the native well/substrate tap
+            # reaches MET1. Explicitly connect through via -> MET2 ->
+            # via2 rather than silently leaving the body unpowered.
+            stage_m_contact via $::stage_m_tapx $y $::stage_m_via
+            stage_m_contact met2 $::stage_m_tapx $y $::stage_m_met2w
+            stage_m_contact via2 $::stage_m_tapx $y $::stage_m_via2
+        }
+        set ::stage_m_pin_layer($net) met3
+    } else {
+        stage_m_segment met1 $minx $y $maxx $y $::stage_m_met1w
+        set ::stage_m_pin_layer($net) met1
+    }
     set ::stage_m_pin_place($net) [list $minx $y]
     set ::stage_m_route_active_net {}
     puts "STAGE_M_NET_CANDIDATE $::stage_m_current/$net"
@@ -213,6 +271,9 @@ proc stage_m_route_net {net terminals} {
 proc stage_m_finish_cell {cell ports} {
     if {$cell ne $::stage_m_current || [llength $::stage_m_nets] == 0} {
         error "STAGE_M_FAIL: incomplete cell routing coverage"
+    }
+    if {[llength $ports] != [llength [lsort -unique $ports]]} {
+        error "STAGE_M_FAIL: duplicate schematic export pin names"
     }
     set pinid 0
     foreach p $ports {
@@ -223,11 +284,12 @@ proc stage_m_finish_cell {cell ports} {
             error "STAGE_M_FAIL: no actual routed Metal1 pin track $cell/$p"
         }
         lassign $::stage_m_pin_place($p) px py
-        set h [expr {int(ceil($::stage_m_met1w/2.0))}]
+        set pl $::stage_m_pin_layer($p)
+        set width [expr {$pl eq "met3" ? $::stage_m_met3w : $::stage_m_met1w}]
+        set h [expr {int(ceil($width/2.0))}]
         box [format {%si} [expr {$px-$h}]] [format {%si} [expr {$py-$h}]]             [format {%si} [expr {$px+$h}]] [format {%si} [expr {$py+$h}]]
-        # Existing labels in the placement geometry are not signoff ports;
-        # anchor each exported port to an electrically routed Metal1 track.
-        label $p FreeSans 16 0 0 0 c met1
+        # Only after physical routing do these become true Magic export ports.
+        label $p FreeSans 16 0 0 0 c $pl
         port make $pinid
         incr pinid
     }
