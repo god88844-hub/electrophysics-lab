@@ -86,9 +86,20 @@ def main():
         manifest.get('drcLvsAllFourVerified') is not True or
         manifest.get('pexSha256',{}).get('q4_mux4')!=digest(mux)):
         raise ValueError('source-pinned, verified Q4 mux PEX missing')
+    # Magic's ext2spice emits a valid bare ".ends" for subcircuits.
+    # Require an exact eight-pin interface, not a named ".ends" token
+    # and not a collapsed netlist that shorts all terminals together.
+    import re
     raw=mux.read_text()
-    if '.subckt q4_mux4 ' not in raw.lower() or '.ends q4_mux4' not in raw.lower():
+    match=re.findall(r'(?im)^\s*\.subckt\s+q4_mux4\s+([^\n]+)',raw)
+    if len(match)!=1:
         raise ValueError('authentic extracted q4_mux4 subckt missing')
+    extracted_pins=match[0].split()
+    if tuple(x.lower() for x in extracted_pins)!=MUX_PINS:
+        raise ValueError('q4_mux4 PEX terminal collapse or external-pin mismatch')
+    tail=raw[raw.lower().find('.subckt q4_mux4 '):].splitlines()
+    if not any(re.match(r'(?i)^\s*\.ends(?:\s+q4_mux4)?\s*$',line) for line in tail[1:]):
+        raise ValueError('q4_mux4 PEX lacks a valid .ends closure')
     validate_logic()
     dest=Path(a.out);dest.mkdir(parents=True,exist_ok=True)
     records={}

@@ -36,6 +36,30 @@ class StageMStatic(unittest.TestCase):
         self.assertIn('ext2spice cthresh 0',t)
         self.assertIn('ext2spice rthresh 0',t)
 
+    def test_lvs_rejects_nested_matches_and_collapsed_top_ports(self):
+        import importlib.util,tempfile
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_validate_lvs',ROOT/'scripts'/'stage-m-validate-lvs.py')
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        with tempfile.TemporaryDirectory() as tmp:
+            place=pathlib.Path(tmp)
+            schematic=place/'source.spice'
+            layout=place/'layout.spice'
+            pex=place/'pex.spice'
+            report=place/'netgen.txt'
+            schematic.write_text('.subckt q4_mux4 sel d0 d1 d2 d3 out vdd vss\n.ends q4_mux4\n')
+            good='.subckt q4_mux4 sel d0 d1 d2 d3 out vdd vss\n.ends\n'
+            layout.write_text(good);pex.write_text(good)
+            report.write_text('Cell pin lists are equivalent.\nCircuits match uniquely.\n')
+            self.assertEqual(m.verify('q4_mux4',schematic,layout,pex,report)['count'],8)
+            report.write_text('Netlists match uniquely.\nNetlists do not match.\n')
+            with self.assertRaisesRegex(ValueError,'mismatched'):
+                m.verify('q4_mux4',schematic,layout,pex,report)
+            report.write_text('Cell pin lists are equivalent.\nCircuits match uniquely.\n')
+            pex.write_text('.subckt q4_mux4 d3\n.ends\n')
+            with self.assertRaisesRegex(ValueError,'collapsed|port mismatch'):
+                m.verify('q4_mux4',schematic,layout,pex,report)
+
     def test_mask_labels_are_real_contact_compounds_not_fake_painted_layers(self):
         script=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
         self.assertIn('stage_m_rect nsc',script)

@@ -138,9 +138,16 @@ for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
       echo "NETGEN_LVS_FAILED $cell" >> "$out/STATUS.txt"
       exit 1
     }
-  grep -Eq 'Circuits match uniquely|Netlists match uniquely' \
-    "$cell-netgen-lvs.txt" "$cell-netgen.log" || {
-      echo "NETGEN_MATCH_NOT_PROVEN $cell" >> "$out/STATUS.txt"; exit 1;
+  # Netgen prints results for nested cells before the top-level verdict.
+  # Its previous substring grep could pass the layout even when the root
+  # comparison ends "Netlists do not match". Both extracted top-level
+  # interfaces must also preserve the full unique schematic pin set.
+  python3 "$repo/scripts/stage-m-validate-lvs.py" \
+    --cell "$cell" --schematic "$root/spice/$cell.spice" \
+    --lvs-netlist "$cell-lvs.spice" --pex "$cell-pex.spice" \
+    --report "$cell-netgen-lvs.txt" || {
+      echo "NETGEN_TOP_LEVEL_LVS_FAILED $cell" >> "$out/STATUS.txt"
+      exit 1
     }
   sha256sum "$cell.mag" "$cell.gds" "$root/spice/$cell.spice" \
     "$cell-lvs.spice" "$cell-pex.spice" "$cell-netgen-lvs.txt" \
