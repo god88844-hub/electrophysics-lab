@@ -28,6 +28,20 @@ export interface ForensicState {
   fix: { title: string; description: string; patch: Record<string, number | null>; source: string } | null;
 }
 
+export interface QuantumHud {
+  bloch: Array<{ x: number; y: number; z: number; purity: number }>;
+  gateFidelity: number | null;
+}
+
+export interface QuantumExperiment {
+  running: boolean;
+  k: number;
+  total: number;
+  history: Array<{ k: number; error: number }>;
+  bundle: Record<string, unknown> | null;
+  finalError: number | null;
+}
+
 export interface LabState {
   activeBay: BayId;
   inspectorOpen: boolean;
@@ -47,6 +61,10 @@ export interface LabState {
   replayIndex: number | null; // null = live, else scrub position in forensic.replay
   vddSlider: number;
   drivePowerMW: number;
+  quantum: QuantumHud | null;
+  quantumExp: QuantumExperiment;
+  qecCurve: Array<{ p: number; logical: number; bitflip: number }> | null;
+  pulseParams: { amplitude: number; sigmaNs: number; beta: number };
 }
 
 const initial: LabState = {
@@ -68,6 +86,10 @@ const initial: LabState = {
   replayIndex: null,
   vddSlider: 1.8,
   drivePowerMW: 5,
+  quantum: null,
+  quantumExp: { running: false, k: 0, total: 110, history: [], bundle: null, finalError: null },
+  qecCurve: null,
+  pulseParams: { amplitude: 25, sigmaNs: 7.5, beta: 0 },
 };
 
 type Listener = () => void;

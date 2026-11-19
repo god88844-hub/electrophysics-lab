@@ -7,6 +7,7 @@ import { worldRef } from './worldRef.js';
 import { store, flashToast } from './state/store.js';
 import { verifyReferenceIntegrity } from './data/reference.js';
 import { physicsClient, type PhysicsSnapshot, type ForensicReport, type ProposedFix, type FaultFx } from './physics/physicsClient.js';
+import { quantumClient, type BlochState, type BreakthroughBundle } from './physics/quantumClient.js';
 import { LibraryOverlay } from './ui/LibraryOverlay.js';
 import { InspectorPanels } from './ui/InspectorPanels.js';
 import { ForensicDrawer } from './ui/ForensicDrawer.js';
@@ -69,6 +70,23 @@ export function App() {
     });
     physicsClient.setParams({ vdd: store.get().vddSlider, drivePowerW: store.get().drivePowerMW / 1000 });
 
+    // Live quantum: Lindblad Bloch readouts + AI Co-Inventor events.
+    quantumClient.ensure();
+    quantumClient.onState(({ bloch, gateFidelity }: { bloch: BlochState[]; gateFidelity: number | null }) => {
+      bloch.forEach((b, i) => world.bay1.setBlochState(i, b.x, b.y, b.z, b.purity));
+      store.set({ quantum: { bloch, gateFidelity } });
+    });
+    quantumClient.onProgress((k, total, error) => {
+      const exp = store.get().quantumExp;
+      store.set({ quantumExp: { ...exp, running: k < total, k, total, history: [...exp.history, { k, error }] } });
+    });
+    quantumClient.onDone((bundle: BreakthroughBundle) => {
+      store.set({
+        quantumExp: { ...store.get().quantumExp, running: false, bundle, finalError: 1 - bundle.optimizedFidelity },
+      });
+      flashToast(`Discovery complete: fidelity ${(bundle.optimizedFidelity * 100).toFixed(1)}% (SIMULATED_NOISY_MODEL)`);
+    });
+
     // Integrity badge — SHA-256 over exact bytes of all 6 reference files.
     verifyReferenceIntegrity().then((res) => {
       store.set({ integrity: { verified: res.verified, total: res.total, allVerified: res.allVerified, done: true } });
@@ -87,6 +105,9 @@ export function App() {
       const dt = Math.min(clock.getDelta(), 0.05);
       rig.update(dt);
       world.update(dt, renderer.camera, 0);
+      // Pulse beam decay — visual acknowledgment of a real applied pulse.
+      const bay1 = world.bay1;
+      bay1.setPulseLevel(bay1.pulseBeamLevel * Math.exp(-dt * 6));
       governor(dt);
       renderer.render(dt);
       frames++;

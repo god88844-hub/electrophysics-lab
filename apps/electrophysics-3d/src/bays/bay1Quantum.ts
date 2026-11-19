@@ -32,6 +32,12 @@ export class Bay1Quantum {
   /** Temps per stage (K) — driven by the cryo thermal model (M5 quench). */
   stageTempsK = [300, 4, 0.1, 0.015];
   private modeGroups: THREE.Group[] = [];
+  // Live 3D Bloch spheres (real density-matrix readouts from the worker).
+  private blochGroups: THREE.Group[] = [];
+  private blochArrows: THREE.Group[] = [];
+  private blochPurityShells: THREE.Mesh[] = [];
+  private pulseBeam?: THREE.Mesh;
+  private pulseBeamLevel = 0;
 
   constructor() {
     const fridge = this.buildFridge();
@@ -46,6 +52,107 @@ export class Bay1Quantum {
     this.coldLight = new THREE.PointLight(0x6fc8ff, 6, 6, 2);
     this.coldLight.position.set(0, 0.75, 0);
     this.group.add(this.coldLight);
+
+    this.buildBlochSpheres();
+    this.buildPulseBeam();
+  }
+
+  /** Three interactive Bloch spheres above the cryostat (q0..q2 readouts). */
+  private buildBlochSpheres(): void {
+    const positions: Array<[number, number, number]> = [
+      [-2.35, 3.3, 0.4],
+      [0, 3.9, 0.4],
+      [2.35, 3.3, 0.4],
+    ];
+    for (let i = 0; i < 3; i++) {
+      const g = new THREE.Group();
+      g.position.set(...positions[i]);
+      const shell = new THREE.Mesh(
+        new THREE.SphereGeometry(0.42, 20, 14),
+        new THREE.MeshStandardMaterial({ color: 0x2a5a80, wireframe: true, transparent: true, opacity: 0.4 })
+      );
+      g.add(shell);
+      // Equator + axes.
+      const equator = new THREE.Mesh(
+        new THREE.TorusGeometry(0.42, 0.006, 6, 40),
+        new THREE.MeshBasicMaterial({ color: 0x3a7ab0, transparent: true, opacity: 0.5 })
+      );
+      equator.rotation.x = Math.PI / 2;
+      g.add(equator);
+      const axis = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.006, 0.006, 0.9, 6),
+        new THREE.MeshBasicMaterial({ color: 0x5a8ab8, transparent: true, opacity: 0.5 })
+      );
+      g.add(axis);
+      // Purity shell: opaque blob scaled by Tr(ρ²).
+      const purity = new THREE.Mesh(
+        new THREE.SphereGeometry(0.42, 16, 12),
+        new THREE.MeshStandardMaterial({ color: 0x62d0ff, transparent: true, opacity: 0.22, roughness: 0.3 })
+      );
+      g.add(purity);
+      this.blochPurityShells.push(purity);
+      // State arrow.
+      const arrow = new THREE.Group();
+      const shaft = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.022, 0.022, 0.34, 8),
+        new THREE.MeshStandardMaterial({ color: 0xffc46b, emissive: 0x8a6b1d, emissiveIntensity: 0.8 })
+      );
+      shaft.position.y = 0.17;
+      arrow.add(shaft);
+      const tip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.12, 10),
+        new THREE.MeshStandardMaterial({ color: 0xffc46b, emissive: 0x8a6b1d, emissiveIntensity: 1 })
+      );
+      tip.position.y = 0.4;
+      arrow.add(tip);
+      g.add(arrow);
+      this.blochArrows.push(arrow);
+      const label = makeTextSprite(`q${i}`, { scale: 0.32, color: '#9fd8ff', fontSize: 30 });
+      label.position.set(0, 0.62, 0);
+      g.add(label);
+      this.blochGroups.push(g);
+      this.group.add(g);
+    }
+  }
+
+  /** Microwave/laser drive beam synced to the solver pulse timeline. */
+  private buildPulseBeam(): void {
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.02, 1.6, 10, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xffc46b, transparent: true, opacity: 0, side: THREE.DoubleSide })
+    );
+    beam.position.set(-0.9, 1.3, 0.35);
+    beam.rotation.z = 0.7;
+    beam.name = 'pulseBeam';
+    this.group.add(beam);
+    this.pulseBeam = beam;
+  }
+
+  /**
+   * Live Bloch state update — vectors come straight from the Lindblad
+   * density matrix in the quantum worker (no decorative animation).
+   */
+  setBlochState(index: number, x: number, y: number, z: number, purity: number): void {
+    if (index < 0 || index >= this.blochArrows.length) return;
+    const arrow = this.blochArrows[index];
+    const v = new THREE.Vector3(x, z, -y); // physics z-up → render y-up, handedness flip
+    const len = v.length();
+    if (len > 1e-4) {
+      arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.clone().normalize());
+      arrow.scale.setScalar(Math.min(1.15, Math.max(0.15, len)));
+    }
+    const shell = this.blochPurityShells[index];
+    const p = Math.max(0.33, Math.min(1, purity));
+    shell.scale.setScalar(0.33 + 0.67 * p);
+    (shell.material as THREE.MeshStandardMaterial).opacity = 0.1 + 0.25 * p;
+  }
+
+  /** Drive beam intensity 0..1 following the pulse envelope Ω(t). */
+  setPulseLevel(level: number): void {
+    this.pulseBeamLevel = level;
+    if (this.pulseBeam) {
+      (this.pulseBeam.material as THREE.MeshBasicMaterial).opacity = 0.65 * Math.min(1, level);
+    }
   }
 
   private buildFridge(): THREE.Group {

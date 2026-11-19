@@ -1,8 +1,39 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { LabState } from '../state/store.js';
 import { Q4_PRIMITIVES, REFERENCE, TRANSMON } from '../data/reference.js';
 import { physicsClient } from '../physics/physicsClient.js';
+import { quantumClient, type BreakthroughBundle } from '../physics/quantumClient.js';
 import { worldRef } from '../worldRef.js';
+import { flashToast } from '../state/store.js';
+
+/** Live convergence chart for the AI Co-Inventor (canvas 2D). */
+function ConvergenceChart({ history }: { history: Array<{ k: number; error: number }> }): React.ReactElement {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0a1218';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (history.length < 2) return;
+    const maxE = Math.max(0.01, ...history.map((h) => h.error));
+    ctx.strokeStyle = '#62d0ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    history.forEach((h, i) => {
+      const x = (i / (history.length - 1)) * (canvas.width - 12) + 6;
+      const y = canvas.height - 8 - (h.error / maxE) * (canvas.height - 18);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = '#4e6a80';
+    ctx.font = '10px monospace';
+    ctx.fillText(`error ${history[history.length - 1].error.toFixed(4)}`, 8, 12);
+  }, [history]);
+  return <canvas ref={ref} width={280} height={90} style={{ width: '100%', borderRadius: 6, border: '1px solid #223042' }} />;
+}
 
 export interface BayPanelProps {
   bay: number;
@@ -89,6 +120,158 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
             T₁ ≈ {TRANSMON.t1_us.typical} µs · T₂ ≈ {TRANSMON.t2_us.typical} µs · ZZ crosstalk ≈{' '}
             {TRANSMON.zz_crosstalk_khz.typical} kHz · readout {TRANSMON.readout_fidelity.typical}
           </div>
+          {state.quantum && (
+            <div style={{ color: '#9fd8ff', fontSize: 11.5, marginTop: 6, fontFamily: 'monospace' }}>
+              {state.quantum.bloch.slice(0, 2).map((b, i) => (
+                <div key={i}>
+                  q{i}: ⟨Z⟩ {b.z.toFixed(3)} · purity {b.purity.toFixed(3)}
+                </div>
+              ))}
+              {state.quantum.gateFidelity !== null && (
+                <div>last X-gate state fidelity: {(state.quantum.gateFidelity * 100).toFixed(1)}%</div>
+              )}
+            </div>
+          )}
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>PULSE EDITOR (DRAG, 25 ns GATE)</div>
+          <div style={{ color: '#8ea1b8', fontSize: 11 }}>amplitude {state.pulseParams.amplitude} MHz</div>
+          <input
+            type="range"
+            min={5}
+            max={40}
+            step={0.5}
+            value={state.pulseParams.amplitude}
+            onChange={(e) => {
+              const amplitude = parseFloat(e.target.value);
+              dispatch({ pulseParams: { ...state.pulseParams, amplitude } });
+              quantumClient.setParams({ pulse: { amplitude } });
+            }}
+            style={{ width: '100%', accentColor: '#4fc3f7' }}
+          />
+          <div style={{ color: '#8ea1b8', fontSize: 11 }}>σ {state.pulseParams.sigmaNs} ns · DRAG β {state.pulseParams.beta.toFixed(2)}</div>
+          <input
+            type="range"
+            min={3}
+            max={12}
+            step={0.5}
+            value={state.pulseParams.sigmaNs}
+            onChange={(e) => {
+              const sigmaNs = parseFloat(e.target.value);
+              dispatch({ pulseParams: { ...state.pulseParams, sigmaNs } });
+              quantumClient.setParams({ pulse: { sigmaNs } });
+            }}
+            style={{ width: '100%', accentColor: '#4fc3f7' }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={1.5}
+            step={0.05}
+            value={state.pulseParams.beta}
+            onChange={(e) => {
+              const beta = parseFloat(e.target.value);
+              dispatch({ pulseParams: { ...state.pulseParams, beta } });
+              quantumClient.setParams({ pulse: { beta } });
+            }}
+            style={{ width: '100%', accentColor: '#4fc3f7' }}
+          />
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <button
+              style={btnStyle(false, '#4fc3f7')}
+              onClick={() => {
+                quantumClient.applyPulse();
+                worldRef.current?.bay1.setPulseLevel(1);
+              }}
+            >
+              Fire X pulse
+            </button>
+            <button style={btnStyle(false, '#4fc3f7')} onClick={() => quantumClient.reset()}>
+              Reset qubits
+            </button>
+          </div>
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>AI CO-INVENTOR — DISCOVERY EXPERIMENT</div>
+          <div style={{ color: '#6f8aa8', fontSize: 11, lineHeight: 1.5, marginBottom: 8 }}>
+            Minimize X-gate error under real T₁/T₂ + ZZ crosstalk (fixed-seed SPSA → Nelder–Mead against the Lindblad
+            solver). Reproducible: identical seed ⇒ identical trace.
+          </div>
+          <ConvergenceChart history={state.quantumExp.history} />
+          <div style={{ marginTop: 8 }}>
+            <button
+              style={btnStyle(state.quantumExp.running, '#8ef0b2')}
+              onClick={() => {
+                dispatch({ quantumExp: { running: true, k: 0, total: 110, history: [], bundle: null, finalError: null } });
+                quantumClient.runExperiment();
+                flashToast('AI Discovery Experiment running (seed 20241119)');
+              }}
+            >
+              {state.quantumExp.running ? `Optimizing… ${state.quantumExp.k}/${state.quantumExp.total}` : 'Run AI Discovery Experiment'}
+            </button>
+            {state.quantumExp.finalError !== null && (
+              <div style={{ color: '#8ef0b2', fontSize: 11.5, marginTop: 6, fontFamily: 'monospace' }}>
+                final error {(state.quantumExp.finalError * 100).toFixed(2)}% ·{' '}
+                {state.quantumExp.bundle
+                  ? `fidelity ${(((state.quantumExp.bundle as BreakthroughBundle).optimizedFidelity ?? 0) * 100).toFixed(1)}%`
+                  : ''}
+              </div>
+            )}
+            {state.quantumExp.bundle && (
+              <button
+                style={{ ...btnStyle(false, '#8ef0b2'), marginTop: 6 }}
+                onClick={async () => {
+                  const bundle = state.quantumExp.bundle as BreakthroughBundle;
+                  const payload = { ...bundle };
+                  // SHA-256 over the canonical JSON — bundle integrity seal.
+                  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+                  const digest = await crypto.subtle.digest('SHA-256', bytes);
+                  payload.sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+                  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `breakthrough-bundle-${payload.seed}.json`;
+                  a.click();
+                  setTimeout(() => URL.revokeObjectURL(url), 2000);
+                  flashToast('Reproducible Breakthrough Experiment Bundle exported (SIMULATED_NOISY_MODEL)');
+                }}
+              >
+                Export Breakthrough Bundle (JSON)
+              </button>
+            )}
+          </div>
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>QUANTUM ERROR CORRECTION</div>
+          <button
+            style={btnStyle(state.qecCurve !== null, '#ff6d8a')}
+            onClick={async () => {
+              flashToast('QEC sweep: logical vs physical error (d3 segment + bit-flip code)');
+              const { surfaceCodeLogicalErrorRate, bitFlipLogicalErrorRate } = await import('@quantum/stabilizer.mjs');
+              const curve: Array<{ p: number; logical: number; bitflip: number }> = [];
+              for (let ppm = 10; ppm <= 80; ppm += 10) {
+                const p = ppm / 1000;
+                curve.push({
+                  p,
+                  logical: surfaceCodeLogicalErrorRate(600, p, 20241120 + ppm),
+                  bitflip: bitFlipLogicalErrorRate(600, p, 314159 + ppm),
+                });
+              }
+              dispatch({ qecCurve: curve });
+            }}
+          >
+            Run QEC sweep
+          </button>
+          {state.qecCurve && (
+            <div style={{ color: '#a9b8cc', fontSize: 10.5, marginTop: 6, fontFamily: 'monospace', lineHeight: 1.6 }}>
+              {state.qecCurve.map((r) => (
+                <div key={r.p}>
+                  p {(r.p * 100).toFixed(0)}% → logical {(r.logical * 100).toFixed(2)}% (code) · {(r.bitflip * 100).toFixed(2)}% (d2)
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
