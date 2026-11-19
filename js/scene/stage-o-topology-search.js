@@ -4,7 +4,7 @@ import {evaluateRadixAlu} from '../evidence/phase73-mvl-devices.js';
 import {Diagram} from '../core/diagram.js';
 import {runLogic} from '../labs/logic/engine.js';
 import {generateIdealAdderReference} from './stage-o-agent-tools.js';
-import {seededUniformGenerator} from '../evidence/phase75-monte-carlo.js';
+import {seededUniformGenerator} from '../evidence/pure-seeded-rng.js';
 export const SEARCH_FORMAT='invention-lab/phase85-topology-search/1';
 const number=x=>typeof x==='number'&&Number.isFinite(x);
 export function candidateSignature(candidate){

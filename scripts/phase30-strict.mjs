@@ -262,6 +262,23 @@ p==='js/evidence/stage-m-signoff-readiness.js'||
  p==='tests/stage-p-integration.test.mjs'||
  p==='docs/STAGE-P-89-92.md'||
  p==='.github/workflows/stage-p-89-92.yml'||
+ p==='js/hardware/phase93-fpga.js'||
+ p==='js/evidence/pure-seeded-rng.js'||
+ p==='tests/phase94_visa_mock_test.py'||
+ p==='scripts/phase93-local-fpga.mjs'||p==='scripts/phase94-visa-capture.py'||
+ p==='js/hardware/phase93-webserial.js'||
+ p==='js/hardware/phase94-instrument-ingest.js'||
+ p==='js/hardware/phase95-tapeout-package.js'||
+ p==='js/hardware/phase96-physical-qualification.js'||
+ p==='js/scene/stage-q-hardware-ui.js'||
+ p==='tests/stage-q-fpga.test.mjs'||
+ p==='tests/stage-q-instruments.test.mjs'||
+ p==='tests/stage-q-tapeout.test.mjs'||
+ p==='tests/stage-q-physical-qualification.test.mjs'||
+ p==='tests/stage-q-integration.test.mjs'||
+ p==='docs/STAGE-Q-93-96.md'||
+ p==='.github/workflows/stage-q-93-96.yml'||
+ p==='scripts/phase94-recorded-trace.mjs'||
  p==='README.md'||p==='package.json';
  const unexpectedChanges=changes.filter(x=>!allowed(x)),missingHistoricalCommits=[];
  for(const p of policy.stack)try{

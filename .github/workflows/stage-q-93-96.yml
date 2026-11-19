@@ -1,0 +1,80 @@
+name: Stage Q optional physical-hardware bridge and provenance gates
+on:
+  push:
+    branches: [stage-q/phase93-96-hardware-bridge, main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  stage-q-node:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full legacy plus M N O P Q Node tests
+        run: npm test
+      - name: Syntax-check Stage Q hardware modules
+        run: |
+          node --check js/hardware/phase93-fpga.js
+          node --check js/hardware/phase93-webserial.js
+          node --check js/hardware/phase94-instrument-ingest.js
+          node --check js/hardware/phase95-tapeout-package.js
+          node --check js/hardware/phase96-physical-qualification.js
+          node --check js/scene/stage-q-hardware-ui.js
+          node --check js/scene/viewer.js
+      - name: Ensure no mock or self-attestation can qualify hardware
+        run: node --test tests/stage-q-physical-qualification.test.mjs
+  stage-q-yosys-synthesis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real open-source Yosys RTL synthesizer
+        run: sudo apt-get update && sudo apt-get install -y yosys
+      - name: Generate original binary-encoded Q4 combinational reference RTL
+        run: >-
+          node --input-type=module -e "import {writeFileSync} from 'node:fs';
+          import {fpgaLogicSpec,emitFPGAVerilog} from './js/hardware/phase93-fpga.js';
+          writeFileSync('q4_half_adder.sv',emitFPGAVerilog(fpgaLogicSpec({name:'q4_half_adder'})).content);"
+      - name: Check actual Yosys RTL elaboration and combinational logic
+        run: yosys -Q -p "read_verilog -sv q4_half_adder.sv; hierarchy -check -top q4_half_adder; proc; opt; check"
+  stage-q-public-recorded-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact upstream recorded oscilloscope Git blob and parse captured readings
+        run: node scripts/phase94-recorded-trace.mjs
+  stage-q-mocked-visa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Mock read-only PyVISA without any physical USB drivers
+        run: python -m unittest discover -s tests -p phase94_visa_mock_test.py -v
+  stage-q-chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Optional physical UI browser smoke without USB hardware
+        run: node scripts/browser-smoke.mjs

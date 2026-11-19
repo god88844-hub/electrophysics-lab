@@ -14,6 +14,7 @@ import {attachStageNWorkbench} from './stage-n-workbench-ui.js';
 import {createInstancedProxyRenderer} from './stage-n-instanced-gl.js';
 import {attachStageOCoInventor} from './stage-o-coinventor-ui.js';
 import {attachStagePSystems} from './stage-p-systems-ui.js';
+import {attachStageQHardwareBridge} from './stage-q-hardware-ui.js';
 
 const VERT = `attribute vec3 aPosition;
 attribute vec3 aColor;
@@ -180,6 +181,7 @@ export class Scene3DView {
     this.stageN=attachStageNWorkbench(this,onPhysicalLayoutChange);
     this.stageO=attachStageOCoInventor(this,onPhysicalLayoutChange);
     this.stageP=attachStagePSystems(this);
+    this.stageQ=attachStageQHardwareBridge(this);
     this.canvas.addEventListener('pointerdown',e=>this._down(e));
     this.canvas.addEventListener('pointermove',e=>this._move(e));
     this.canvas.addEventListener('pointerup',e=>this._up(e));
