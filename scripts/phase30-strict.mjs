@@ -216,6 +216,24 @@ p==='js/evidence/stage-m-signoff-readiness.js'||
  p==='tests/phase77-magic-netgen-real.test.mjs'||
  p==='js/evidence/stage-m-alu-harness.js'||
  p==='tests/stage-m-alu-harness.test.mjs'||
+ p==='js/scene/stage-n-snap-build.js'||
+ p==='js/scene/stage-n-semantic-zoom.js'||
+ p==='js/scene/stage-n-live-overlay.js'||
+ p==='js/scene/stage-n-quantum-view.js'||
+ p==='js/scene/stage-n-academy.js'||
+ p==='js/scene/stage-n-render-budget.js'||
+ p==='js/scene/stage-n-instanced-gl.js'||p==='tests/stage-n-instanced-gl.test.mjs'||
+ p==='js/scene/stage-n-render-worker.js'||
+ p==='js/scene/stage-n-workbench-ui.js'||
+ p==='tests/stage-n-snap-build.test.mjs'||
+ p==='tests/stage-n-semantic-zoom.test.mjs'||
+ p==='tests/stage-n-live-overlay.test.mjs'||
+ p==='tests/stage-n-quantum-view.test.mjs'||
+ p==='tests/stage-n-academy.test.mjs'||
+ p==='tests/stage-n-render-budget.test.mjs'||
+ p==='scripts/stage-n-benchmark.mjs'||
+ p==='docs/STAGE-N-78-83.md'||
+ p==='.github/workflows/stage-n-78-83.yml'||
  p==='README.md'||p==='package.json';
  const unexpectedChanges=changes.filter(x=>!allowed(x)),missingHistoricalCommits=[];
  for(const p of policy.stack)try{

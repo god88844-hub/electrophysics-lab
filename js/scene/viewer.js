@@ -10,6 +10,8 @@ import {objTrianglesForPart} from './imported-obj-geometry.js';
 import { inspectPhysicalHarnesses } from './physical-routing.js';
 import { attachPhysicalRoutingEditor } from './physical-routing-ui.js';
 import { captureExperimentTrace,isExperimentCurrent,experimentReadingsAt,exportExperimentRecord } from './experiment-trace.js';
+import {attachStageNWorkbench} from './stage-n-workbench-ui.js';
+import {createInstancedProxyRenderer} from './stage-n-instanced-gl.js';
 
 const VERT = `attribute vec3 aPosition;
 attribute vec3 aColor;
@@ -92,7 +94,7 @@ export class Scene3DView {
     this.root=document.createElement('div');this.root.className='scene3d-root';
     this.root.style.display='none';this.root.setAttribute('aria-label','Interactive three-dimensional electronics workspace');
     this.canvas=document.createElement('canvas');this.canvas.className='scene3d-surface';this.canvas.tabIndex=0;
-    this.canvas.setAttribute('aria-label','3D component playground: drag to orbit, wheel to zoom, click a component to select');
+    this.canvas.setAttribute('aria-label','3D components: drag orbit, WASD fly, Q/E vertical, wheel zoom, click to select');
     this.overlay=document.createElement('canvas');this.overlay.className='scene3d-overlay';
     this.overlay.setAttribute('aria-hidden','true');
     this.notice=document.createElement('div');this.notice.className='scene3d-help';
@@ -169,16 +171,28 @@ export class Scene3DView {
         matrix:this.gl.getUniformLocation(this.program,'uMatrix'),
       };
       this.gl.enable(this.gl.DEPTH_TEST);
+      try{this.instancedProxy=createInstancedProxyRenderer(this.gl);}
+      catch{this.instancedProxy={supported:false};} // keep prior WebGL path operational
       this.available=true;
     }catch(e){this.notice.textContent='3D requires WebGL. The 2D editor remains available.';this.onError(String(e.message));}
+    this.stageN=attachStageNWorkbench(this,onPhysicalLayoutChange);
     this.canvas.addEventListener('pointerdown',e=>this._down(e));
     this.canvas.addEventListener('pointermove',e=>this._move(e));
     this.canvas.addEventListener('pointerup',e=>this._up(e));
     this.canvas.addEventListener('pointercancel',()=>{this.drag=null;});
     this.canvas.addEventListener('keydown',e=>{
-      if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-','Escape'].includes(e.key))return;
+      if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-','Escape',
+        'w','a','s','d','q','e','W','A','S','D','Q','E'].includes(e.key))return;
       e.preventDefault();
       if(e.key==='Escape')this.wireSource=null;
+      else if('wasdqe'.includes(e.key.toLowerCase())&&e.key.length===1){
+        const v=e.key.toLowerCase(),step=Math.max(.1,this.distance*.035);
+        const f=[-Math.sin(this.yaw),0,-Math.cos(this.yaw)];
+        const right=[Math.cos(this.yaw),0,-Math.sin(this.yaw)];
+        const motion=v==='w'?f:v==='s'?mul(f,-1):v==='d'?right:
+          v==='a'?mul(right,-1):v==='e'?[0,1,0]:[0,-1,0];
+        this.center=this.center.map((x,i)=>clip(x+motion[i]*step,-1000,1000));
+      }
       else if(e.key==='ArrowLeft')this.yaw-=.11;
       else if(e.key==='ArrowRight')this.yaw+=.11;
       else if(e.key==='ArrowUp')this.pitch=clip(this.pitch-.09,.18,Math.PI/2-.03);
@@ -305,6 +319,7 @@ export class Scene3DView {
     this.importedCADMeshes.clear();
     this.focusIds=null;this.focusLabel=null;this.fit();this.updateExperimentPanel();
     this.wireSetup.sync({keepSelection:false});this.engineering.sync();this.physicalRouting.sync();
+    this.stageN?.update();
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
@@ -324,7 +339,7 @@ export class Scene3DView {
       }catch{this.importedCADMeshes.clear();}
     }
     this.wireSetup.sync();this.engineering.sync();this.physicalRouting.sync();
-    this.updateExperimentPanel();this.requestRender();
+    this.updateExperimentPanel();this.stageN?.update();this.requestRender();
   }
   scene(){
     return sceneFromDiagram(this.diagram,{visibleBlockIds:this.focusIds});
@@ -493,7 +508,10 @@ export class Scene3DView {
     const gl=this.gl,scene=this.scene();
     // Detailed procedural laboratory geometry is derived from the SAME scene.
     // It is a visualization layer, never a second netlist or physical solver.
-    let geometry=experimentBenchMesh(scene,{selectedId:this.selectedId});
+    const useInstances=!this.engineering.mode && this.instancedProxy?.supported &&
+      scene.blocks.length>300;
+    let geometry=experimentBenchMesh(useInstances?{...scene,blocks:[]}:scene,
+      {selectedId:this.selectedId});
     if(this.engineering.mode){
       try{geometry=detailedCADMesh(dimensionedAssembly(this.diagram),{
         selectedId:this.selectedId,routing:inspectPhysicalHarnesses(this.diagram),
@@ -521,6 +539,11 @@ export class Scene3DView {
     gl.drawArrays(gl.TRIANGLES,0,tri.length/6);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(lines),gl.DYNAMIC_DRAW);
     gl.drawArrays(gl.LINES,0,lines.length/6);
+    if(useInstances){
+      this.instancedProxy.draw(scene.blocks.map(b=>({
+        x:b.x,y:0,z:b.z,w:b.width,h:b.height,d:b.depth,color:b.color
+      })),this.camera().matrix);
+    }
     const ctx=this.overlay.getContext('2d');
     const dpr=this.overlay.width/Math.max(this.canvas.clientWidth,1);
     ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -574,6 +597,7 @@ export class Scene3DView {
       }
     }
     this.updateExperimentPanel();
+    this.stageN?.drawOverlay(ctx,scene);
     const selected=this.diagram.block(this.selectedId);
     this.selectionCard.hidden=!selected;
     if(selected){
