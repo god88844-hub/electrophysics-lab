@@ -1,3 +1,51 @@
+# Invention Lab — Phase 0 Software Foundation
+
+**96-phase computing invention laboratory:** model, assemble, execute, compare, and investigate designs across logic, silicon, multi-radix processors, AI accelerators, quantum systems, a 3D workbench, AI-assisted research, and hardware interfaces.
+
+> **Simulation Evidence != Physical Validation.** An executed model provides evidence inside its documented assumptions; it is not a silicon measurement, hardware qualification, calibrated fabrication yield, or authorization to manufacture.
+
+**Release boundary:** `v1.0.0-invention-lab-software` is a SOFTWARE baseline and roadmap, never a physical signoff. Phase 1+ must close the evidence gaps reported by CI. Verified software tests are not substituted for real lab data.
+
+## Run the software
+
+```bash
+git clone https://github.com/god88844-hub/invention-lab.git
+cd invention-lab
+npm test
+npm start
+```
+
+Open **http://127.0.0.1:8080**. The web interface uses the repository's Node server; no production cloud account or wafer-lab instrument is needed to explore local software models.
+
+## Phase 0 capability and evidence matrix
+
+| Capability | Evidence status | Boundary / next validation |
+| --- | --- | --- |
+| Interactive Logic / Chip / Quantum labs and 3D Workbench | Software-implemented; inspect local tests and source | Not physical silicon validation |
+| Hierarchical modules, parametric assemblies, scene navigation | Software implemented | Visual model and typed connectivity; no manufacturing guarantee |
+| AI Co-Inventor, approval-gated model recommendations | Stage O software research scope | Optimization remains **model-based/synthetic**, not calibrated foundry yield |
+| Custom ISA, multi-radix CPU, TPU/ONNX and quantum experiments | Functional-model / independent-reference scope | RISC-V Linux boot, QPU live hardware, accelerator calibration remain open |
+| Hardware Bridge (FPGA/Yosys, SCPI/sigrok, GDSII admission) | Software interfaces, acquisition and fail-closed research gates | No FPGA, scope, wafer or silicon qualification asserted |
+| Native SKY130 Q4 primitives | **4/4 Magic DRC zero, terminal Netgen LVS unique, PEX** in [native CI](https://github.com/god88844-hub/invention-lab/actions/runs/44533413910) | Does not prove 6 hierarchical ALU DRC/LVS/PEX |
+| Pinned SKY130 source model | 783 SPICE files SHA-audited; 150 files in selected `tt` closure | **0 active statistical switches and 0 active random functions**; Level-1 `INSUFFICIENT_MODEL_DATA` |
+| Physical fabrication authorization | **UNQUALIFIED_NO_GO** | No waiver by green software CI |
+
+**Never infer:** a visually plausible design, simulation PASS, absence of DRC errors, functional ONNX agreement, or source-level Monte Carlo plan implies physical reliability, yield, safety, or fabrication permission.
+
+## Navigate the architecture and continue safely
+
+- [Complete 96-phase architecture map and Phase 1+ frontiers](ROADMAP.md)
+- [Verified versus open ledger and CI/source hashes](docs/VERIFICATION_STATUS.md)
+- [Developer / agent continuation guide](docs/CONTINUATION_GUIDE.md)
+- [Stage M native forensic report](docs/STAGE-M-NATIVE-FORENSICS-2026-11-19.md)
+- [Native Phase 0 expected-NO-GO verifier](scripts/stage-m-phase0-acceptance.py)
+
+**Qualification ladder:** source/device PDK SHA → native schematic and physical verification → authenticated statistical models and seeded waveforms → scoped virtual qualification → *independent hardware measurements* → design-specific physical signoff. Software release cannot skip any rung.
+
+---
+
+## Detailed laboratory documentation and history
+
 # ⚗ Invention Lab
 
 An interactive computing invention laboratory: design, assemble, simulate, experiment with,
