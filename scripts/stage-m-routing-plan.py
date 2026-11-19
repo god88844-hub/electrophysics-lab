@@ -159,14 +159,14 @@ def pin(root,uses,inst,pad):
             *transformed_box(label_box(path,pad),trans),native_layer)
 
 def half_adder_child_m3_grid(pin_info, transform):
-    """Use saved parent Magic's factor-two imported child-local geometry.
+    """Map child M3 pins with the actual native Magic extractor transform.
 
-    Native artifact 44524297924: child master q4_mux4 bbox
-    [-9087,-3911,85572,98949] becomes parent 'use' box
-    [-18174,-7822,171144,197898], while the parent instance
-    transform is also doubled. Parent-painted MET3 retains its
-    raw route coordinate. Thus the physical terminal is 2*(c+local)
-    in the saved parent grid, not 2*c+local.
+    Run 44531618403: q4_half_adder.ext records the Xsum_a instance as
+    'use q4_mux4 Xsum_a 1 0 1002162 0 1 1073820'.
+    q4_mux4.ext records local sel M3 center (100,97281).
+    The physical node is therefore (1002262,1171101), not the previous
+    (1002362,1268382). Source placer transform is half of the saved
+    native parent translation; child port local offsets are NOT doubled.
     """
     lay,x,y,x1,y1,x2,y2,original=pin_info
     if lay not in {'met3','metal3'} or original not in {'met3','metal3'}:
@@ -176,7 +176,7 @@ def half_adder_child_m3_grid(pin_info, transform):
         raise ValueError('non-identity source transform: native grid audit required')
     if not (x1<=x<=x2 and y1<=y<=y2):
         raise ValueError('native hierarchy contact not enclosed')
-    return (lay,2*x,2*y,2*x1,2*y1,2*x2,2*y2,original)
+    return (lay,x+c,y+f,x1+c,y1+f,x2+c,y2+f,original)
 
 def hierarchical_escape_ranks(netmap):
     """Allocate short, distinct Metal2 trunks for native Metal1 child pins.
@@ -224,9 +224,6 @@ def parent_tracks(subs,uses,netmap,root,scale_um):
     if not scale_um or scale_um<=0:
         raise ValueError('no authenticated Magic PDK micron scale')
     step=max(1,math.ceil(0.70/scale_um))
-    if subs.get('cellName')=='q4_half_adder':
-        # Match the native imported child bbox's exact x2 grid factor.
-        step *= 2
     actual=runpy.run_path(str(Path(__file__).parent/'stage-m-postroute-placement.py'))['actual_bbox']
     tracks={}
     library=subs['library']
@@ -235,11 +232,15 @@ def parent_tracks(subs,uses,netmap,root,scale_um):
             continue
         if inst not in uses:
             raise ValueError('missing actual hierarchical placement '+inst)
-        bound=transformed_box(actual(root/(master+'.mag')),uses[inst][1])
+        trans=uses[inst][1]
         if subs.get('cellName')=='q4_half_adder':
-            # Imported native parent 'use' box and transforms both scale x2.
-            # Reserve escape tracks outside the ACTUAL expanded child bbox.
-            bound=tuple(2*v for v in bound)
+            a,b,c,d,e,f=trans
+            if (a,b,d,e)!=(1,0,0,1):
+                raise ValueError('unsupported native half-adder M3 orientation')
+            # Native .ext use transform is (a,b,2*c,d,e,2*f); the
+            # q4_mux4.ext port local box remains in its original grid.
+            trans=(a,b,2*c,d,e,2*f)
+        bound=transformed_box(actual(root/(master+'.mag')),trans)
         ports=library[master]['ports']
         for index,port in enumerate(ports):
             ident=inst+'/'+port
