@@ -126,7 +126,6 @@ export async function runMvlNgspiceMeasurements({exe,dcDeck,transientDeck,
      sourceBoundSOA:originalBounds,
      verifiedPdk:false,physicalQualification:false};
   }
- }
   // Reject literal source overstress before independently requiring a complete
   // model-corner selector. Both checks remain mandatory, fail closed.
   // A claimed foundry corner must match every native deck's exact .lib
@@ -138,6 +137,7 @@ export async function runMvlNgspiceMeasurements({exe,dcDeck,transientDeck,
      reason:kind+'-unverified-PDK-library-corner',
      verifiedPdk:false,physicalQualification:false};
   }
+ }
  const results=[];
  for(const [kind,deck,expectedVectors] of [['dc',dcDeck,dcVectorCount],['transient',transientDeck,transientVectorCount]]){
   if(!Number.isInteger(expectedVectors)||expectedVectors<1||expectedVectors>16)

@@ -61,6 +61,12 @@ jobs:
             m4 tcsh tcl-dev tk-dev libx11-dev libxpm-dev \
             libcairo2-dev libncurses-dev libreadline-dev zlib1g-dev
           magic --version
+          # Debian/Ubuntu package is named netgen-lvs, not /usr/bin/netgen.
+          # The package supplies the 'netgen' command under this documented path.
+          test -x /usr/bin/netgen-lvs
+          test -x /usr/lib/netgen/bin/netgen
+          echo "/usr/lib/netgen/bin" >> "$GITHUB_PATH"
+          export PATH="/usr/lib/netgen/bin:$PATH"
           command -v netgen
           ngspice --version
           dpkg-query -W magic netgen-lvs ngspice
