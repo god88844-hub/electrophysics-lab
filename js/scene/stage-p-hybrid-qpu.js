@@ -3,7 +3,7 @@
 // *simulation*, not measured nondemolition syndrome hardware or Qiskit service.
 import {QuditCircuit} from '../labs/quantum/qudit.js';
 import {H,X,CNOT,RY} from '../labs/quantum/gates.js';
-import {seededUniformGenerator} from '../evidence/phase75-monte-carlo.js';
+import {seededUniformGenerator} from '../evidence/pure-seeded-rng.js';
 import {createCustomISA,assembleCustom,runCustomCPU} from './stage-p-custom-isa.js';
 export const HYBRID_FORMAT='invention-lab/phase92-hybrid-classical-quantum/1';
 const valid=n=>typeof n==='number'&&Number.isFinite(n);

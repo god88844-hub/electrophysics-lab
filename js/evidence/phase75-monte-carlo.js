@@ -1,3 +1,5 @@
+import {seededUniformGenerator} from './pure-seeded-rng.js';
+export {seededUniformGenerator} from './pure-seeded-rng.js';
 // Phase 75: deterministic, bounded, parallel SPICE Monte Carlo *execution*.
 // Statistical distributions MUST be furnished from independent characterized
 // PDK evidence; a manually supplied sigma is not foundry calibration.
@@ -10,12 +12,6 @@ function assertFinite(x,name,min=-Infinity,max=Infinity){
  if(typeof x!=='number'||!Number.isFinite(x)||x<min||x>max)
   throw Error('Invalid '+name);
  return x;
-}
-export function seededUniformGenerator(seed){
- if(!Number.isInteger(seed)||seed<0||seed>0xffffffff)throw Error('Seed must be uint32');
- let x=seed>>>0;
- return ()=>{x=(x+0x6d2b79f5)>>>0;let t=Math.imul(x^(x>>>15),1|x);
-  t^=t+Math.imul(t^(t>>>7),61|t);return ((t^(t>>>14))>>>0)/4294967296;};
 }
 function standardNormal(next){
  const u=Math.max(next(),Number.EPSILON),v=next();

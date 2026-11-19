@@ -3,7 +3,7 @@
 // of the canonical page's assertions or physical qualification controls.
 import {spawn,execFileSync} from 'node:child_process';
 import {once} from 'node:events';
-import {mkdtemp,rm} from 'node:fs/promises';
+import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -27,13 +27,39 @@ async function awaitServer(){
  }
  throw Error('Local application server unavailable for real browser smoke');
 }
-async function awaitChromeEndpoint(getLog){
- for(let i=0;i<250;i++){
+async function awaitChromeEndpoint(getLog,userDataDir){
+ // Chrome may write DevToolsActivePort but not print a websocket URI when
+ // GitHub runners are under load. Use both official discovery paths.
+ for(let i=0;i<600;i++){
   const match=/DevTools listening on (ws:\/\/127\.0\.0\.1:(\d+)\/devtools\/browser\/[^\s]+)/.exec(getLog());
   if(match)return Number(match[2]);
+  try{
+   const port=Number((await readFile(join(userDataDir,'DevToolsActivePort'),'utf8'))
+    .split(/\r?\n/)[0]);
+   if(Number.isSafeInteger(port)&&port>=1024&&port<=65535)return port;
+  }catch{/* browser has not initialized DevTools yet */}
   await pause(80);
  }
- throw Error('Chromium DevTools endpoint unavailable: '+getLog().slice(-1600));
+ throw Error('Chromium DevTools endpoint unavailable after 48 seconds: '+getLog().slice(-1600));
+}
+async function awaitChromePageTarget(port){
+ // The DevTools port may appear before /json/list is ready under CI load.
+ // Wait for a real page debugging target; never skip browser assertions.
+ const deadline=Date.now()+60000;
+ let lastError='not ready';
+ while(Date.now()<deadline){
+  try{
+   const response=await fetch('http://127.0.0.1:'+port+'/json/list',
+    {signal:AbortSignal.timeout(3000)});
+   if(!response.ok)throw Error('DevTools HTTP '+response.status);
+   const targets=await response.json();
+   const target=targets.find(t=>t.type==='page'&&t.webSocketDebuggerUrl);
+   if(target)return target;
+   lastError='DevTools returned no page target';
+  }catch(error){lastError=String(error);}
+  await pause(200);
+ }
+ throw Error('Chromium page debugging target unavailable after 60 seconds: '+lastError);
 }
 function cdpConnect(url){
  return new Promise((resolve,reject)=>{
@@ -94,11 +120,8 @@ async function runChrome(chrome){
   child=spawn(chrome,flags,{stdio:['ignore','ignore','pipe']});
   let stderr='';
   child.stderr.on('data',b=>{stderr=(stderr+b.toString()).slice(-10000);});
-  const port=await awaitChromeEndpoint(()=>stderr);
-  const targets=await fetch('http://127.0.0.1:'+port+'/json/list',
-   {signal:AbortSignal.timeout(5000)}).then(r=>r.json());
-  const target=targets.find(t=>t.type==='page'&&t.webSocketDebuggerUrl);
-  if(!target)throw Error('Chromium missing page debugging target');
+  const port=await awaitChromeEndpoint(()=>stderr,dir);
+  const target=await awaitChromePageTarget(port);
   ws=await cdpConnect(target.webSocketDebuggerUrl);
   await ws.command('Page.enable');
   await ws.command('Runtime.enable');

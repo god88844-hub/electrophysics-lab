@@ -48,6 +48,25 @@ try{
     'Stage N WASD fly camera did not move');
   assert(JSON.stringify(d.toJSON())===flyCircuitBefore,
     'Camera fly movement changed the canonical circuit');
+  // Stage Q: optional bridge must be available without permission prompts;
+  // cached/mock trace evidence never enables physical qualification.
+  assert(viewer.stageQ?.toggle?.dataset.action==='stage-q-hardware-bridge',
+    'Stage Q optional physical bridge UI missing');
+  viewer.stageQ.toggle.click();
+  assert(viewer.stageQ.panel.hidden===false,
+    'Stage Q hardware panel could not open');
+  viewer.stageQ.captureMode.value='scpi';
+  viewer.stageQ.captureText.value='0,1.1,2.2,3.3';
+  viewer.stageQ.sampleTime.value='0.000001';
+  viewer.stageQ.ingest.click();
+  assert(viewer.stageQ.status.textContent.includes('NO_GO'),
+    'Unauthenticated SCPI traces incorrectly allowed physical signoff');
+  assert(viewer.stageQ.latestTrace?.values.length===4,
+    'SCPI trace was not ingested into Stage Q comparison UI');
+  viewer.stageQ.inspectPackage.click();
+  assert(viewer.stageQ.status.textContent.includes('foundrySubmissionAuthorized')&&
+    viewer.stageQ.status.textContent.includes('false'),
+    'Foundry package plan granted fabricating without authenticated GDS signoff');
   // Stage P — real browser executes custom ISA, sorting, virtual ROM and
   // hybrid classical/quantum feedback without a physical-accuracy claim.
   assert(viewer.stageP?.toggle?.dataset.action==='stage-p-virtual-computers',
