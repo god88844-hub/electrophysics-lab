@@ -159,8 +159,27 @@ def check_locked_ancestry():
         "docs/PHASE35-", "docs/PHASE36-",
         ".github/workflows/phase35-", ".github/workflows/phase36-"
     )
-    changed_experimental_sources = [
-        path for path in changed if path.startswith(protected_prefixes)]
+    # Exactly one authorized concurrency-only edit to frozen workflows.
+    # Removing that known stanza MUST yield the original pinned file bytes.
+    concurrency_only = {
+        ".github/workflows/phase35-original-healthy-holdout.yml",
+        ".github/workflows/phase36-two-regime-bldc-model-check.yml",
+    }
+    canonical = (
+        b"concurrency:\n"
+        b"  group: ${{ github.workflow }}-${{ github.ref }}\n"
+        b"  cancel-in-progress: true\n"
+    )
+    changed_experimental_sources = []
+    for path in changed:
+        if not path.startswith(protected_prefixes):
+            continue
+        if path in concurrency_only:
+            original = subprocess.check_output(["git", "show", PH36_HEAD + ":" + path])
+            current = pathlib.Path(path).read_bytes()
+            if current.count(canonical) == 1 and current.replace(canonical, b"", 1) == original:
+                continue
+        changed_experimental_sources.append(path)
     require(not changed_experimental_sources,
             "Frozen original Phase35/36 experiment changed: "
             + str(changed_experimental_sources))
