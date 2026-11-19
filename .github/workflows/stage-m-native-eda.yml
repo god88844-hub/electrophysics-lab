@@ -190,7 +190,9 @@ jobs:
           echo 'tt_mm section inspected; explicit deck mc_mm_switch=1 still required; calibration UNKNOWN' >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
       - name: Export exact 4000 primitive and 2400 ALU trial plan (not executed)
         run: node scripts/stage-m-native-campaign-plan.mjs
-      - name: Run native layout DRC and LVS with separately extracted full PEX
+      - name: Run source-verified Monte Carlo campaign from unchanged DRC/LVS/PEX
+        env:
+          STAGE_M_CAMPAIGN_ONLY: '1'
         run: bash scripts/stage-m-native-eda.sh
       - name: Require source-bound native Monte Carlo qualification passport
         run: |

@@ -29,12 +29,37 @@ repo="$PWD"
 out="$repo/benchmarks/evidence/stage-m-native-eda"
 src="$repo/designs/stage-m/q4-candidates"
 mkdir -p "$out"
+if [[ "${STAGE_M_CAMPAIGN_ONLY:-0}" == "1" ]]; then
+  # Never regenerate geometry or change the real DRC/LVS evidence between
+  # physical preflight and Monte Carlo. The runner verifies hashes and SOA.
+  test -s "$out/source-manifest.json" || { echo "Missing source-bound PEX manifest" >&2; exit 1; }
+  for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
+    test -s "$out/pex/$cell-pex.spice" || { echo "Missing real PEX $cell" >&2; exit 1; }
+  done
+  python3 "$repo/scripts/stage-m-parallel-ngspice.py" \
+    --plan "$out/native-campaign-plan.json" \
+    --sources "$out/source-manifest.json" \
+    --acceptance "$repo/benchmarks/stage-m-qualification-thresholds.json" \
+    --decks "$out/trial-decks" \
+    --out "$out/native-monte-carlo"
+  exit 0
+fi
 printf '%s\n' "PHYSICAL QUALIFICATION: UNQUALIFIED_NO_GO" > "$out/STATUS.txt"
 for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
   root="$out/$cell"
   mkdir -p "$root/spice" "$root/mag"
   cp "$src/$cell.spice" "$root/spice/$cell.spice"
-  ln -s "$TECH" "$root/mag/.magicrc"
+  if [[ -L "$root/mag/.magicrc" ]]; then
+    test "$(readlink "$root/mag/.magicrc")" = "$TECH" || {
+      echo "Refusing wrong PDK Magic setup link for $cell" >&2
+      exit 1
+    }
+  elif [[ -e "$root/mag/.magicrc" ]]; then
+    echo "Refusing unexpected Magic setup file for $cell" >&2
+    exit 1
+  else
+    ln -s "$TECH" "$root/mag/.magicrc"
+  fi
   # Source-backed placement is NOT final routing. Unrouted LVS must fail.
   (
     cd "$root"
