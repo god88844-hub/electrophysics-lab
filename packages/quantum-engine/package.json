@@ -1,0 +1,14 @@
+{
+  "name": "@invention-lab/quantum-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Exact density-matrix + Lindblad master-equation solver (1-6 qubits), unified QHAL over superconducting/photonic/neutral-atom modalities, CHP stabilizer QEC simulator, and fixed-seed SPSA/Nelder-Mead optimizers for the Electrophysics Lab AI Co-Inventor.",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./lindblad": "./src/lindblad.mjs",
+    "./devices": "./src/devices.mjs",
+    "./stabilizer": "./src/stabilizer.mjs",
+    "./optimizer": "./src/optimizer.mjs"
+  }
+}

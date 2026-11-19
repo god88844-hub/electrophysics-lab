@@ -1,0 +1,17 @@
+{
+  "name": "@invention-lab/physics-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time MNA circuit solver + 2D Fourier heat-diffusion PDE + failure-threshold physics for the Electrophysics Lab 3D client (browser worker) and Node tests.",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./mna": "./src/mna.mjs",
+    "./heat": "./src/heat.mjs",
+    "./blackbody": "./src/blackbody.mjs",
+    "./thresholds": "./src/thresholds.mjs",
+    "./ringbuffer": "./src/ringbuffer.mjs",
+    "./forensics": "./src/forensics.mjs",
+    "./cryo": "./src/cryo.mjs"
+  }
+}

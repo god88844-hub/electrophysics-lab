@@ -1,0 +1,36 @@
+{
+  "format": "invention-lab/reference-library-manifest/1",
+  "generatedAt": "2026-11-19T20:13:44.042Z",
+  "files": [
+    {
+      "file": "01_fundamental_constants.json",
+      "sha256": "11b055141ee1fea01ec6e0de7201972f5ebad765274c4a06f9fa9341dd2dcb66",
+      "size_bytes": 3216
+    },
+    {
+      "file": "02_semiconductor_pdk_silicon.json",
+      "sha256": "c123fc5ba2b2a57ca4ccee4fdb16d713d9a79f0266d6711bae464d92e3ebfa37",
+      "size_bytes": 6624
+    },
+    {
+      "file": "03_multiradix_logic_baselines.json",
+      "sha256": "d09b3c7f5f518756ed42507ebc11996b3c730209871f030a3f300f7ecf8aa692",
+      "size_bytes": 4937
+    },
+    {
+      "file": "04_quantum_hardware_modalities.json",
+      "sha256": "ad82899562507eed38774e9dbd9fa07b82c8a47e7129b6c887edd9638131a1be",
+      "size_bytes": 7434
+    },
+    {
+      "file": "05_chip_architecture_benchmarks.json",
+      "sha256": "8d2b9a8e530df0c4190b467cc07b9da3fb0b82e76c0d466a42d6bb0d0e59925d",
+      "size_bytes": 5168
+    },
+    {
+      "file": "06_failure_physics_thresholds.json",
+      "sha256": "8b74e7eab2dd4323176811c7f7ba252c7563819c20d688ad443da6f4475ba239",
+      "size_bytes": 8582
+    }
+  ]
+}

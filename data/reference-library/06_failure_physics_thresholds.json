@@ -1,0 +1,194 @@
+{
+  "id": "06_failure_physics_thresholds",
+  "domain": "failure-physics",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "Black's equation (J.R. Black, IEEE Proc. 1967); Planck's law of blackbody radiation (Planck, 1901); Wikipedia: Black-body radiation (for CIE 1931 RGB color mapping); Bluefors XLD400 dilution refrigerator datasheet; SKY130 PDK reliability specifications",
+  "source_url": "https://en.wikipedia.org/wiki/Black-body_radiation, https://en.wikipedia.org/wiki/Electromigration, https://www.bluefors.com/products/xld400-dilution-refrigerator",
+  "license_or_access": "public domain (physics equations); SKY130 PDK reliability specs (Apache-2.0)",
+  "parameters": {
+    "blackbody_rgb_temperature_curve": {
+      "description": "Blackbody radiation visible colour mapped from Planck's law to RGB via CIE 1931 colour space — used for thermal-glow shader effects from 300 K to 2500 K",
+      "equation": "B(λ,T) = (2·h·c²/λ⁵) · 1/(exp(h·c/(λ·k_B·T)) − 1)",
+      "temperature_range_k": [
+        300,
+        2500
+      ],
+      "visible_color_mapping": {
+        "300_k": {
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "note": "room temperature — invisible (pure IR)"
+        },
+        "500_k": {
+          "rgb": [
+            64,
+            0,
+            0
+          ],
+          "note": "barely visible dark red glow"
+        },
+        "750_k": {
+          "rgb": [
+            153,
+            0,
+            0
+          ],
+          "note": "dark cherry red — hot resistor"
+        },
+        "1000_k": {
+          "rgb": [
+            255,
+            40,
+            0
+          ],
+          "note": "bright cherry red — stressed metal trace"
+        },
+        "1500_k": {
+          "rgb": [
+            255,
+            128,
+            24
+          ],
+          "note": "orange — metal near fusing"
+        },
+        "2000_k": {
+          "rgb": [
+            255,
+            190,
+            76
+          ],
+          "note": "yellow-white — metal at melting threshold"
+        },
+        "2500_k": {
+          "rgb": [
+            255,
+            225,
+            155
+          ],
+          "note": "near-white — arc/plasma temperature"
+        }
+      },
+      "shader_formula": "vec3 blackbodyRGB(float T_k) { return T_to_RGB_lut(T_k); } — precomputed lookup or analytic approximation (Tanner Helland approximation, documented at http://www.tannerhelland.com/4435/convert-temperature-rgb)",
+      "references": [
+        "Tanner Helland, 'How to convert temperature (K) to RGB: algorithm and sample code' (2012)",
+        "CIE 1931 colour space standard"
+      ]
+    },
+    "gate_oxide_tddb": {
+      "description": "Time-Dependent Dielectric Breakdown: Vgs > 1.95 V on SKY130 core oxide triggers exponential acceleration of breakdown probability",
+      "model": "E-model: ln(TTF) = ln(A) − γ·Vgs, where γ ≈ 300 dec/V for 4.1 nm SiO2",
+      "vgs_threshold_v": 1.95,
+      "vdd_nominal_v": 1.8,
+      "gamma_dec_per_v": 300,
+      "note": "Above 1.95 V the TDDB lifetime drops below 10 years at 125 °C; below 1.8 V the lifetime exceeds 100 years",
+      "hard_breakdown": {
+        "vgs_irreversible_v": 3,
+        "note": "above ~3 V the gate oxide hard-breaks down permanently (device destroyed) — well above the 1.95 V SOA ceiling"
+      },
+      "shader_effect": "glow intensity proportional to exp((Vgs − 1.95) · γ) when Vgs > 1.95; arc spark effect when Vgs > 3.0",
+      "references": [
+        "J.R. Black, 'Electromigration — A brief survey and some recent results', IEEE Trans. Electron Devices, ED-16, 338 (1969)",
+        "SKY130 PDK reliability model documentation"
+      ]
+    },
+    "metal_trace_joule_heating_fusing": {
+      "description": "Joule heating I²R raises the metal trace temperature; above the fusing temperature the trace melts and breaks",
+      "equations": [
+        "Joule heating power: P = I²·R(T)",
+        "Temperature rise (quasi-static): ΔT = P · R_th (thermal resistance)",
+        "Onderdonk fusing equation (short pulse): I_f = S · sqrt((T_melt − T_amb) / (t · ρ_0 · α))",
+        "Black's equation (EM lifetime): MTTF = A · J^(−n) · exp(E_a/(k_B·T)), n ≈ 2, E_a ≈ 0.7 eV (Al)"
+      ],
+      "thresholds": {
+        "cu_melting_c": 1085,
+        "cu_thermal_expansion_coeff_per_k": 0.0000165,
+        "al_melting_c": 660,
+        "fr4_delamination_c": 260,
+        "si_thermal_runaway_c": 200,
+        "note": "Metal trace glow visible above ~750 K; Si thermal runaway above 200 °C (junction); FR-4 delamination above 260 °C"
+      },
+      "shader_effect": "trace colour transitions from normal → warm → glowing red → orange → white-hot as temperature rises; smoke particles above delamination threshold; trace vanishes at fusing point",
+      "visual_thresholds_c": {
+        "normal": 25,
+        "warm_glow_start": 500,
+        "red_glow": 750,
+        "orange_glow": 1500,
+        "white_hot": 2000,
+        "cu_fusing": 1085,
+        "fr4_smoke": 260
+      }
+    },
+    "cryogenic_mixing_chamber_quench": {
+      "description": "Dilution refrigerator mixing chamber at 15 mK: when the heat load exceeds the cooling capacity, temperature rises, causing decoherence collapse of superconducting qubits",
+      "cooling_capacity": {
+        "stage_15mk_w": 0.012,
+        "stage_100mk_w": 0.1,
+        "stage_4k_w": 1.5,
+        "device": "Bluefors XLD400"
+      },
+      "equations": [
+        "dilution cooling power: Q_cool(T) ∝ (T/T_c)² — approximately quadratic below T_c ≈ 100 mK",
+        "thermal time constant: τ_th = C_th · R_th where C_th is the thermal mass and R_th the thermal resistance",
+        "temperature rise: dT/dt = (Q_load − Q_cool(T)) / C_th — positive dT/dt means warming"
+      ],
+      "thresholds": {
+        "quench_condition": "Q_load > Q_cooling_capacity (12 mW at 15 mK)",
+        "decoherence_collapse": "temperature rises above the superconducting transition (~1.2 K for Al) → all qubits lose coherence",
+        "recovery_time_hours": 4,
+        "note": "thermal quench causes hours of recovery time — a significant practical failure mode for quantum computing"
+      },
+      "shader_effect": "chamber temperature indicator transitions from cold blue → warming → red warning → thermal quench alarm; qubit hologram dissolves when T > T_c",
+      "visual_thresholds": {
+        "normal_15mk": {
+          "color": "cold blue",
+          "opqacity": 1
+        },
+        "warming_100mk": {
+          "color": "light blue",
+          "opacity": 0.7
+        },
+        "warning_1k": {
+          "color": "orange",
+          "opacity": 0.4
+        },
+        "quench_4k": {
+          "color": "red alarm",
+          "opacity": 0
+        }
+      }
+    },
+    "si_thermal_runaway": {
+      "description": "Silicon junction thermal runaway: above ~200 °C the leakage current doubles every ~10 °C, creating positive thermal feedback",
+      "equation": "I_leakage(T) = I_0 · exp(−E_g/(2·k_B·T)) — doubles every ~10 °C at 300 K",
+      "threshold_c": 200,
+      "note": "thermal runaway destroys the device if the heatsink cannot dissipate the increasing leakage power"
+    }
+  },
+  "valid_operating_envelope": {
+    "note": "Failure thresholds define the BOUNDARIES of the valid operating envelope. Operating outside these thresholds triggers the visual failure effects shown in the Electrophysics Lab 3D interface."
+  },
+  "equations": [
+    "Planck's law: B(λ,T) = (2·h·c²/λ⁵) · 1/(exp(h·c/(λ·k_B·T)) − 1) — blackbody spectral radiance",
+    "Black's EM equation: MTTF = A · J^(−n) · exp(E_a/(k_B·T)) — electromigration mean time to failure",
+    "Joule heating: P = I²·R(T) — resistive heating",
+    "Onderdonk fusing: I_f = S · sqrt((T_melt − T_amb)/(t · ρ_0 · α)) — short-pulse fusing current",
+    "Thermal quench: dT/dt = (Q_load − Q_cool)/C_th — temperature rise rate",
+    "Thermal runaway: I_leak(T) = I_0 · exp(−E_g/(2·k_B·T)) — silicon junction leakage",
+    "TDDB (E-model): ln(TTF) = ln(A) − γ·Vgs — time-dependent dielectric breakdown"
+  ],
+  "failure_thresholds": {
+    "gate_oxide_tddb": {
+      "vgs_threshold_v": 1.95,
+      "gamma_dec_per_v": 300,
+      "note": "SKY130 core SOA ceiling"
+    },
+    "cu_melting_c": 1085,
+    "fr4_delamination_c": 260,
+    "si_thermal_runaway_c": 200,
+    "cryo_quench_15mk_w": 0.012,
+    "note": "Detailed thresholds in the parameters section and failure_thresholds sub-objects above"
+  }
+}
