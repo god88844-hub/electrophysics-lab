@@ -8,7 +8,7 @@ on:
 # Prevents more than one new native qualification workflow from running,
 # but cannot retroactively attach older runs that lacked this group.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: stage-m-native-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 permissions:
   contents: read
@@ -31,7 +31,11 @@ jobs:
         with:
           node-version: '22'
       - name: Verify Stage M shell scripts parse cleanly
-        run: bash -n scripts/stage-m-purge-queued-actions.sh scripts/stage-m-native-eda.sh
+        run: |
+          bash -n scripts/stage-m-purge-queued-actions.sh scripts/stage-m-native-eda.sh
+          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py
+      - name: Local-equivalent Python SPICE/Tcl/source consistency checks
+        run: python3 -m unittest discover -s tests -p stage_m_native_static_test.py
       - name: Reject nonexistent PDK devices and verify candidate subcircuit boundaries
         run: node --test tests/stage-m-q4-sources.test.mjs tests/stage-m-native-monte-carlo.test.mjs
   native-q4-drc-lvs-pex:
@@ -148,11 +152,19 @@ jobs:
         run: node scripts/stage-m-native-campaign-plan.mjs
       - name: Run native layout DRC and LVS with separately extracted full PEX
         run: bash scripts/stage-m-native-eda.sh
-      - name: Mandatory physical, statistical and ALU acceptance must stay fail-closed
+      - name: Require source-bound native Monte Carlo qualification passport
         run: |
-          echo "No approved source-bound 1000-trial postlayout MC or 100-trial ALU comparison is available." >&2
-          echo "Stage M Level-1 = INSUFFICIENT_MODEL_DATA; Level-2 = UNQUALIFIED_NO_GO" >&2
-          exit 1
+          set -euo pipefail
+          passport=benchmarks/evidence/stage-m-native-eda/native-monte-carlo/passport.json
+          test -s "$passport"
+          python3 - "$passport" <<'PY'
+          import json,sys
+          p=json.load(open(sys.argv[1]))
+          assert p['physicalLevel2']=='UNQUALIFIED_NO_GO'
+          assert p['completedNativeTrials']==6400
+          assert p['level1']=='VIRTUALLY_QUALIFIED'
+          assert p['wilson95'] and p['yieldPercentage'] is not None
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:

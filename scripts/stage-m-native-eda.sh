@@ -50,7 +50,16 @@ for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
     echo "PLACEMENT_DID_NOT_CREATE_NATIVE_MAG $cell" >> "$out/STATUS.txt"
     exit 1
   }
+  python3 "$repo/scripts/stage-m-routing-plan.py" \
+    --spice "$root/spice/$cell.spice" --mag-dir "$root/mag" \
+    --cell "$cell" --output "$root/mag/$cell-routes.tcl" \
+    > "$root/mag/$cell-route-plan.log" 2>&1 || {
+      cat "$root/mag/$cell-route-plan.log" >&2
+      echo "NATIVE_SOURCE_BOUND_ROUTE_PLAN_FAILED $cell" >> "$out/STATUS.txt"
+      exit 1
+    }
   export STAGE_M_CELL="$cell" STAGE_M_SCHEMATIC="$root/spice/$cell.spice"
+  export STAGE_M_ROUTE_PLAN="$root/mag/$cell-routes.tcl"
   magic -dnull -noconsole -T sky130A -rcfile "$TECH" \
     < "$repo/scripts/stage-m-magic-layout.tcl" \
     > "$cell-magic.log" 2>&1 || {
@@ -85,5 +94,34 @@ for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
   echo "NATIVE_DRC_AND_LVS_PASSED_NOT_SILICON_SIGNOFF $cell" >> "$out/STATUS.txt"
   cd "$repo"
 done
-echo "AUTHENTICATED_POSTLAYOUT_MONTE_CARLO_NOT_YET_IMPLEMENTED" >> "$out/STATUS.txt"
+# Preserve real generated PEX and hashes for the source-bound Monte Carlo runner.
+# The four-terminal SOA test is NOT marked true without genuine model evidence.
+mkdir -p "$out/pex" "$out/trial-decks" "$out/native-monte-carlo"
+for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
+  cp "$out/$cell/mag/$cell-pex.spice" "$out/pex/$cell-pex.spice"
+done
+python3 - "$out" "$PDK_ROOT" <<'PY'
+import hashlib,json,sys
+from pathlib import Path
+out=Path(sys.argv[1]);pdk=Path(sys.argv[2])
+lib=pdk/'sky130A/libs.tech/ngspice/sky130.lib.spice'
+def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+assert lib.is_file()
+names=['q4_thresh_det','q4_inv','q4_mux4','q4_half_adder']
+data={'pdkLibrary':str(lib.resolve()),'pdkLibrarySha256':sha(lib),
+      'pexRoot':str((out/'pex').resolve()),
+      'pexSha256':{n:sha(out/'pex'/(n+'-pex.spice')) for n in names},
+      'drcLvsAllFourVerified':True,'soaLimitV':1.95,
+      'allCoreTerminalSOAChecksPassed':False,
+      'minimumWilsonLower95':None,'level2':'UNQUALIFIED_NO_GO',
+      'qualification':'INSUFFICIENT_MODEL_DATA'}
+(out/'source-manifest.json').write_text(json.dumps(data,indent=2)+'\n')
+PY
+echo "REAL_PEX_EXTRACTED_PENDING_SOA_AND_POST_LAYOUT_TRIAL_DECKS" >> "$out/STATUS.txt"
+python3 "$repo/scripts/stage-m-parallel-ngspice.py" \
+  --plan "$out/native-campaign-plan.json" \
+  --sources "$out/source-manifest.json" \
+  --acceptance "$repo/benchmarks/stage-m-qualification-thresholds.json" \
+  --decks "$out/trial-decks" \
+  --out "$out/native-monte-carlo"
 echo "UNQUALIFIED_NO_GO" >> "$out/STATUS.txt"
