@@ -163,6 +163,44 @@ class StageMStatic(unittest.TestCase):
         self.assertEqual(set(ranks.values()),{-2,-1,0,1,2})
         self.assertEqual(len(ranks),5)
 
+    def test_native_port_escape_columns_are_unique_and_copper_checked(self):
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        for token in ('set ::stage_m_port_escape_index 0',
+                      'incr ::stage_m_port_escape_index',
+                      'set ::stage_m_port_escape($name)',
+                      'STAGE_M_COPPER_SHORT',
+                      'geometric same-layer cross-net short'):
+            self.assertIn(token,layout)
+        # Model the exact deterministic port escape expression and verify
+        # different external ports can never share a MET2 trunk X.
+        base=-9000
+        step=240
+        coords=[base-i*step for i in range(1,13)]
+        self.assertEqual(len(coords),len(set(coords)))
+        self.assertTrue(all((b-a)==-step for a,b in zip(coords,coords[1:])))
+
+    def test_native_copper_overlap_guard_has_no_cross_net_waiver(self):
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('set ::stage_m_route_copper {}',layout)
+        self.assertIn('error "STAGE_M_FAIL: geometric same-layer cross-net short (no waiver)"',layout)
+        if not shutil.which('tclsh'):
+            self.skipTest('tclsh unavailable')
+        begin=layout.index('proc stage_m_rect {layer x1 y1 x2 y2}')
+        end=layout.index('proc stage_m_contact {layer x y width}',begin)
+        script=('proc box {args} {}\nproc paint {args} {}\n'
+                'set ::stage_m_current q4_inv\n'
+                'set ::stage_m_route_copper {}\n'
+                'set ::stage_m_route_active_net a\n'
+                +layout[begin:end]+
+                '\nstage_m_rect met1 0 0 30 30\n'
+                'set ::stage_m_route_active_net b\n'
+                'stage_m_rect met2 0 0 30 30\n'
+                'set rc [catch {stage_m_rect met1 20 20 40 40} err]\n'
+                'puts "COLLISION:$rc:$err"\n')
+        probe=subprocess.run(['tclsh'],input=script,text=True,
+                             capture_output=True,check=True)
+        self.assertIn('COLLISION:1:STAGE_M_FAIL:',probe.stdout)
+
     def test_ground_rail_is_below_native_unrouted_port_bank(self):
         planner=(ROOT/'scripts'/'stage-m-routing-plan.py').read_text()
         layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()

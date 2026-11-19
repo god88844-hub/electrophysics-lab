@@ -23,8 +23,25 @@ set ::stage_m_met2w [stage_m_u 0.28]
 set ::stage_m_li1w [stage_m_u 0.34]
 set ::stage_m_mcon [stage_m_u 0.17]
 set ::stage_m_via [stage_m_u 0.15]
+# Tag all newly painted routing copper with its schematic net.
+# Overlapping same-layer routed rectangles on distinct nets are a short.
+# Different-layer crossings remain legal until a via creates connectivity.
+set ::stage_m_route_copper {}
+set ::stage_m_route_active_net {}
 proc stage_m_rect {layer x1 y1 x2 y2} {
     if {$x2 <= $x1 || $y2 <= $y1} {error "STAGE_M_FAIL: empty $layer rectangle"}
+    if {$::stage_m_route_active_net ne {} &&
+        $layer in {li1 met1 met2 met3 mcon via via2}} {
+        foreach entry $::stage_m_route_copper {
+            lassign $entry other lay ox1 oy1 ox2 oy2
+            if {$lay ne $layer || $other eq $::stage_m_route_active_net} {continue}
+            if {$x1 < $ox2 && $x2 > $ox1 && $y1 < $oy2 && $y2 > $oy1} {
+                puts stderr "STAGE_M_COPPER_SHORT cell=$::stage_m_current layer=$layer nets=$other,$::stage_m_route_active_net old=$ox1,$oy1,$ox2,$oy2 new=$x1,$y1,$x2,$y2"
+                error "STAGE_M_FAIL: geometric same-layer cross-net short (no waiver)"
+            }
+        }
+        lappend ::stage_m_route_copper [list $::stage_m_route_active_net $layer $x1 $y1 $x2 $y2]
+    }
     box [format {%si} $x1] [format {%si} $y1] [format {%si} $x2] [format {%si} $y2]
     paint $layer
 }
@@ -66,8 +83,12 @@ proc stage_m_begin_cell {cell bbox port_ymin} {
     set ::stage_m_current $cell
     set ::stage_m_bbox $bbox
     set ::stage_m_nets {}
+    set ::stage_m_route_copper {}
+    set ::stage_m_route_active_net {}
     array unset ::stage_m_hier_escape
     array unset ::stage_m_pin_place
+    array unset ::stage_m_port_escape
+    set ::stage_m_port_escape_index 0
     set ::stage_m_top [expr {$ymax + 2*$::stage_m_pitch}]
     # A supply rail inside the original source port bank shorts distinct
     # Metal1 ports even when every Metal2 escape column is unique.
@@ -91,6 +112,7 @@ proc stage_m_route_net {net terminals} {
         error "STAGE_M_FAIL: missing/duplicate connections for $::stage_m_current/$net"
     }
     lappend ::stage_m_nets $net
+    set ::stage_m_route_active_net $net
     if {$net in {vdd v3 VPWR}} {
         set y $::stage_m_top
         set minx $::stage_m_tapx
@@ -142,10 +164,20 @@ proc stage_m_route_net {net terminals} {
         stage_m_contact met1 $x $sy $::stage_m_met1w
         set route_x $x
         if {[string match {port:*} $name]} {
-            # Native external ports share X and are separated in Y.
-            # Their MET2 trunks must not cross another port's MET2 escape.
-            set lower [expr {max(0,[lindex $::stage_m_bbox 1]-$sy)}]
-            set route_x [expr {$::stage_m_port_escape_base-$lower}]
+            # A port source label may share both source X and a Y region
+            # with other external terminals. The prior Y-based offset
+            # returned the *same MET2 trunk X* for every port whose
+            # label was above bbox.ymin, shorting V3, V2, V1, V0, SUM.
+            # Allocate a unique physical MET2 column for EACH source port,
+            # in deterministic SPICE-net order. Never reuse one X by Y.
+            if {![info exists ::stage_m_port_escape($name)]} {
+                incr ::stage_m_port_escape_index
+                set step [stage_m_u 1.20]
+                set ::stage_m_port_escape($name) [expr {
+                    $::stage_m_port_escape_base -
+                    $::stage_m_port_escape_index * $step}]
+            }
+            set route_x $::stage_m_port_escape($name)
         } elseif {[string match {X*/*} $name] &&
                   $layer in {m1 met1 metal1}} {
             if {![info exists ::stage_m_hier_escape($name)]} {
@@ -175,6 +207,7 @@ proc stage_m_route_net {net terminals} {
     stage_m_segment met1 $minx $y $maxx $y $::stage_m_met1w
     # Use this physical Metal1 track for the actual SPICE top-level port.
     set ::stage_m_pin_place($net) [list $minx $y]
+    set ::stage_m_route_active_net {}
     puts "STAGE_M_NET_CANDIDATE $::stage_m_current/$net"
 }
 proc stage_m_finish_cell {cell ports} {
