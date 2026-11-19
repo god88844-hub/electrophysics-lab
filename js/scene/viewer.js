@@ -13,6 +13,7 @@ import { captureExperimentTrace,isExperimentCurrent,experimentReadingsAt,exportE
 import {attachStageNWorkbench} from './stage-n-workbench-ui.js';
 import {createInstancedProxyRenderer} from './stage-n-instanced-gl.js';
 import {attachStageOCoInventor} from './stage-o-coinventor-ui.js';
+import {attachStagePSystems} from './stage-p-systems-ui.js';
 
 const VERT = `attribute vec3 aPosition;
 attribute vec3 aColor;
@@ -178,6 +179,7 @@ export class Scene3DView {
     }catch(e){this.notice.textContent='3D requires WebGL. The 2D editor remains available.';this.onError(String(e.message));}
     this.stageN=attachStageNWorkbench(this,onPhysicalLayoutChange);
     this.stageO=attachStageOCoInventor(this,onPhysicalLayoutChange);
+    this.stageP=attachStagePSystems(this);
     this.canvas.addEventListener('pointerdown',e=>this._down(e));
     this.canvas.addEventListener('pointermove',e=>this._move(e));
     this.canvas.addEventListener('pointerup',e=>this._up(e));
@@ -321,7 +323,7 @@ export class Scene3DView {
     this.importedCADMeshes.clear();
     this.focusIds=null;this.focusLabel=null;this.fit();this.updateExperimentPanel();
     this.wireSetup.sync({keepSelection:false});this.engineering.sync();this.physicalRouting.sync();
-    this.stageN?.update();this.stageO?.update();
+    this.stageN?.update();this.stageO?.update();this.stageP?.update();
   }
   sync(){
     if(this.diagram && this.selectedId && !this.diagram.block(this.selectedId))this.selectedId=null;
@@ -546,6 +548,7 @@ export class Scene3DView {
         x:b.x,y:0,z:b.z,w:b.width,h:b.height,d:b.depth,color:b.color
       })),this.camera().matrix);
     }
+    this.stageP?.draw3D();
     const ctx=this.overlay.getContext('2d');
     const dpr=this.overlay.width/Math.max(this.canvas.clientWidth,1);
     ctx.setTransform(dpr,0,0,dpr,0,0);
