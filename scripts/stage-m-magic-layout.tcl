@@ -174,6 +174,24 @@ proc stage_m_route_net {net terminals} {
         if {$layer ni {m1 met1 metal1 li1 locali met3 metal3}} {
             error "STAGE_M_FAIL: invalid route terminal $name/$layer"
         }
+        # The source-pinned open_pdks emitter constructs q4_half_adder's
+        # original M1 pads on the pre-import Magic grid. On native load,
+        # those imported pad labels double their saved .mag coordinates.
+        # The port endpoint planner still reads the original 1x .mag.
+        # Without reconciliation, the SUM via at y=-350 lands on the B
+        # native pad [-400,-200], and V0 at -750 lands on SUM [-800,-600],
+        # causing actual shorts. Correct only the observed 2x top-port
+        # import interface (native artifact 44519833522), not MOS/child pins.
+        if {$::stage_m_is_parent && $::stage_m_current eq "q4_half_adder" &&
+            [string match {port:*} $name]} {
+            if {abs($::stage_m_scale-0.005) > 0.000001 ||
+                $layer ni {m1 met1 metal1}} {
+                error "STAGE_M_FAIL: unauthenticated native port grid scale"
+            }
+            foreach coord {x sy lx ly rx ry} {
+                set $coord [expr {2*[set $coord]}]
+            }
+        }
         # Preserve the original Magic contact layer from pinned SKY130A
         # geometry: ndc/pdc/pc alias ndiffc/pdiffc/polycont.
         if {$original in {ndiffc ndc pdiffc pdc polycont pc

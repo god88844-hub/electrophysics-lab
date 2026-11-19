@@ -200,6 +200,26 @@ class StageMStatic(unittest.TestCase):
         self.assertEqual(set(ranks.values()),{-2,-1,0,1,2})
         self.assertEqual(len(ranks),5)
 
+    def test_native_half_adder_imported_port_pad_grid_mapping(self):
+        tcl=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('::stage_m_current eq "q4_half_adder"',tcl)
+        self.assertIn('abs($::stage_m_scale-0.005) > 0.000001',tcl)
+        self.assertIn('set $coord [expr {2*[set $coord]}]',tcl)
+        # Reproduce the source-bound 44519833522 q4_half_adder artifact:
+        # native Magic M1 pad labels are twice source-plan coordinates.
+        pads={p:(0,-400*i,200,200-400*i) for i,p in
+            enumerate(('a','b','sum','carry','v0','v1','v2','v3'))}
+        original=[(50,50-200*i) for i in range(8)]
+        remapped=[(2*x,2*y) for x,y in original]
+        for i,((x,y),name) in enumerate(zip(remapped,pads)):
+            matches=[p for p,(x0,y0,x1,y1) in pads.items()
+                     if x0 <= x <= x1 and y0 <= y <= y1]
+            self.assertEqual(matches,[name],(i,name,matches))
+        # Previously the source SUM via landed on the B pad;
+        # the new via must land only on the SUM native pad.
+        self.assertEqual([p for p,(x0,y0,x1,y1) in pads.items()
+                          if x0<=50<=x1 and y0<=-350<=y1],['b'])
+
     def test_parent_port_and_local_mos_met2_banks_do_not_overlap(self):
         layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
         placement=(ROOT/'scripts'/'stage-m-postroute-placement.py').read_text()
