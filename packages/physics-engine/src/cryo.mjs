@@ -20,6 +20,7 @@ export function createCryoStage(opts = {}) {
   const q100 = opts.q100mkW ?? 0.1;
   const q4k = opts.q4kW ?? 1.5;
   const cth = opts.cthJPerK ?? 5e-3; // J/K — documented order-of-magnitude estimate
+  const floorK = opts.floorK ?? 0.015; // control setpoint of the 15 mK stage
   let tK = opts.initialK ?? 0.015;
 
   /** Cooling capacity available at stage temperature T (W). */
@@ -63,7 +64,7 @@ export function createCryoStage(opts = {}) {
     for (let i = 0; i < n; i++) {
       const qc = coolingPowerW(tK);
       net = loadW - qc;
-      tK = Math.max(0.005, tK + (net / cth) * h);
+      tK = Math.max(floorK, tK + (net / cth) * h);
     }
     return { tempK: tK, netW: net };
   },

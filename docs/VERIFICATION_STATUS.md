@@ -71,3 +71,39 @@ Per-cell PEX digest evidence: [Stage M forensic source JSON](../benchmarks/evide
 | Q hardware bridge | Candidate FPGA/SCPI/trace/GDS workflows | No physical signoff or wafer authorization |
 
 See [ROADMAP](../ROADMAP.md) and [continuation guide](CONTINUATION_GUIDE.md). Verify current main GitHub CI for any later merge or release.
+---
+
+## v2 Electrophysics Lab — verification frontier (M4–M7)
+
+**Test totals (exact, verified 2026-11-20 on `feature/v2-electrophysics-lab`)**
+
+| Suite | Result |
+| --- | --- |
+| `npm test` (Phase 0 + reference library + physics-engine + quantum-engine) | **1036 pass / 0 fail / 1 skip** |
+| — of which Phase 0 legacy stages | 1007 pass / 0 fail / 1 skip (baseline preserved) |
+| — `tests/physics-engine.test.mjs` (M5) | 15 pass |
+| — `tests/quantum-engine.test.mjs` (M6) | 14 pass |
+| `npm run test:e2e` (headless Chromium smoke, apps/electrophysics-3d) | **4 pass / 0 fail** |
+| `vite build` (3D app incl. physics + quantum workers) | clean |
+
+**Verified deliverables**
+
+- 5 bays live (quantum cryo + photonic + tweezer modes; SKY130A stack with layer-peel
+  microscope and 4 verified Q4 primitives; unified-memory SoC composer; forensics vault;
+  offline library with in-browser SHA-256 verification, 6/6 ✓).
+- Real-time physics: MNA (Shichman–Hodges + CLM, numeric Jacobian, source stepping),
+  2D FTCS heat PDE, cryo ODE — 240 Hz in a Web Worker; electro-thermal R(T) coupling.
+- Failure physics at exact verified thresholds: gate-oxide TDDB trip at Vgs > 1.95 V
+  (E-model, γ ≈ 300 dec/V), Cu fusing 1085 °C, FR-4 delamination 260 °C, cryo quench
+  > 12 mW — each with arc/char/smoke/quench FX and a 100 ms forensic autopsy
+  (oscilloscope, slow-motion scrubber, JSON/Markdown export, physics-valid AI fix).
+- Noisy quantum simulation: Lindblad density-matrix solver (trace-preserving,
+  Cholesky-positivity-checked, analytic T1/T2 agreement), three modalities on one QHAL,
+  Pauli-frame QEC with quadratic logical-error suppression, fixed-seed reproducible
+  AI Co-Inventor optimizer with SHA-256-sealed bundle export.
+
+**Boundary (unchanged)**: everything above is simulation evidence. No physical
+validation claims are made or unlocked; the Phase 3 measurement gates (G1–G7) remain
+the only path to `physicalValidation`, and no real-measurement dataset exists in this
+repository. Level-1 `INSUFFICIENT_MODEL_DATA` / Level-2 `UNQUALIFIED_NO_GO` discipline
+applies to all hardware claims.

@@ -62,3 +62,45 @@ User interactions             ←── keyboard + pointer ──→ camera fly-
 4. Target 60 FPS on the specified hardware; WebGPU primary, WebGL2 fallback.
 5. No hallucinated numbers — every datum cites its source.
 6. Invention Lab ≠ AeroForge — separate projects, separate scope.
+
+---
+
+## v2 milestone status (updated after M4–M7)
+
+| Milestone | Deliverable | State | Evidence |
+| --- | --- | --- | --- |
+| M0 | Baseline verified (1007 pass / 0 fail / 1 skip, 805 files) | ✅ complete | commit af6bff9 |
+| M1 | Offline reference library (6 verified JSON + MANIFEST, SHA-256) | ✅ complete | commit dfc28a2 |
+| M2 | Planning docs (master plan, UX spec, 7 phase playbooks) | ✅ complete | commit 70beb48 |
+| M3 | 3D lab hub scaffold (React + Three.js, 3 bays, HUD) | ✅ complete | commit 359d672 |
+| M4 | Five-bay PBR lab + SKY130 layer-peel microscope + SoC composer | ✅ complete | commit 279612c |
+| M5 | Real electro-thermal engine (MNA + heat PDE + failure FX + forensic autopsy) | ✅ complete | commit 8ba1ec2 |
+| M6 | Noisy quantum simulator (3 modalities + QEC + AI Co-Inventor) | ✅ complete | commit 8403070 |
+| M7 | Headless smoke verification + status sync + PR | ✅ complete | this commit |
+
+## v2 verification totals (exact)
+
+- **Node unit suite (`npm test`)**: 1036 pass / 0 fail / 1 skip
+  - Phase 0 legacy: 1007 pass / 0 fail / 1 skip (unchanged from baseline)
+  - `tests/physics-engine.test.mjs`: 15 pass (MNA KCL + power conservation, inverter sweep,
+    Vgs stress, shorted-gate fault, heat PDE analytic steady state + symmetry, Cu TCR,
+    exact threshold trips 1.95 V / 260 °C / 1085 °C / 12 mW, blackbody stops,
+    ring-buffer window, forensic report structure, AI-fix provenance, cryo equilibrium)
+  - `tests/quantum-engine.test.mjs`: 14 pass (trace preservation, Cholesky positivity,
+    analytic T1/T2, ZZ rotation, DRAG π-pulse, reproducible SPSA improvement, QEC
+    suppression (d3 + bit-flip), frame propagation rules, photonic unitarity/loss,
+    Rydberg blockade, gate-fidelity normalization, DRAG envelope)
+- **3D app build**: `vite build` clean; both physics + quantum workers bundle
+- **Headless browser smoke (`npm run test:e2e`)**: 4 pass / 0 fail
+  1. boots with 0 console errors, Inspector Drawer closed, SHA-256 6/6 ✓
+  2. navigates all 5 bays cleanly
+  3. VDD 2.5 V → `gate_oxide_breakdown` forensic autopsy (E-model TDDB, 1.95 V ceiling) → AI fix re-runs clean at 1.80 V
+  4. AI Co-Inventor experiment completes → reproducible bundle; QEC sweep table live
+
+## Honest evidence boundaries (unchanged)
+
+- All quantum/circuit results are **simulation evidence** (SIMULATED_NOISY_MODEL badge),
+  never physical validation.
+- physicalValidation stage remains unlocked only by real-measurement datasets
+  (Phase 3 gate G1–G7); none exist in this repo.
+- Every displayed number cites `data/reference-library/*.json` (SHA-256 verified in-browser).
