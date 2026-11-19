@@ -4,6 +4,7 @@ Outputs Tcl for the deterministic 2-layer Magic router. Fail closed on ambiguity
 No DRC/LVS qualification is asserted by this preparatory mapping.
 """
 import argparse
+import hashlib
 from collections import defaultdict
 from pathlib import Path
 import re
@@ -88,6 +89,24 @@ def mag(path):
     if any(x[1] is None for x in uses.values()):raise ValueError('missing instance transform')
     return uses,labels,box
 
+def routed_export(path,pad,entries):
+    """Select only a SHA-bound post-route port, never an arbitrary duplicate."""
+    if len(entries)==1:
+        return entries[0]
+    if len(entries)!=2 or entries[0]==entries[1]:
+        raise ValueError('missing/ambiguous routed port '+str(path)+'/'+pad)
+    marker=Path(path).with_suffix('.stage-m-routed')
+    if not marker.is_file():
+        raise ValueError('ambiguous port without verified routed child '+str(path)+'/'+pad)
+    pairs=[line.split() for line in marker.read_text().splitlines()]
+    matching=[item for item in pairs if len(item)==2 and item[1]==Path(path).name]
+    if len(matching)!=1 or hashlib.sha256(Path(path).read_bytes()).hexdigest()!=matching[0][0]:
+        raise ValueError('routed child Magic SHA-256 mismatch '+str(path))
+    # The first record was left by the imported device placer; the last
+    # record is explicitly written by stage_m_finish_cell after Metal1/3
+    # routing, native DRC and PEX extraction.
+    return entries[-1]
+
 def label_box(path,pad):
     """Read the authentic Magic label rectangle; refuse synthetic dimensions."""
     result=[]
@@ -105,9 +124,7 @@ def label_box(path,pad):
         if x2<x1 or y2<y1:
             raise ValueError('inverted contact label rectangle '+pad)
         result.append((x1,y1,x2,y2))
-    if len(result)!=1:
-        raise ValueError('missing/ambiguous real contact label box '+pad)
-    return result[0]
+    return routed_export(path,pad,result)
 
 def transformed_box(rect,trans):
     x1,y1,x2,y2=rect
@@ -125,8 +142,8 @@ def pin(root,uses,inst,pad):
     if not path.exists():raise ValueError('missing child geometry '+str(path))
     _,labels,_=mag(path)
     hits=labels.get(pad,[])
-    if len(hits)!=1:raise ValueError('missing/ambiguous terminal '+inst+'/'+pad)
-    layer,x,y=hits[0]
+    if not hits:raise ValueError('missing real terminal '+inst+'/'+pad)
+    layer,x,y=routed_export(path,pad,hits)
     # A compound Magic PDK contact IS already local interconnect, unlike
     # uncontacted ndiff/pdiff/poly. Require the original .mag label, always.
     native_layer=layer

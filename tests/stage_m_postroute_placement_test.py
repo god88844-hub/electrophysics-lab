@@ -69,6 +69,32 @@ class PostRoutePlacementTests(unittest.TestCase):
                 placer.place_parent(root,source,'parent',1.9,0.01,
                     root/'bbox-report.json')
 
+    def test_duplicate_importer_label_resolves_only_sha_bound_routed_port(self):
+        import hashlib
+        route_spec=importlib.util.spec_from_file_location(
+            'stage_m_routed_port_source',
+            ROOT/'scripts'/'stage-m-routing-plan.py')
+        route=importlib.util.module_from_spec(route_spec)
+        route_spec.loader.exec_module(route)
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            cell=root/'child.mag'
+            cell.write_text('magic\ntech sky130A\n<< labels >>\n'
+                            'rlabel metal1 0 0 20 20 0 vin\n'
+                            'rlabel met3 400 500 420 520 0 vin\n'
+                            '<< end >>\n')
+            uses={'Xdet':['child',[1,0,100,0,1,200]]}
+            with self.assertRaisesRegex(ValueError,'ambiguous port'):
+                route.pin(root,uses,'Xdet','vin')
+            marker=root/'child.stage-m-routed'
+            marker.write_text(hashlib.sha256(cell.read_bytes()).hexdigest()+
+                              '  child.mag\n')
+            label=route.pin(root,uses,'Xdet','vin')
+            self.assertEqual(label,('met3',510,710,500,700,520,720,'met3'))
+            cell.write_text(cell.read_text()+'* changed after DRC\n')
+            with self.assertRaisesRegex(ValueError,'SHA-256 mismatch'):
+                route.pin(root,uses,'Xdet','vin')
+
     def test_source_and_magic_route_preserve_native_gates(self):
         text=(ROOT/'scripts'/'stage-m-native-eda.sh').read_text()
         layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
