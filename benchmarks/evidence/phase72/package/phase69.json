@@ -1,6 +1,6 @@
 {
   "format": "invention-lab/phase69-reproducible-web-package/1",
-  "archiveSHA256": "b0f09eb7c0d88371e8f444905c431525128611b670bba3a14350dc1a5298e49e",
+  "archiveSHA256": "11df4ca2a97a3f8fb722a5f26c1f4fcfe7b29cf1678bb12b297ded4425016632",
   "files": [
     {
       "path": "LICENSE",
@@ -9,8 +9,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 44148,
-      "sha256": "db9d9360b471759ef1331f82fa175d0239373e7dd29444a9b85c46319862ea60"
+      "bytes": 44282,
+      "sha256": "9b45c52db4b57a237fa079c30e631780621b2445032f92fd0cd76d22fd0e6271"
     },
     {
       "path": "css/style.css",
