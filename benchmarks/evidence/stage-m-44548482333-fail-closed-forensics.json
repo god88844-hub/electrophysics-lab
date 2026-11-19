@@ -1,0 +1,82 @@
+{
+  "format": "invention-lab/stage-m/source-pinned-native-forensics/1",
+  "sourceCommit": "77363594d74e5bc22f5692429bb4a54484098329",
+  "workflowRun": 44548482333,
+  "workflowUrl": "https://github.com/god88844-hub/invention-lab/actions/runs/44548482333",
+  "evidenceArtifactId": 14541986732,
+  "evidenceZipSha256": "4895669cee21f56bdbcb5ad1d88569344c223594c8673e936e095e3b0ddf84bb",
+  "physicalPrimitiveEvidence": {
+    "nativeMagicDrcZero": true,
+    "terminalNetgenLvsUnique": true,
+    "rcPexExtracted": true,
+    "exactPinCounts": {
+      "q4_thresh_det": 6,
+      "q4_inv": 6,
+      "q4_mux4": 8,
+      "q4_half_adder": 8
+    }
+  },
+  "statisticalPdk": {
+    "originalSkywaterModelsCommit": "f62031a1be9aefe902d6d54cddd6f59b57627436",
+    "openPdksCommit": "0c1f82326278a0871f0a1fc4bdacf94c88e78e4d",
+    "processedLibrarySha256": "4fcb2a538312de6f71c718c6be325fe865d5c4248a76dd5f7d2e8512df0d54ef",
+    "namedSections": [
+      "tt",
+      "sf",
+      "ff",
+      "ss",
+      "fs",
+      "ll",
+      "hh",
+      "hl",
+      "lh"
+    ],
+    "selectedSection": "tt",
+    "includedFileCount": 150,
+    "installedSpiceFileCount": 783,
+    "statisticalOrMismatchNamedFileCount": 25,
+    "unresolvedIncludedPaths": 0,
+    "activeMismatchSwitchReferences": 0,
+    "activeProcessSwitchReferences": 0,
+    "activeRandomExpressions": 0,
+    "monteCarloParameterFileEmpty": true,
+    "transitiveAuditJsonSha256": "89014e4f6936a1e340eebc5059019fc956e95d78f9f34a9a323972b4fd850123",
+    "sourceManifestSha256": "025ec0441a055d39f7191e6d2218b6f23a81012456e5d71e9127eed0c1f38f41",
+    "status": "UNQUALIFIED_NO_GO"
+  },
+  "historicalOfficialOpenPdksAlternative": {
+    "commit": "4b1a140d414598099c0e065618049d80b5c9a9b5",
+    "mcLibrary": {
+      "mc_mm_switch": 0,
+      "mc_pr_switch": 1
+    },
+    "ttMmLibrary": {
+      "mc_mm_switch": 1,
+      "mc_pr_switch": 0
+    },
+    "combinedStatisticalSwitchesVerified": false,
+    "selectedForRePin": false
+  },
+  "physicalAlus": {
+    "required": 6,
+    "nativeDrclvsPexVerified": 0,
+    "candidateNetlists": 6,
+    "allNativeLvsMatch": false
+  },
+  "campaign": {
+    "requiredTrials": 6400,
+    "completedGenuineTrials": 0,
+    "level1": "INSUFFICIENT_MODEL_DATA",
+    "survivalRate": null,
+    "wilson95": null,
+    "physicalLevel2": "UNQUALIFIED_NO_GO"
+  },
+  "unmodifiedSafety": {
+    "maxSky130CorePairwiseVoltageV": 1.95,
+    "pdkSha256Required": true,
+    "terminalLvsAndUniquePinsRequired": true,
+    "physicalLevel2": "UNQUALIFIED_NO_GO"
+  },
+  "mergesCompleted": [],
+  "releaseTagCreated": false
+}
