@@ -234,6 +234,21 @@ p==='js/evidence/stage-m-signoff-readiness.js'||
  p==='scripts/stage-n-benchmark.mjs'||
  p==='docs/STAGE-N-78-83.md'||
  p==='.github/workflows/stage-n-78-83.yml'||
+ p==='js/scene/stage-o-agent-tools.js'||
+ p==='js/scene/stage-o-topology-search.js'||
+ p==='js/scene/stage-o-stress-diagnosis.js'||
+ p==='js/scene/stage-o-yield-optimizer.js'||
+ p==='js/scene/stage-o-invention-ledger.js'||
+ p==='js/scene/stage-o-coinventor-ui.js'||
+ p==='tests/stage-o-agent-tools.test.mjs'||
+ p==='tests/stage-o-topology-search.test.mjs'||
+ p==='tests/stage-o-stress-diagnosis.test.mjs'||
+ p==='tests/stage-o-yield-optimizer.test.mjs'||
+ p==='tests/stage-o-invention-ledger.test.mjs'||
+ p==='tests/stage-o-end-to-end.test.mjs'||
+ p==='docs/STAGE-O-84-88.md'||
+ p==='scripts/stage-o-synthetic-benchmark.mjs'||
+ p==='.github/workflows/stage-o-84-88.yml'||
  p==='README.md'||p==='package.json';
  const unexpectedChanges=changes.filter(x=>!allowed(x)),missingHistoricalCommits=[];
  for(const p of policy.stack)try{

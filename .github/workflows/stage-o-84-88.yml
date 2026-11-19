@@ -1,0 +1,43 @@
+name: Stage O structured co-invention and fail-closed optimization
+on:
+  push:
+    branches: [stage-o/phase84-88-co-inventor, main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  stage-o-node:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full legacy plus Stage M N O regression tests
+        run: npm test
+      - name: Reproduce 1000-trial explicitly synthetic optimization demo
+        run: node scripts/stage-o-synthetic-benchmark.mjs
+      - name: Verify co-inventor source syntax
+        run: |
+          node --check js/scene/stage-o-agent-tools.js
+          node --check js/scene/stage-o-topology-search.js
+          node --check js/scene/stage-o-stress-diagnosis.js
+          node --check js/scene/stage-o-yield-optimizer.js
+          node --check js/scene/stage-o-invention-ledger.js
+          node --check js/scene/stage-o-coinventor-ui.js
+          node --check js/scene/viewer.js
+  stage-o-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Chromium 3D co-inventor smoke
+        run: node scripts/browser-smoke.mjs
