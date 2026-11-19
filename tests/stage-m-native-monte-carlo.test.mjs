@@ -23,13 +23,17 @@ test('tt_mm alone cannot silently enable Monte Carlo',()=>{
  const l='/opt/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice';
  const p='/opt/evidence/q4_inv-pex.spice';
  const mk=(extra='')=>[
-  '.lib "'+l+'" tt_mm','.include "'+p+'"',
+  '.lib "'+l+'" tt','.include "'+p+'"',
   '.option seed=12001','.temp 25',extra,'.tran 1n 1u','.end'
  ].join('\n');
  const args={expectedLibraryPath:l,expectedPexPath:p,seed:12001,temperatureC:25};
  assert.equal(inspectDeclaredMismatchTrialDeck({deck:mk(),...args}).status,'INSUFFICIENT_MODEL_DATA');
  const okay=inspectDeclaredMismatchTrialDeck({deck:mk('.param mc_mm_switch=1'),...args});
  assert.equal(okay.explicitMismatchEnabled,true);
+ assert.equal(okay.actualModelCorner,'tt');
+ assert.equal(inspectDeclaredMismatchTrialDeck({
+   deck:mk('.param mc_mm_switch=1').replace('" tt','" tt_mm'),...args
+ }).status,'INSUFFICIENT_MODEL_DATA');
  assert.equal(okay.nativeSpiceAuthorized,false);
  assert.equal(okay.level1Yield,'UNKNOWN');
  for(const injection of ['.param mc_mm_switch=0',

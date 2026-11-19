@@ -65,8 +65,12 @@ export function inspectDeclaredMismatchTrialDeck({
   const lines=deck.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   const get=(re)=>lines.filter(x=>re.test(x));
   const libs=get(/^\.lib\b/i);
+  // The pinned processed library may expose TT with original mismatch
+  // definitions rather than a separately named tt_mm section. In that
+  // case native .lib tt + the explicit switch is the authenticated mode.
+  const physicalCorner=corner==='tt_mm'?'tt':corner;
   if(libs.length!==1||
-     libs[0]!=='.lib "'+expectedLibraryPath+'" '+corner)
+     libs[0]!=='.lib "'+expectedLibraryPath+'" '+physicalCorner)
     return no('wrong-or-multiple-PDK-corner-binding');
   const includes=get(/^\.include\b/i);
   if(includes.length!==1||
@@ -89,7 +93,8 @@ export function inspectDeclaredMismatchTrialDeck({
     return no('this-mismatch-trial-preflight-requires-tt_mm');
   return {status:'DECLARED_MISMATCH_DECK_NOT_PHYSICALLY_ADMITTED',
     requestedCorner:corner,seed,temperatureC,
-    explicitMismatchEnabled:true,postlayoutPathDeclared:true,
+    explicitMismatchEnabled:true,actualModelCorner:physicalCorner,
+    postlayoutPathDeclared:true,
     ngspiceExecuted:false,nativeSpiceAuthorized:false,
     sourceAuthenticated:false,fullTransistorSOAProven:false,
     extractedRCCalibrated:false,
