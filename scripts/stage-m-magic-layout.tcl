@@ -17,7 +17,11 @@ if {![string is double -strict $::stage_m_scale] || $::stage_m_scale <= 0} {
 proc stage_m_u {um} {expr {int(ceil(double($um)/$::stage_m_scale))}}
 set ::stage_m_pitch [stage_m_u 2.72]
 set ::stage_m_met1w [stage_m_u 0.28]
-set ::stage_m_met2w [stage_m_u 0.28]
+set ::stage_m_met2w [stage_m_u 0.42]
+# Use SKY130 met3 as a physical crossover for horizontal source escapes.
+# Vertical trunks remain on met2, so escapes do not short other trunks.
+set ::stage_m_met3w [stage_m_u 0.46]
+set ::stage_m_via2 [stage_m_u 0.20]
 set ::stage_m_li1w [stage_m_u 0.34]
 set ::stage_m_mcon [stage_m_u 0.17]
 set ::stage_m_via [stage_m_u 0.15]
@@ -64,6 +68,7 @@ proc stage_m_begin_cell {cell bbox port_ymin} {
     set ::stage_m_current $cell
     set ::stage_m_bbox $bbox
     set ::stage_m_nets {}
+    set ::stage_m_escape_index 0
     array unset ::stage_m_pin_place
     set ::stage_m_top [expr {$ymax + 2*$::stage_m_pitch}]
     # A supply rail inside the original source port bank shorts distinct
@@ -72,7 +77,7 @@ proc stage_m_begin_cell {cell bbox port_ymin} {
     set ::stage_m_tapx [expr {$xmin - 5*$::stage_m_pitch}]
     # Source-pinned port pads often share X but sit at different Y positions.
     # Assign a strictly separate escape column outside ALL device geometry.
-    set ::stage_m_port_escape_base [expr {$::stage_m_tapx - 2*$::stage_m_pitch}]
+    set ::stage_m_port_escape_base [expr {$::stage_m_tapx - 3*$::stage_m_pitch}]
     stage_m_tap nwell nsdm $::stage_m_tapx $::stage_m_top
     stage_m_tap psub psdm $::stage_m_tapx $::stage_m_bottom
 }
@@ -131,24 +136,18 @@ proc stage_m_route_net {net terminals} {
         }
         stage_m_contact met1 $x $sy $::stage_m_met1w
         stage_m_contact via $x $sy $::stage_m_via
-        set route_x $x
-        if {[string match {port:*} $name]} {
-            # Native device-placement ports for independent nets often use
-            # exactly the same X; without this escape they short on Metal2.
-            # Lower Y ports escape farther left so no vertical trunk
-            # crosses another port's horizontal escape.
-            set lower [expr {max(0,[lindex $::stage_m_bbox 1] - $sy)}]
-            set route_x [expr {$::stage_m_port_escape_base-$lower}]
-        } elseif {[string match {*/B} $name] &&
-                  $net in {vdd vss v0 v3 VPWR VGND}} {
-            # Diffusion bulk and poly gate contacts for the same transistor
-            # frequently share X. Move bulk/power trunks right before their
-            # vertical run to avoid accidentally connecting gate to bulk.
-            set route_x [expr {$x+[stage_m_u 1.00]}]
-        }
-        if {$route_x != $x} {
-            stage_m_segment met2 $x $sy $route_x $sy $::stage_m_met2w
-        }
+        # CRITICAL: placing all independent ports on met2 horizontal
+        # escapes shorted v3/v2/v1/v0/vin/y in native run #44471349501.
+        # Every source endpoint receives a unique met2 vertical trunk.
+        # All horizontal escape geometry is on met3, crossing other met2
+        # trunks without making an electrical connection.
+        set route_x [expr {$::stage_m_port_escape_base - $::stage_m_escape_index*$::stage_m_pitch}]
+        incr ::stage_m_escape_index
+        stage_m_contact met2 $x $sy $::stage_m_met2w
+        stage_m_contact via2 $x $sy $::stage_m_via2
+        stage_m_segment met3 $x $sy $route_x $sy $::stage_m_met3w
+        stage_m_contact via2 $route_x $sy $::stage_m_via2
+        stage_m_contact met2 $route_x $sy $::stage_m_met2w
         stage_m_segment met2 $route_x $sy $route_x $y $::stage_m_met2w
         stage_m_contact met1 $route_x $y $::stage_m_met1w
         stage_m_contact via $route_x $y $::stage_m_via

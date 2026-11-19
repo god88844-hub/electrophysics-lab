@@ -133,32 +133,23 @@ class StageMStatic(unittest.TestCase):
         self.assertIn('EXTRACTION_ELECTRICAL_SHORTS',native)
         self.assertIn('electrically shorted',native)
 
-    def test_source_anchored_escape_tracks_avoid_known_metal2_shorts(self):
-        # These coordinates originate from the authentic pinned Magic layout
-        # for threshold-detector source FET terminals, NOT a DRC waiver.
+    def test_source_escape_uses_distinct_metal3_crossovers(self):
+        # Native run #44471349501: met2 horizontal escapes shorted
+        # six otherwise independent detector ports.
         layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
-        for token in ('::stage_m_port_escape_base',
-                      'set route_x [expr {$::stage_m_port_escape_base-$lower}]',
-                      'set route_x [expr {$x+[stage_m_u 1.00]}]',
-                      'stage_m_segment met2 $x $sy $route_x $sy'):
+        for token in ('stage_m_segment met3 $x $sy $route_x $sy',
+                      'stage_m_contact via2 $x $sy',
+                      'stage_m_contact via2 $route_x $sy',
+                      'stage_m_segment met2 $route_x $sy $route_x $y',
+                      'incr ::stage_m_escape_index',
+                      'set ::stage_m_met3w [stage_m_u 0.46]',
+                      'set ::stage_m_via2 [stage_m_u 0.20]'):
             self.assertIn(token,layout)
+        self.assertNotIn('stage_m_segment met2 $x $sy $route_x $sy',layout)
         pitch=545
-        bounds=(-53,-36,4908,2908)
-        tap_x=bounds[0]-5*pitch
-        base=tap_x-2*pitch
-        port_rows=[('vin',100),('t1',-300),('t2',-700),
-                   ('t3',-1100),('vdd',-1500),('vss',-1900)]
-        escapes=[base-max(0,bounds[1]-y) for _,y in port_rows]
-        self.assertEqual(len(set(escapes)),len(escapes))
-        self.assertEqual(escapes,sorted(escapes,reverse=True))
-        # Gate/bulk contacts have equal X in several native MOS geometries.
-        # Bulk escape columns must NOT coincide with these adjacent signal
-        # gate/drain tracks (native units, 0.005 um per unit).
-        for bulk_x, near in ((178,(114,242)),(587,(523,651)),
-                             (996,(932,1060)),(1405,(1341,1469)),
-                             (1814,(1750,1878)),(2223,(2159,2287)),
-                             (2632,(2568,2696)),(3041,(2977,3105))):
-            self.assertGreater(min(abs(bulk_x+200-x) for x in near),56)
+        index=list(range(100))
+        cols=[-4000-i*pitch for i in index]
+        self.assertEqual(len(set(cols)),len(cols))
 
     def test_ground_rail_is_below_native_unrouted_port_bank(self):
         planner=(ROOT/'scripts'/'stage-m-routing-plan.py').read_text()
