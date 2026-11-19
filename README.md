@@ -1,4 +1,4 @@
-# Invention Lab — Phase 0 software research
+# Electrophysics Lab (formerly Invention Lab) — v2 evolution
 
 ## Phase 0 merged-stage ledger (software only)
 
@@ -23,7 +23,7 @@ Review exact-commit [GitHub Actions](https://github.com/god88844-hub/invention-l
 
 **Simulation Evidence != Physical Validation.** This project helps design, simulate, inspect and test computing inventions without fabricating evidence or promising silicon performance.
 
-[96-phase roadmap](ROADMAP.md) · [Verification status](docs/VERIFICATION_STATUS.md) · [Continuation guide](docs/CONTINUATION_GUIDE.md) · [Actions](https://github.com/god88844-hub/invention-lab/actions)
+[96-phase roadmap](ROADMAP.md) · [Electrophysics Lab v2 master plan](docs/planning/MASTER_PLAN.md) · [Reference library](data/reference-library/) · [Verification status](docs/VERIFICATION_STATUS.md) · [Continuation guide](docs/CONTINUATION_GUIDE.md) · [Actions](https://github.com/god88844-hub/invention-lab/actions)
 
 ```bash
 npm test                 # Node software suite
