@@ -1,5 +1,26 @@
 # Verification status — Phase 0 audit ledger
 
+## Phase 0 merged-stage ledger (software only)
+
+All **96 research-software phase source trees (Stages A–Q)** are integrated on `main`. This is a source/software milestone, **not** complete physical validation, a production authorization or proof that every aspirational feature is implemented.
+
+| Stage | Phases | Merged PR | Exact merge commit on `main` |
+| --- | --- | --- | --- |
+| M | 73–77 | [#94](https://github.com/god88844-hub/invention-lab/pull/94) | [`5c7215b2372b5647f094f9e822dcf5409b091411`](https://github.com/god88844-hub/invention-lab/commit/5c7215b2372b5647f094f9e822dcf5409b091411) |
+| N | 78–83 | [#90](https://github.com/god88844-hub/invention-lab/pull/90) | [`e5d258318063e14e0995c93451dfaaa93fbf45b5`](https://github.com/god88844-hub/invention-lab/commit/e5d258318063e14e0995c93451dfaaa93fbf45b5) |
+| O | 84–88 | [#91](https://github.com/god88844-hub/invention-lab/pull/91) | [`6cf6167d6c5be86e96dfd97f77921cf8243558b9`](https://github.com/god88844-hub/invention-lab/commit/6cf6167d6c5be86e96dfd97f77921cf8243558b9) |
+| P | 89–92 | [#92](https://github.com/god88844-hub/invention-lab/pull/92) | [`1979781e29073a6e6c6c762e859eede03db56fe5`](https://github.com/god88844-hub/invention-lab/commit/1979781e29073a6e6c6c762e859eede03db56fe5) |
+| Q | 93–96 | [#93](https://github.com/god88844-hub/invention-lab/pull/93) | [`adcb4299eeb184940b286dadb1b3bc351e82b092`](https://github.com/god88844-hub/invention-lab/commit/adcb4299eeb184940b286dadb1b3bc351e82b092) |
+
+| Verified in scoped research software / authentic primitive-cell flow | Still open or explicitly NO-GO |
+| --- | --- |
+| Stage M's four Q4 primitive cells have native Magic **DRC=0**, unique root-level Netgen terminal LVS with exact pins and RC PEX evidence. | **0/6 complete physical ALUs** independently pass top-level DRC/LVS/PEX; a passed primitive is not a passed ALU. |
+| Source-pinned SKY130/open_pdks provenance and SHA-256 auditing; strict **1.95 V** SKY130 core four-terminal SOA guard. | No active authenticated process/mismatch statistical expressions in the audited model; the genuine **4,000 primitive + 2,400 ALU** trial campaign has **not** been performed. Level-1 `INSUFFICIENT_MODEL_DATA`, yield `UNKNOWN`. |
+| Stages N–Q provide bounded 3D, AI Co-Inventor, invented ISA/TPU/QPU references, and optional FPGA/instrument/GDS intake, with fail-closed software tests. | Stage O yield is **synthetic**, not silicon yield. No independently calibrated physical holdout, authenticated full ALU silicon, trusted reviewer authorization, or fabrication signoff. Level-2 `UNQUALIFIED_NO_GO`. |
+
+Review exact-commit [GitHub Actions](https://github.com/god88844-hub/invention-lab/actions), [verification](https://github.com/god88844-hub/invention-lab/blob/main/docs/VERIFICATION_STATUS.md) and [roadmap](https://github.com/god88844-hub/invention-lab/blob/main/ROADMAP.md) before drawing any conclusion from a green software check.
+
+
 A green **software** check never establishes measured silicon performance. Examine the exact commit and artifact, not the headline verdict.
 
 ## Authentic native evidence
