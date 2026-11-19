@@ -118,6 +118,13 @@ data={'pdkLibrary':str(lib.resolve()),'pdkLibrarySha256':sha(lib),
 (out/'source-manifest.json').write_text(json.dumps(data,indent=2)+'\n')
 PY
 echo "REAL_PEX_EXTRACTED_PENDING_SOA_AND_POST_LAYOUT_TRIAL_DECKS" >> "$out/STATUS.txt"
+# Complete real DRC/LVS/PEX before statistical-corner admission, if requested.
+# Do not issue a Level-1 passport for layout-only results.
+if [[ "${STAGE_M_LAYOUT_ONLY:-0}" == "1" ]]; then
+  echo "LAYOUT_ONLY_NOT_QUALIFIED" >> "$out/STATUS.txt"
+  echo "UNQUALIFIED_NO_GO" >> "$out/STATUS.txt"
+  exit 0
+fi
 python3 "$repo/scripts/stage-m-parallel-ngspice.py" \
   --plan "$out/native-campaign-plan.json" \
   --sources "$out/source-manifest.json" \

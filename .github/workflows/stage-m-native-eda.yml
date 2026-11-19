@@ -157,6 +157,15 @@ jobs:
         with:
           path: /home/runner/.cache/stage-m-eda
           key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-magic4205ad22-v4
+      - name: Acquire pinned open_pdks generator for physical preflight
+        run: |
+          git clone -q https://github.com/fossi-foundation/open-pdks.git /tmp/stage-m-open-pdks-audit
+          git -C /tmp/stage-m-open-pdks-audit checkout --detach 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d
+          test "$(git -C /tmp/stage-m-open-pdks-audit rev-parse HEAD)" = 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d
+      - name: Run authentic four-cell Magic DRC/Netgen LVS/PEX before Monte Carlo model gate
+        env:
+          STAGE_M_LAYOUT_ONLY: '1'
+        run: bash scripts/stage-m-native-eda.sh
       - name: Record actual PDK/tool provenance and fail on missing mismatch corner
         run: |
           mkdir -p benchmarks/evidence/stage-m-native-eda
@@ -172,9 +181,8 @@ jobs:
           lib="$PDK_ROOT/sky130A/libs.tech/ngspice/sky130.lib.spice"
           test -s "$lib"
           export STAGE_M_PROCESSED_SKY130_LIB="$lib"
-          # Audit the exact generator source at the pinned revision EVEN ON A CACHE HIT.
-          git clone -q https://github.com/fossi-foundation/open-pdks.git /tmp/stage-m-open-pdks-audit
-          git -C /tmp/stage-m-open-pdks-audit checkout --detach 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d
+          # The exact generator source was already verified for physical checking.
+          test "$(git -C /tmp/stage-m-open-pdks-audit rev-parse HEAD)" = 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d
           export STAGE_M_OPEN_PDKS_SOURCE=/tmp/stage-m-open-pdks-audit
           export STAGE_M_MISMATCH_AUDIT_REPORT="$PWD/benchmarks/evidence/stage-m-native-eda/mm-declaration-audit.json"
           node scripts/stage-m-mm-corner-audit.mjs
