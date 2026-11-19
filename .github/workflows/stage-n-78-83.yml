@@ -1,0 +1,45 @@
+name: Stage N interactive 3D sandbox gated research tests
+on:
+  push:
+    branches: [stage-n/phase78-83-realtime-workbench, main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  stage-n-node:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify all existing and Stage N Node tests
+        run: npm test
+      - name: Validate full Stage N source modules
+        run: |
+          node --check js/scene/stage-n-snap-build.js
+          node --check js/scene/stage-n-semantic-zoom.js
+          node --check js/scene/stage-n-live-overlay.js
+          node --check js/scene/stage-n-quantum-view.js
+          node --check js/scene/stage-n-academy.js
+          node --check js/scene/stage-n-render-budget.js
+          node --check js/scene/stage-n-render-worker.js
+          node --check js/scene/stage-n-workbench-ui.js
+          node --check js/scene/viewer.js
+      - name: Record honest 100K object CPU LOD metrics
+        run: node scripts/stage-n-benchmark.mjs
+  stage-n-webgl-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run actual Chromium WebGL / semantic zoom smoke
+        run: node scripts/browser-smoke.mjs

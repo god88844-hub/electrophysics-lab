@@ -32,6 +32,47 @@ try{
   const input=portPoint3D(scene.blocks.find(x=>x.id===b.id),'a','in');
   assert(out && input,'3D ports missing');
   const viewer=app.scene3d;
+
+  // Exercise the actual GPU instanced draw call when supported by WebGL2/ANGLE.
+  if(viewer.instancedProxy?.supported){
+    const result=viewer.instancedProxy.draw([{
+      x:0,y:0,z:0,w:1,h:.4,d:1,color:[.3,.7,.9]
+    }],viewer.camera().matrix);
+    assert(result.drawn===1,'Instanced WebGL proxy draw did not execute');
+    assert(gl.getError()===gl.NO_ERROR,'Instanced WebGL GPU draw produced an error');
+  }
+  const flyBefore=viewer.center.slice();
+  const flyCircuitBefore=JSON.stringify(d.toJSON());
+  viewer.canvas.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'w'}));
+  assert(Math.hypot(...viewer.center.map((x,i)=>x-flyBefore[i]))>0,
+    'Stage N WASD fly camera did not move');
+  assert(JSON.stringify(d.toJSON())===flyCircuitBefore,
+    'Camera fly movement changed the canonical circuit');
+  // Stage N panels are interactive, but never self-certify a physical device.
+  assert(viewer.stageN?.toggle?.dataset.action==='stage-n-sandbox',
+    'Stage N interactive 3D sandbox was not attached');
+  viewer.stageN.toggle.click();
+  assert(viewer.stageN.panel.hidden===false,'Stage N panel failed to open');
+  const levels=['system','board','chip','cell','device'];
+  for(const level of levels){
+    viewer.stageN.zoom.value=level;
+    viewer.stageN.zoom.dispatchEvent(new Event('change',{bubbles:true}));
+    assert(viewer.stageN.zoom.value===level,'Semantic zoom failed: '+level);
+    assert(viewer.stageN.zoomStatus.textContent.length>0,
+      'Semantic zoom solver classification was missing');
+  }
+  viewer.stageN.zoom.value='chip';
+  viewer.stageN.zoom.dispatchEvent(new Event('change',{bubbles:true}));
+  assert(viewer.stageN.academyResult?.textContent===''||
+    viewer.stageN.academyResult!==undefined,
+    'Academy status unavailable');
+  viewer.stageN.academyButton.click();
+  assert(viewer.stageN.academyResult.textContent.includes('LOCKED'),
+    'Academy mission unlocked without replayable physics evidence');
+  assert(app.scene3d.gl.getError()===app.scene3d.gl.NO_ERROR,
+    'Stage N semantic zoom produced a WebGL error');
+
+
   assert(viewer.experimentPanel?.querySelector('input[type="range"]'),
     '3D simulator-linked experiment panel missing');
   assert(viewer.experimentExport?.disabled,
