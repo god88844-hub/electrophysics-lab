@@ -1,0 +1,433 @@
+"""Static Stage M pre-push/CI checks; no native EDA binary is required."""
+import ast
+import pathlib
+import shutil
+import subprocess
+import unittest
+ROOT=pathlib.Path(__file__).resolve().parents[1]
+class StageMStatic(unittest.TestCase):
+    def test_python_syntax(self):
+        for name in ('stage-m-routing-plan.py','stage-m-parallel-ngspice.py','stage-m-four-terminal-soa.py','stage-m-soa-waveform-capture.py','stage-m-trial-decks.py','stage-m-alu-assemble.py'):
+            source=ROOT/'scripts'/name
+            ast.parse(source.read_text(),filename=str(source))
+    def test_tcl_syntax(self):
+        if not shutil.which('tclsh'):
+            self.skipTest('tclsh not on Python-only host')
+        file=ROOT/'scripts'/'stage-m-magic-layout.tcl'
+        code='set f [open {'+str(file)+'}]\nset data [read $f]\nclose $f\nputs [info complete $data]\n'
+        value=subprocess.run(['tclsh'],input=code,text=True,capture_output=True,check=True)
+        self.assertEqual(value.stdout.strip(),'1')
+    def test_tcl_layers_pins_and_physical_checks(self):
+        t=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        for token in ('nwell','nsc','psc','nsdm','psdm','licon1','li1','mcon','met1','met2','via',
+                      'port make','label $p','2.72','0.17','0.15','drc list count total',
+                      'ext2spice cthresh 0','ext2spice rthresh 0'):
+            self.assertIn(token,t)
+    def test_magic_exports_named_top_level_subcircuits_for_native_pex(self):
+        t=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('ext2spice lvs',t)
+        self.assertIn('ext2spice subcircuit top on',t)
+        self.assertEqual(t.count('ext2spice subcircuit top on'),2)
+        self.assertLess(t.index('ext2spice lvs'),t.index('ext2spice subcircuit top on'))
+        self.assertLess(t.index('ext2spice subcircuit top on'),
+                        t.index('ext2spice -o "$cell-lvs.spice"'))
+        self.assertLess(t.index('ext2spice -o "$cell-lvs.spice"'),
+                        t.index('ext2spice -o "$cell-pex.spice"'))
+        self.assertIn('ext2spice cthresh 0',t)
+        self.assertIn('ext2spice rthresh 0',t)
+
+    def test_lvs_rejects_nested_matches_and_collapsed_top_ports(self):
+        import importlib.util,tempfile
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_validate_lvs',ROOT/'scripts'/'stage-m-validate-lvs.py')
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        with tempfile.TemporaryDirectory() as tmp:
+            place=pathlib.Path(tmp)
+            schematic=place/'source.spice'
+            layout=place/'layout.spice'
+            pex=place/'pex.spice'
+            report=place/'netgen.txt'
+            schematic.write_text('.subckt q4_mux4 sel d0 d1 d2 d3 out vdd vss\n.ends q4_mux4\n')
+            good='.subckt q4_mux4 sel d0 d1 d2 d3 out vdd vss\n.ends\n'
+            layout.write_text(good);pex.write_text(good)
+            report.write_text('Cell pin lists are equivalent.\nCircuits match uniquely.\n')
+            self.assertEqual(m.verify('q4_mux4',schematic,layout,pex,report)['count'],8)
+            report.write_text('Netlists match uniquely.\nNetlists do not match.\n')
+            with self.assertRaisesRegex(ValueError,'mismatched'):
+                m.verify('q4_mux4',schematic,layout,pex,report)
+            report.write_text('Cell pin lists are equivalent.\nCircuits match uniquely.\n')
+            pex.write_text('.subckt q4_mux4 d3\n.ends\n')
+            with self.assertRaisesRegex(ValueError,'collapsed|port mismatch'):
+                m.verify('q4_mux4',schematic,layout,pex,report)
+
+    def test_mask_labels_are_real_contact_compounds_not_fake_painted_layers(self):
+        script=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('stage_m_rect nsc',script)
+        self.assertIn('stage_m_rect psc',script)
+        self.assertNotIn('stage_m_contact licon1',script)
+        self.assertNotIn('stage_m_rect nsdm',script)
+        self.assertNotIn('stage_m_rect psdm',script)
+
+    def test_real_spice_batch_and_fail_closed_passport(self):
+        s=(ROOT/'scripts'/'stage-m-parallel-ngspice.py').read_text()
+        for token in ('os.cpu_count()','ThreadPoolExecutor','-b','-o',
+                      '6400','UNQUALIFIED_NO_GO','INSUFFICIENT_MODEL_DATA',
+                      'sha256','mc_mm_switch'):
+            self.assertIn(token,s)
+    def test_real_mc_and_waveform_gates(self):
+        mm=(ROOT/'scripts'/'stage-m-mm-corner-audit.mjs').read_text()
+        runner=(ROOT/'scripts'/'stage-m-parallel-ngspice.py').read_text()
+        soa=(ROOT/'scripts'/'stage-m-four-terminal-soa.py').read_text()
+        decks=(ROOT/'scripts'/'stage-m-trial-decks.py').read_text()
+        for token in ("section(processed,'mc')",'mc_mm_switch','mc_pr_switch',
+                      'selectedLibrarySectionSha256'):
+            self.assertIn(token,mm)
+        for token in ('fourTerminalSOAEvidenceSha256','pdkCorner','mc_pr_switch',
+                      'SOA_FOUR_TERMINAL_TRANSIENT_SCREEN_PASS'):
+            self.assertIn(token,runner)
+        for token in ('SOA=1.95','drain_v','gate_v','source_v','bulk_v',
+                      'SOA_OXIDE_OVERSTRESS','fourTerminalTransientSOAEvidenceVerified'):
+            self.assertIn(token,soa)
+        for token in ('6400','Missing real PEX ALU','selectedLibrarySectionSha256',
+                      'AUTHENTICATED_DECKS_NOT_EXECUTED'):
+            self.assertIn(token,decks)
+    def test_soadynamic_rejects_real_overvoltage_samples(self):
+        import importlib.util,tempfile
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_four_terminal',ROOT/'scripts'/'stage-m-four-terminal-soa.py')
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as tmp:
+            file=pathlib.Path(tmp)/'trace.csv'
+            file.write_text('device,time_s,drain_v,gate_v,source_v,bulk_v\n'
+                            'a/Xa,0,0,1.89,0,0\n'
+                            'a/Xa,1e-9,1.2,0,0,0\n')
+            got=module.trace(file,{'a/Xa':'sky130_fd_pr__nfet_01v8'})
+            self.assertLessEqual(got['maxAbsTerminalStressV']['Vgs'],1.95)
+            file.write_text('device,time_s,drain_v,gate_v,source_v,bulk_v\n'
+                            'a/Xa,0,0,2.1,0,0\n'
+                            'a/Xa,1e-9,0,0,0,0\n')
+            with self.assertRaisesRegex(ValueError,'SOA_OXIDE_OVERSTRESS'):
+                module.trace(file,{'a/Xa':'sky130_fd_pr__nfet_01v8'})
+
+    def test_contact_alias_rectangle_and_alu_truth_table(self):
+        import importlib.util,tempfile
+        from pathlib import Path
+        def module(filename,modname):
+            spec=importlib.util.spec_from_file_location(modname,ROOT/'scripts'/filename)
+            result=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(result)
+            return result
+        route=module('stage-m-routing-plan.py','stage_m_native_contact_rectangles')
+        for name in ('ndc','pdc','pc','ndiffc','pdiffc','polycont'):
+            self.assertEqual(route.CONTACT_TO_LI1.get(name),'li1')
+        with tempfile.TemporaryDirectory() as d:
+            master=Path(d)/'mos.mag'
+            master.write_text('magic\ntech sky130A\n<< labels >>\n'
+                              'rlabel ndc 2 4 6 8 0 D\n'
+                              'rlabel pdc 2 14 6 18 0 S\n'
+                              'rlabel pc 2 24 6 28 0 G\n'
+                              '<< end >>\n')
+            uses={'Xn':['mos',[1,0,10,0,1,20]]}
+            drain=route.pin(Path(d),uses,'Xn','D')
+            self.assertEqual(drain,('li1',14,26,12,24,16,28,'ndc'))
+            self.assertEqual(route.pin(Path(d),uses,'Xn','S')[-1],'pdc')
+            self.assertEqual(route.pin(Path(d),uses,'Xn','G')[-1],'pc')
+        alu=module('stage-m-alu-assemble.py','stage_m_alu_pex_lut')
+        alu.validate_logic()
+        for radix in (2,3,4):
+            for width in (4,8):
+                name,spice,count=alu.assemble(radix,width)
+                self.assertIn('.subckt '+name,spice)
+                self.assertIn('.ends '+name,spice)
+                self.assertEqual(count,2*width*(radix*radix+radix+1)+1)
+                self.assertEqual(sum(line.startswith('X') for line in spice.splitlines()),count)
+                self.assertNotIn('VCVS',spice.upper())
+
+    def test_magic_instance_box_transforms_define_real_route_envelope(self):
+        import importlib.util,tempfile
+        from pathlib import Path
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_transformed_magic_bbox',
+            ROOT/'scripts'/'stage-m-routing-plan.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as d:
+            source=Path(d)/'placed.mag'
+            source.write_text('magic\ntech sky130A\n'
+                'use mos A\ntransform 1 0 1000 0 1 2000\n'
+                'box -50 -100 50 100\n'
+                'use mos B\ntransform 1 0 -1000 0 1 -2000\n'
+                'box -50 -100 50 100\n'
+                '<< labels >>\n<< end >>\n')
+            _,_,bbox=mod.mag(source)
+            self.assertEqual(bbox,[-1050,-2100,1050,2100])
+
+    def test_magic_numeric_drc_and_real_short_rejection(self):
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        native=(ROOT/'scripts'/'stage-m-native-eda.sh').read_text()
+        self.assertIn('drc list count total',layout)
+        self.assertIn('EXTRACTION_ELECTRICAL_SHORTS',native)
+        self.assertIn('electrically shorted',native)
+
+    def test_source_anchored_escape_tracks_keep_nets_separate(self):
+        # Native 44471349501: long MET2 horizontal escapes shorted q4_inv.
+        # Native 44493447931: long MET3 horizontal escapes shorted detector.
+        planner=(ROOT/'scripts'/'stage-m-routing-plan.py').read_text()
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        for token in ('def hierarchical_escape_ranks(netmap):',
+                      "output.append('stage_m_hier_escape '",
+                      'unseparable source Metal1 hierarchical pins'):
+            self.assertIn(token,planner)
+        for token in ('proc stage_m_hier_escape {name offset}',
+                      'array unset ::stage_m_hier_escape',
+                      'stage_m_segment met1 $x $sy $route_x $sy',
+                      'stage_m_contact via $route_x $sy',
+                      'stage_m_segment met2 $route_x $sy $route_x $y',
+                      'set route_x [expr {$x+$::stage_m_hier_escape($name)*[stage_m_u 0.70]}]'):
+            self.assertIn(token,layout)
+        self.assertIn('stage_m_segment met3 $x $sy $route_x $sy',layout)
+        self.assertNotIn('stage_m_segment met2 $x $sy $route_x $sy',layout)
+        self.assertIn('stage_m_contact via2 $x $sy',layout)
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('stage_m_router',
+            ROOT/'scripts'/'stage-m-routing-plan.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        plan={}
+        for name,y in [('vss',700),('vdd',1100),('o',1500),('b',1900),('a',2300)]:
+            plan[name]=[('Xns1/'+name,'metal1',7727,y,7627,y-100,7827,y+100,'metal1')]
+        ranks=module.hierarchical_escape_ranks(plan)
+        self.assertEqual(set(ranks.values()),{-2,-1,0,1,2})
+        self.assertEqual(len(ranks),5)
+
+    def test_native_half_adder_imported_port_pad_grid_mapping(self):
+        tcl=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('::stage_m_current eq "q4_half_adder"',tcl)
+        self.assertIn('abs($::stage_m_scale-0.005) > 0.000001',tcl)
+        self.assertIn('set $coord [expr {2*[set $coord]}]',tcl)
+        # Reproduce the source-bound 44519833522 q4_half_adder artifact:
+        # native Magic M1 pad labels are twice source-plan coordinates.
+        pads={p:(0,-400*i,200,200-400*i) for i,p in
+            enumerate(('a','b','sum','carry','v0','v1','v2','v3'))}
+        original=[(50,50-200*i) for i in range(8)]
+        remapped=[(2*x,2*y) for x,y in original]
+        for i,((x,y),name) in enumerate(zip(remapped,pads)):
+            matches=[p for p,(x0,y0,x1,y1) in pads.items()
+                     if x0 <= x <= x1 and y0 <= y <= y1]
+            self.assertEqual(matches,[name],(i,name,matches))
+        # Previously the source SUM via landed on the B pad;
+        # the new via must land only on the SUM native pad.
+        self.assertEqual([p for p,(x0,y0,x1,y1) in pads.items()
+                          if x0<=50<=x1 and y0<=-350<=y1],['b'])
+
+    def test_parent_port_and_local_mos_met2_banks_do_not_overlap(self):
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        placement=(ROOT/'scripts'/'stage-m-postroute-placement.py').read_text()
+        self.assertIn('mos_column_x=static[2]+8*row_gap',placement)
+        self.assertIn('set ::stage_m_port_escape_base [stage_m_u 0.30]',layout)
+        self.assertIn('$::stage_m_port_escape_base +',layout)
+        self.assertIn('$::stage_m_port_escape_index * $step',layout)
+        # SKY130 0.005um/DBU, 1.2um port track pitch, 0.28um MET2.
+        port_tracks=[60+240*i for i in range(1,9)]
+        local_left=[-3270-240*i for i in range(1,60)]
+        mos_start=200+8*545
+        self.assertLess(max(port_tracks)+56,mos_start)
+        self.assertLess(max(local_left)+56,min(port_tracks))
+        self.assertEqual(len(set(port_tracks+local_left)),len(port_tracks)+len(local_left))
+
+    def test_parent_mos_drain_source_route_opposite_corridors(self):
+        source=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('set ::stage_m_local_escape_right_index 0',source)
+        self.assertIn('set ::stage_m_local_escape_right_base',source)
+        self.assertIn('if {[string match {*/S} $name]} {',source)
+        self.assertIn('incr ::stage_m_local_escape_right_index',source)
+        self.assertIn('incr ::stage_m_local_escape_index',source)
+        # The imported D/S contacts within one MOS row are distinct
+        # physical nets but share Y. They must not overlap on MET3.
+        left_drain=12808
+        right_source=12936
+        left_escape=-3270-240
+        right_escape=76057+3270+240
+        self.assertLess(left_escape,left_drain)
+        self.assertGreater(right_escape,right_source)
+        self.assertLess(left_drain,right_source)
+        # Parent metal3 rectangles stop at their respective D/S contacts.
+        self.assertLess(left_drain+32,right_source-32)
+
+    def test_parent_local_mos_escapes_are_unique_and_routing_errors_abort(self):
+        script=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        for required in ('set ::stage_m_local_escape_index 0',
+                         'set ::stage_m_local_escape_base',
+                         'incr ::stage_m_local_escape_index',
+                         '$::stage_m_local_escape_index * [stage_m_u 1.20]',
+                         'STAGE_M_ROUTE_ABORT',
+                         'if {[catch {source $::env(STAGE_M_ROUTE_PLAN)} route_error options]}',
+                         'exit 1'):
+            self.assertIn(required,script)
+        # Within the original uninstanced MOS bank, G/B and D/S contacts
+        # can share an x-coordinate while belonging to DIFFERENT nets.
+        same_x=15735
+        base=-6*545
+        step=240
+        routes=[base-(i+1)*step for i in range(18)]
+        self.assertEqual(len(routes),len(set(routes)))
+        self.assertNotIn(same_x,routes)
+        self.assertTrue(all(x<0 for x in routes))
+
+    def test_native_port_escape_columns_are_unique_and_copper_checked(self):
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        for token in ('set ::stage_m_port_escape_index 0',
+                      'incr ::stage_m_port_escape_index',
+                      'set ::stage_m_port_escape($name)',
+                      'STAGE_M_COPPER_SHORT',
+                      'geometric same-layer cross-net short'):
+            self.assertIn(token,layout)
+        # Model the exact deterministic port escape expression and verify
+        # different external ports can never share a MET2 trunk X.
+        base=-9000
+        step=240
+        coords=[base-i*step for i in range(1,13)]
+        self.assertEqual(len(coords),len(set(coords)))
+        self.assertTrue(all((b-a)==-step for a,b in zip(coords,coords[1:])))
+
+    def test_native_copper_overlap_guard_has_no_cross_net_waiver(self):
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('set ::stage_m_route_copper {}',layout)
+        self.assertIn('error "STAGE_M_FAIL: geometric same-layer cross-net short (no waiver)"',layout)
+        if not shutil.which('tclsh'):
+            self.skipTest('tclsh unavailable')
+        begin=layout.index('proc stage_m_rect {layer x1 y1 x2 y2}')
+        end=layout.index('proc stage_m_contact {layer x y width}',begin)
+        script=('proc box {args} {}\nproc paint {args} {}\n'
+                'set ::stage_m_current q4_inv\n'
+                'set ::stage_m_route_copper {}\n'
+                'set ::stage_m_route_active_net a\n'
+                +layout[begin:end]+
+                '\nstage_m_rect met1 0 0 30 30\n'
+                'set ::stage_m_route_active_net b\n'
+                'stage_m_rect met2 0 0 30 30\n'
+                'set rc [catch {stage_m_rect met1 20 20 40 40} err]\n'
+                'puts "COLLISION:$rc:$err"\n')
+        probe=subprocess.run(['tclsh'],input=script,text=True,
+                             capture_output=True,check=True)
+        self.assertIn('COLLISION:1:STAGE_M_FAIL:',probe.stdout)
+
+    def test_ground_rail_is_below_native_unrouted_port_bank(self):
+        planner=(ROOT/'scripts'/'stage-m-routing-plan.py').read_text()
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn("port_ymin=min(labels[p][0][2] for p in sub['ports'])",planner)
+        self.assertIn('proc stage_m_begin_cell {cell bbox port_ymin}',layout)
+        self.assertIn('min($ymin,$port_ymin) - 2*$::stage_m_pitch',layout)
+        ymin=-36
+        port_ymin=-1900
+        pitch=545
+        ground=min(ymin,port_ymin)-2*pitch
+        self.assertEqual(ground,-2990)
+        self.assertGreater(abs(ground-(-1100)),2*58)
+
+    def test_engineering_acceptance_never_waives_soa_or_level2(self):
+        import json
+        cfg=json.loads((ROOT/'benchmarks'/'stage-m-qualification-thresholds.json').read_text())
+        self.assertEqual(cfg['schema'],'invention-lab/stage-m-level1-engineering-acceptance/1')
+        gates=cfg['physicalGate']
+        self.assertEqual(gates['maxCorePairwiseTerminalVoltageV'],1.95)
+        self.assertEqual(gates['maxSOAViolations'],0)
+        self.assertEqual(gates['magicDrcMaxErrors'],0)
+        self.assertEqual(gates['netgenLvsMaxMismatches'],0)
+        self.assertEqual(gates['level2'],'UNQUALIFIED_NO_GO')
+        self.assertGreaterEqual(cfg['minimumWilsonLower95'],0.9)
+        self.assertEqual(set(cfg['aluBudgets']),{f'{r}:{w}' for r in (2,3,4) for w in (4,8)})
+        self.assertTrue(all(v>=0.12 for v in cfg['minimumNoiseMarginsV'].values()))
+
+    def test_model_inventory_and_balanced_spice(self):
+        models={'sky130_fd_pr__nfet_01v8_lvt','sky130_fd_pr__nfet_01v8',
+                'sky130_fd_pr__pfet_01v8','sky130_fd_pr__pfet_01v8_hvt'}
+        for name in ('q4_thresh_det','q4_inv','q4_mux4','q4_half_adder'):
+            raw=(ROOT/'designs'/'stage-m'/'q4-candidates'/(name+'.spice')).read_text()
+            a=[line.split()[1] for line in raw.splitlines() if line.lower().startswith('.subckt ')]
+            b=[line.split()[1] for line in raw.splitlines() if line.lower().startswith('.ends ')]
+            self.assertEqual(a,b)
+            self.assertIn(name,a)
+            self.assertNotIn('pfet_01v8_lvt',raw)
+            for line in raw.splitlines():
+                if line.lower().startswith('x') and 'sky130_fd_pr__' in line:
+                    self.assertIn(next(x for x in line.split() if x.startswith('sky130_fd_pr__')),models)
+    def test_native_magic_font_and_sticky_port_labels(self):
+        import importlib.util
+        import tempfile
+        from pathlib import Path
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_route_labels',ROOT/'scripts'/'stage-m-routing-plan.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as d:
+            file=Path(d)/'q4_thresh_det.mag'
+            file.write_text(
+                'magic\ntech sky130A\n<< labels >>\n'
+                'flabel metal1 s 20 30 60 70 0 FreeSans 200 0 0 0 vin\n'
+                'rlabel met1 s 10 20 20 30 0 VDD\n'
+                'flabel locali 10 20 20 30 0 FreeSans 200 0 0 0 G\n'
+                '<< end >>\n')
+            _,labels,_=mod.mag(file)
+            self.assertEqual(labels['vin'],[('metal1',40,50)])
+            self.assertEqual(labels['VDD'],[('met1',15,25)])
+            self.assertEqual(labels['G'],[('locali',15,25)])
+            file.write_text(
+                'magic\n<< labels >>\n'
+                'flabel metal1 s wrong 0 2 2 0 FreeSans 200 0 0 0 vin\n'
+                '<< end >>\n')
+            with self.assertRaisesRegex(ValueError,'noninteger'):
+                mod.mag(file)
+
+    def test_authentic_sky130_contact_to_li1_preserves_bare_diffusion_guard(self):
+        import importlib.util
+        import tempfile
+        from pathlib import Path
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_contacts',ROOT/'scripts'/'stage-m-routing-plan.py')
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            master=root/'mos.mag'
+            labels=[
+                ('ndiffc','D'),('pdiffc','S'),('polycont','G'),
+                ('psubdiffcont','B'),('nsubdiffcont','T')]
+            master.write_text(
+                'magic\ntech sky130A\n<< labels >>\n'+
+                ''.join(f'rlabel {layer} 0 {i*10} 2 {i*10+2} 0 {name}\n'
+                        for i,(layer,name) in enumerate(labels))+
+                '<< end >>\n')
+            uses={'Xn':['mos',[1,0,10,0,1,20]]}
+            for _,name in labels:
+                self.assertEqual(module.pin(root,uses,'Xn',name)[0],'li1')
+            master.write_text(
+                'magic\ntech sky130A\n<< labels >>\n'
+                'rlabel ndiff 0 0 2 2 0 D\n<< end >>\n')
+            with self.assertRaisesRegex(ValueError,'uncontactable'):
+                module.pin(root,uses,'Xn','D')
+
+    def test_source_port_colon_is_tcl_brace_quoted_and_no_injection(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_safe_token',ROOT/'scripts'/'stage-m-routing-plan.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(mod.token('port:t1'),'{port:t1}')
+        for bad in ('port:t1;exec','port:t1\\nputs', 'port:{bad}'):
+            with self.assertRaisesRegex(ValueError,'unsafe'):
+                mod.token(bad)
+
+    def test_schematic_instance_slash_quoted_without_tcl_injection(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_safe_slash',ROOT/'scripts'/'stage-m-routing-plan.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(mod.token('Xn_buf_lo/D'),'{Xn_buf_lo/D}')
+        for bad in ('Xn_buf_lo/D;exec','Xn_buf_lo/D\\nexec','Xn_buf_lo/[exec]'):
+            with self.assertRaisesRegex(ValueError,'unsafe'):
+                mod.token(bad)
+
+if __name__=='__main__':
+    unittest.main()

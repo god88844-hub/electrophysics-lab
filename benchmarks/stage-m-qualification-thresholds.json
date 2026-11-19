@@ -1,0 +1,67 @@
+{
+  "schema": "invention-lab/stage-m-level1-engineering-acceptance/1",
+  "status": "DEFINED_ENGINEERING_ACCEPTANCE_NOT_PHYSICAL_SIGNOFF",
+  "notes": "Conservative explicit software simulation acceptance budgets; not foundry-approved and not evidence of measured device behavior. Every measurement must be computed from native source-bound post-layout ngspice, never assumed.",
+  "physicalGate": {
+    "magicDrcMaxErrors": 0,
+    "netgenLvsMaxMismatches": 0,
+    "maxCorePairwiseTerminalVoltageV": 1.95,
+    "maxSOAViolations": 0,
+    "level2": "UNQUALIFIED_NO_GO"
+  },
+  "nominalQ4StepV": 0.6,
+  "minimumNoiseMarginsV": {
+    "NM_L": 0.12,
+    "NM_1": 0.12,
+    "NM_2": 0.12,
+    "NM_H": 0.12
+  },
+  "temperatureCornersC": [
+    -40,
+    25,
+    85,
+    125
+  ],
+  "primitiveBudgets": {
+    "maxDelayS": 5e-8,
+    "maxAveragePowerW": 0.001,
+    "maxPeakPowerW": 0.005
+  },
+  "aluBudgets": {
+    "2:4": {
+      "maxDelayS": 5e-8,
+      "maxAveragePowerW": 0.002,
+      "maxPeakPowerW": 0.008
+    },
+    "2:8": {
+      "maxDelayS": 1e-7,
+      "maxAveragePowerW": 0.004,
+      "maxPeakPowerW": 0.016
+    },
+    "3:4": {
+      "maxDelayS": 8e-8,
+      "maxAveragePowerW": 0.003,
+      "maxPeakPowerW": 0.012
+    },
+    "3:8": {
+      "maxDelayS": 1.6e-7,
+      "maxAveragePowerW": 0.006,
+      "maxPeakPowerW": 0.024
+    },
+    "4:4": {
+      "maxDelayS": 1.2e-7,
+      "maxAveragePowerW": 0.005,
+      "maxPeakPowerW": 0.02
+    },
+    "4:8": {
+      "maxDelayS": 2.4e-7,
+      "maxAveragePowerW": 0.01,
+      "maxPeakPowerW": 0.04
+    }
+  },
+  "minimumWilsonLower95": 0.9,
+  "confidence": 0.95,
+  "requiredPrimitiveTrials": 4000,
+  "requiredAluTrials": 2400,
+  "requiredTotalNativeTrials": 6400
+}

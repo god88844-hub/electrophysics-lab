@@ -1,0 +1,166 @@
+{
+  "format": "invention-lab/phase73-pinned-pdk-sources/1",
+  "license": "Apache-2.0 for the referenced open PDK libraries; preserve original upstream license",
+  "sources": [
+    {
+      "pdk": "SKY130",
+      "repository": "google/skywater-pdk-libs-sky130_fd_pr",
+      "commit": "f62031a1be9aefe902d6d54cddd6f59b57627436",
+      "entries": [
+        {
+          "path": "cells/nfet_01v8_lvt/sky130_fd_pr__nfet_01v8_lvt__ff.corner.spice",
+          "gitBlobSha1": "f46e21038f577bbba27541796b447389881215f9",
+          "bytes": 787
+        },
+        {
+          "path": "cells/nfet_01v8_lvt/sky130_fd_pr__nfet_01v8_lvt__mismatch.corner.spice",
+          "gitBlobSha1": "fbdd13efe3eb1828d01f24d059f83232ba2e5baf",
+          "bytes": 1105
+        },
+        {
+          "path": "cells/nfet_01v8_lvt/sky130_fd_pr__nfet_01v8_lvt__ss.corner.spice",
+          "gitBlobSha1": "08647079267eea5e41efa51dc2631883c726399b",
+          "bytes": 787
+        },
+        {
+          "path": "cells/nfet_01v8_lvt/sky130_fd_pr__nfet_01v8_lvt__tt.corner.spice",
+          "gitBlobSha1": "aa849ed441ba2315a7d5afea392a4265d20b8f17",
+          "bytes": 787
+        },
+        {
+          "path": "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__ff.corner.spice",
+          "gitBlobSha1": "43bce33cd856c7d23d8a416e86a7299c0c82b255",
+          "bytes": 67078
+        },
+        {
+          "path": "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice",
+          "gitBlobSha1": "af4a937389fa5f4361d29c8852140a43a2a41367",
+          "bytes": 962
+        },
+        {
+          "path": "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__ss.corner.spice",
+          "gitBlobSha1": "cc77cff325af402a8a8dc2934cffdc29ecbf3ea0",
+          "bytes": 67129
+        },
+        {
+          "path": "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__tt.corner.spice",
+          "gitBlobSha1": "5f3d829aa7c01dc16e0b08e3cd6712bb9a57c25e",
+          "bytes": 66384
+        },
+        {
+          "path": "cells/nfet_g5v0d10v5/sky130_fd_pr__nfet_g5v0d10v5__ff.corner.spice",
+          "gitBlobSha1": "23efabe51650cff3d76733c19b30e09fc4f0bd16",
+          "bytes": 810
+        },
+        {
+          "path": "cells/nfet_g5v0d10v5/sky130_fd_pr__nfet_g5v0d10v5__mismatch.corner.spice",
+          "gitBlobSha1": "80258233cc5ff650bb5d82aa069935a0a2a6e229",
+          "bytes": 1267
+        },
+        {
+          "path": "cells/nfet_g5v0d10v5/sky130_fd_pr__nfet_g5v0d10v5__ss.corner.spice",
+          "gitBlobSha1": "b921aa2999863d9472348061647d576eaa3e1dec",
+          "bytes": 810
+        },
+        {
+          "path": "cells/nfet_g5v0d10v5/sky130_fd_pr__nfet_g5v0d10v5__tt.corner.spice",
+          "gitBlobSha1": "3191c42266fd4b0619e43ecaee125f182532c5ca",
+          "bytes": 810
+        },
+        {
+          "path": "cells/pfet_01v8_hvt/sky130_fd_pr__pfet_01v8_hvt__ff.corner.spice",
+          "gitBlobSha1": "dff917e456854aa2164e9bc600e432027713584c",
+          "bytes": 89002
+        },
+        {
+          "path": "cells/pfet_01v8_hvt/sky130_fd_pr__pfet_01v8_hvt__mismatch.corner.spice",
+          "gitBlobSha1": "90cbe3c5bf3c9d2d79cff8f864b1aefdf6c4f991",
+          "bytes": 1039
+        },
+        {
+          "path": "cells/pfet_01v8_hvt/sky130_fd_pr__pfet_01v8_hvt__ss.corner.spice",
+          "gitBlobSha1": "f7904c7e9727ce153cdd42b9bf1311107b7595a5",
+          "bytes": 89097
+        },
+        {
+          "path": "cells/pfet_01v8_hvt/sky130_fd_pr__pfet_01v8_hvt__tt.corner.spice",
+          "gitBlobSha1": "6b0413e31482eb6719c23ba028fcd00d2b776970",
+          "bytes": 88134
+        },
+        {
+          "path": "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__ff.corner.spice",
+          "gitBlobSha1": "a59757046bf4bdb7cca5ff0aea2415f16d5d06a1",
+          "bytes": 792
+        },
+        {
+          "path": "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice",
+          "gitBlobSha1": "7579bc4b9ac625051474bf1140a23d5eb19a4811",
+          "bytes": 1322
+        },
+        {
+          "path": "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__ss.corner.spice",
+          "gitBlobSha1": "c525b52d5b80e4e2f3776c92b304187711eea41b",
+          "bytes": 790
+        },
+        {
+          "path": "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__tt.corner.spice",
+          "gitBlobSha1": "8e3a83add23c74a5754ee6cb077c6fe62ec7ffb4",
+          "bytes": 796
+        },
+        {
+          "path": "cells/pfet_g5v0d10v5/sky130_fd_pr__pfet_g5v0d10v5__ff.corner.spice",
+          "gitBlobSha1": "f62f9f9611c07737a4a64db695b5549850084bf6",
+          "bytes": 810
+        },
+        {
+          "path": "cells/pfet_g5v0d10v5/sky130_fd_pr__pfet_g5v0d10v5__mismatch.corner.spice",
+          "gitBlobSha1": "75c125763647fcd4cc91bafcb5a54adaf61551cd",
+          "bytes": 1187
+        },
+        {
+          "path": "cells/pfet_g5v0d10v5/sky130_fd_pr__pfet_g5v0d10v5__ss.corner.spice",
+          "gitBlobSha1": "e04ac5c48b8955e5787dd3718dfab63f92778d14",
+          "bytes": 810
+        },
+        {
+          "path": "cells/pfet_g5v0d10v5/sky130_fd_pr__pfet_g5v0d10v5__tt.corner.spice",
+          "gitBlobSha1": "6345e9d36ccd88cbae5a5479ca6e8414b078c466",
+          "bytes": 810
+        },
+        {
+          "path": "cells/res_high_po/sky130_fd_pr__res_high_po.model.spice",
+          "gitBlobSha1": "600a00772e726e47f1bcc5b9962af69036781b47",
+          "bytes": 2352
+        },
+        {
+          "path": "models/sky130.lib.spice",
+          "gitBlobSha1": "a8d3bf5ddbacac96a1db08fd464bea46b7174ffa",
+          "bytes": 20730
+        }
+      ]
+    },
+    {
+      "pdk": "GF180MCU",
+      "repository": "google/globalfoundries-pdk-libs-gf180mcu_fd_pr",
+      "commit": "9f992d5a9186d1f7820c58f039c484ad35b2edea",
+      "entries": [
+        {
+          "path": "models/ngspice/design.ngspice",
+          "gitBlobSha1": "d2ee50bbd70b26c3dbd1180019cb2fbe5965c5b6",
+          "bytes": 3249
+        },
+        {
+          "path": "models/ngspice/sm141064.ngspice",
+          "gitBlobSha1": "561e63453512eb8c614d7d45ac1c6cc2c41e0111",
+          "bytes": 1348553
+        }
+      ]
+    }
+  ],
+  "calibrationStatus": "NOT_VALIDATED",
+  "waferDistributionValidity": "UNKNOWN",
+  "chipMeasurementsAvailable": false,
+  "minTemperatureC": null,
+  "maxTemperatureC": null,
+  "sourcePurpose": "Original pinned device corner/mismatch files and source library. Full transitive model closure and calibrated wafer distributions not yet verified."
+}

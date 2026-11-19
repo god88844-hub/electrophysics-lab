@@ -1,0 +1,19 @@
+* q4_thresh_det: UNQUALIFIED SKY130 01v8 transistor candidate, nominal 0/0.6/1.2/1.8V.
+* Targets LDO +/-5% (1.89 V maximum). No DRC/LVS/PEX/SPICE corner evidence.
+* MOS X-instance pin order: drain gate source bulk; w/l in micrometres.
+* The native runner must separately authenticate the PDK and all devices.
+* Skewed comparator target trip-points: 0.30/0.90/1.50 V (NOT MEASURED).
+.subckt q4_thresh_det vin t1 t2 t3 vdd vss
+Xn_lo trip_lo vin vss vss sky130_fd_pr__nfet_01v8_lvt w=8.00 l=0.35
+Xp_lo trip_lo vin vdd vdd sky130_fd_pr__pfet_01v8_hvt w=0.60 l=0.35
+Xn_buf_lo t1 trip_lo vss vss sky130_fd_pr__nfet_01v8 w=0.65 l=0.35
+Xp_buf_lo t1 trip_lo vdd vdd sky130_fd_pr__pfet_01v8 w=1.30 l=0.35
+Xn_mid trip_mid vin vss vss sky130_fd_pr__nfet_01v8 w=1.20 l=0.35
+Xp_mid trip_mid vin vdd vdd sky130_fd_pr__pfet_01v8 w=2.40 l=0.35
+Xn_buf_mid t2 trip_mid vss vss sky130_fd_pr__nfet_01v8 w=0.65 l=0.35
+Xp_buf_mid t2 trip_mid vdd vdd sky130_fd_pr__pfet_01v8 w=1.30 l=0.35
+Xn_hi trip_hi vin vss vss sky130_fd_pr__nfet_01v8 w=0.60 l=0.35
+Xp_hi trip_hi vin vdd vdd sky130_fd_pr__pfet_01v8_hvt w=12.00 l=0.35
+Xn_buf_hi t3 trip_hi vss vss sky130_fd_pr__nfet_01v8 w=0.65 l=0.35
+Xp_buf_hi t3 trip_hi vdd vdd sky130_fd_pr__pfet_01v8 w=1.30 l=0.35
+.ends q4_thresh_det
