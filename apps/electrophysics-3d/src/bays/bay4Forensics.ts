@@ -19,6 +19,8 @@ export class Bay4Forensics {
   private statusSprite: THREE.Sprite;
   private arcLight: THREE.PointLight;
   private faultLamp: THREE.Mesh;
+  private arcLine: THREE.Line;
+  private arcT = 0;
 
   constructor() {
     // Vault platform with danger ring.
@@ -97,6 +99,49 @@ export class Bay4Forensics {
     this.arcLight = new THREE.PointLight(0xbfdcff, 0, 7, 2);
     this.arcLight.position.copy(this.dutAnchor).add(new THREE.Vector3(0, 0.35, 0));
     this.group.add(this.arcLight);
+
+    // Breakdown arc: jagged polyline regenerated every frame while active.
+    const arcGeo = new THREE.BufferGeometry();
+    arcGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(16 * 3), 3));
+    this.arcLine = new THREE.Line(
+      arcGeo,
+      new THREE.LineBasicMaterial({ color: 0xd8ecff, transparent: true, opacity: 0 })
+    );
+    this.arcLine.visible = false;
+    this.arcLine.frustumCulled = false;
+    this.group.add(this.arcLine);
+  }
+
+  /** Trigger the oxide-breakdown arc burst at the DUT gate (called on real Vgs trip). */
+  triggerArc(durationS = 0.55): void {
+    this.arcT = durationS;
+    this.arcLine.visible = true;
+  }
+
+  private updateArc(dt: number): void {
+    if (this.arcT <= 0) {
+      if (this.arcLine.visible) {
+        this.arcLine.visible = false;
+        (this.arcLine.material as THREE.LineBasicMaterial).opacity = 0;
+        this.setArcFlash(0);
+      }
+      return;
+    }
+    this.arcT -= dt;
+    const pos = this.arcLine.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const arr = pos.array as Float32Array;
+    const a = this.dutAnchor;
+    const up = new THREE.Vector3(0, 0.5, 0);
+    for (let i = 0; i < 16; i++) {
+      const f = i / 15;
+      arr[i * 3] = a.x + (Math.random() - 0.5) * 0.14 * Math.sin(f * Math.PI);
+      arr[i * 3 + 1] = a.y + up.y * f + (Math.random() - 0.5) * 0.03;
+      arr[i * 3 + 2] = a.z + (Math.random() - 0.5) * 0.14 * Math.sin(f * Math.PI);
+    }
+    pos.needsUpdate = true;
+    const fade = Math.max(0, this.arcT / 0.55);
+    (this.arcLine.material as THREE.LineBasicMaterial).opacity = Math.min(1, fade * 1.6);
+    this.setArcFlash(fade * 14);
   }
 
   /** Set the live VDD readout on the bench label (real slider value). */
@@ -147,8 +192,7 @@ export class Bay4Forensics {
   }
 
   update(dt: number, time: number): void {
-    void dt;
-    // Fault lamp slow pulse when nominal; handled by material intensity in setStatus.
+    this.updateArc(dt);
     void time;
   }
 }

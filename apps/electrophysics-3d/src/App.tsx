@@ -3,10 +3,13 @@ import * as THREE from 'three';
 import { createRenderer, createQualityGovernor, type RendererBundle } from './engine/renderer.js';
 import { CameraRig } from './engine/cameraRig.js';
 import { LabWorld, BAY_DEFS } from './world.js';
+import { worldRef } from './worldRef.js';
 import { store, flashToast } from './state/store.js';
 import { verifyReferenceIntegrity } from './data/reference.js';
+import { physicsClient, type PhysicsSnapshot, type ForensicReport, type ProposedFix, type FaultFx } from './physics/physicsClient.js';
 import { LibraryOverlay } from './ui/LibraryOverlay.js';
 import { InspectorPanels } from './ui/InspectorPanels.js';
+import { ForensicDrawer } from './ui/ForensicDrawer.js';
 
 function useLabState() {
   return useSyncExternalStore(
@@ -31,6 +34,40 @@ export function App() {
     const rig = new CameraRig(renderer.camera, renderer.renderer.domElement);
     rig.pickHandler = (ndcX, ndcY) => world.pickBay(ndcX, ndcY, renderer.camera);
     bundleRef.current = { renderer, rig, world };
+    worldRef.current = world;
+
+    // Live physics: worker boot + visual mapping.
+    physicsClient.ensure();
+    physicsClient.onSnapshot((s: PhysicsSnapshot) => {
+      world.applyPhysicsSnapshot(s);
+      // Throttle React HUD updates to ~10 Hz.
+      const now = performance.now();
+      if (now - lastHudPush > 100) {
+        lastHudPush = now;
+        store.set({
+          physics: {
+            vdd: s.vdd,
+            voutQ4: s.nodes.vout_q4 ?? 0,
+            voutBin: s.nodes.vout_bin ?? 0,
+            iRail: s.currents.RAIL ?? 0,
+            traceC: s.temps.traceC ?? 27,
+            pcbC: s.temps.pcbC ?? 27,
+            junctionC: s.temps.junctionC ?? 27,
+            cryoK: s.temps.cryoK ?? 0.015,
+            driveW: store.get().drivePowerMW / 1000,
+            melted: (s.temps.traceC ?? 0) >= 1085,
+            shorted: (s.vgsMax ?? 0) >= 1.95,
+            paused: false,
+          },
+        });
+      }
+    });
+    physicsClient.onFx((fx: FaultFx) => world.handleFaultFx(fx));
+    physicsClient.onFailure((report: ForensicReport, replay, fix: ProposedFix | null) => {
+      store.set({ forensic: { report, replay, fix }, autopsyOpen: true, replayIndex: null });
+      flashToast(`FAILURE: ${report.failure.type} — forensic capture opened`);
+    });
+    physicsClient.setParams({ vdd: store.get().vddSlider, drivePowerW: store.get().drivePowerMW / 1000 });
 
     // Integrity badge — SHA-256 over exact bytes of all 6 reference files.
     verifyReferenceIntegrity().then((res) => {
@@ -40,6 +77,7 @@ export function App() {
     const governor = createQualityGovernor(renderer);
     let frameId = 0;
     let last = performance.now();
+    let lastHudPush = 0;
     let frames = 0;
     let fpsTimer = last;
     const clock = new THREE.Clock();
@@ -69,6 +107,7 @@ export function App() {
       renderer.dispose();
       rig.dispose();
       bundleRef.current = null;
+      worldRef.current = null;
     };
   }, []);
 
@@ -103,6 +142,13 @@ export function App() {
         const next = store.get().peelMode === 'assembled' ? 'exploded' : 'assembled';
         store.set({ peelMode: next });
         flashToast(next === 'exploded' ? 'Layer peel: exploded stack' : 'Layer peel: assembled');
+      }
+      if (e.key.toLowerCase() === 't') {
+        const on = !store.get().thermalView;
+        store.set({ thermalView: on });
+        const b = bundleRef.current;
+        b?.world.setThermalView(on);
+        flashToast(on ? 'Thermal camera ON — Planck/CIE blackbody ramp' : 'Thermal camera OFF');
       }
     };
     window.addEventListener('keydown', onKey);
@@ -202,7 +248,7 @@ export function App() {
           userSelect: 'none',
         }}
       >
-        1–5 bays · L layer peel · Tab inspector · Esc overview · drag orbit · WASD pan
+        1–5 bays · L layer peel · T thermal · Tab inspector · Esc overview · drag orbit · WASD pan
       </div>
 
       {/* Toast */}
@@ -263,6 +309,32 @@ export function App() {
 
       {/* Bay 5 — Offline Physics Library overlay */}
       {state.libraryOpen && <LibraryOverlay onClose={() => store.set({ libraryOpen: false })} />}
+
+      {/* Forensic Autopsy Drawer (opens automatically on real failure trips) */}
+      <ForensicDrawer />
+
+      {/* Bottom-right live physics strip (throttled HUD, zero clutter) */}
+      {state.physics && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 10,
+            right: 12,
+            color: '#4e5d70',
+            fontSize: 11,
+            fontFamily: 'monospace',
+            zIndex: 100,
+            textAlign: 'right',
+            userSelect: 'none',
+          }}
+        >
+          VDD {state.physics.vdd.toFixed(2)} V · V<sub>out</sub>(Q4) {state.physics.voutQ4.toFixed(2)} V · I{' '}
+          {Math.abs(state.physics.iRail * 1000).toFixed(1)} mA · T<sub>trace</sub> {state.physics.traceC.toFixed(0)} °C
+          {(state.physics.shorted || state.physics.melted) && (
+            <span style={{ color: '#ff9d7a' }}> · FAULT</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

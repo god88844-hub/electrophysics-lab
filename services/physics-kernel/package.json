@@ -1,0 +1,13 @@
+{
+  "name": "@invention-lab/physics-kernel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional local daemon bridging the Electrophysics Lab 3D client to a locally installed ngspice for cross-checking. Zero runtime dependencies; 'ws' is an optional peer for the WebSocket hook.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "optionalDependencies": {
+    "ws": "^8.0.0"
+  }
+}

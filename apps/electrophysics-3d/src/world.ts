@@ -8,6 +8,10 @@ import { Bay3Soc } from './bays/bay3Soc.js';
 import { Bay4Forensics } from './bays/bay4Forensics.js';
 import { Bay5Library } from './bays/bay5Library.js';
 import { REFERENCE } from './data/reference.js';
+import { ThermalVisuals } from './physics/thermalVisuals.js';
+import { SmokeSystem } from './physics/smoke.js';
+import { tempToRGBf } from '@physics/blackbody.mjs';
+import type { PhysicsSnapshot, FaultFx } from './physics/physicsClient.js';
 
 export const BAY_DEFS = [
   { id: 1, name: 'Quantum Cryo & Optics', color: 0x4fc3f7, x: -16 },
@@ -60,6 +64,17 @@ export class LabWorld {
   private flowIndexById = new Map<string, number>();
   /** Baseline (nominal) per-path activity — replaced by live solver data in M5. */
   private baselineActivity: Array<{ speed: number; brightness: number }> = [];
+  readonly thermal = new ThermalVisuals();
+  private smokeDie!: SmokeSystem;
+  private smokeCryo!: SmokeSystem;
+  private railTubeMat?: THREE.MeshStandardMaterial;
+  /** Q4 voltage-level → flow colour (03_multiradix_logic_baselines.json levels). */
+  private static Q4_COLORS: Record<string, number> = {
+    '0': 0x4a5568,
+    '0.6': 0xff9d5c,
+    '1.2': 0xffc46b,
+    '1.8': 0xffe08a,
+  };
 
   constructor(scene: THREE.Scene, private callbacks: WorldCallbacks = {}) {
     this.scene = scene;
@@ -80,6 +95,104 @@ export class LabWorld {
     scene.add(this.bay1.group, this.bay2.group, this.bay3.group, this.bay4.group, this.bay5.group);
     this.buildPedestals();
     this.buildFlowSystem();
+    this.smokeDie = new SmokeSystem(scene, 200, 0x8a949f, 0.26);
+    this.smokeCryo = new SmokeSystem(scene, 160, 0xaad4ff, 0.3);
+    this.registerThermalMeshes();
+  }
+
+  /** Register trace/tile/DUT meshes with the thermal-camera system. */
+  private registerThermalMeshes(): void {
+    // Bay 2 supply rail tube (temperature-driven).
+    const met2Group = this.bay2.group.children.find((c) => c.name === 'layer-met2') as THREE.Group | undefined;
+    if (met2Group) {
+      const tube = met2Group.children.find((c) => (c as THREE.Mesh).isMesh && (c as THREE.Mesh).geometry?.type === 'TubeGeometry') as THREE.Mesh | undefined;
+      if (tube) {
+        this.railTubeMat = tube.material as THREE.MeshStandardMaterial;
+        const bayX = BAY_DEFS[1].x;
+        this.thermal.register(tube, () => this.lastSnapshot?.temps?.traceC != null ? this.lastSnapshot.temps.traceC + 273.15 : 300);
+        void bayX;
+      }
+    }
+    // Bay 3 tile thermal planes.
+    for (const tile of this.bay3.tiles) {
+      this.thermal.register(tile.thermalPlane, () => (this.lastSnapshot?.temps?.tiles?.[tile.id] ?? 45) + 273.15);
+    }
+    // Bay 4 DUT.
+    const dut = this.bay4.group.getObjectByName('dutChip');
+    if (dut) this.thermal.register(dut as THREE.Mesh, () => (this.lastSnapshot?.temps?.junctionC ?? 27) + 273.15);
+  }
+
+  private lastSnapshot: PhysicsSnapshot | null = null;
+
+  /** Map a live (or replayed) physics snapshot onto every physics-driven visual. */
+  applyPhysicsSnapshot(s: PhysicsSnapshot): void {
+    this.lastSnapshot = s;
+    // Electron pulses: speed ∝ rail current, colour = Q4 output level.
+    const voutQ4 = s.nodes.vout_q4 ?? 0;
+    const q4Key = [0, 0.6, 1.2, 1.8].reduce((best, lvl) =>
+      Math.abs(lvl - voutQ4) < Math.abs(best - voutQ4) ? lvl : best, 0);
+    const iRef = 0.36;
+    const iNorm = Math.min(3, s.currents.RAIL / iRef);
+    this.setFlowActivity('vdd-met2', iNorm, 0.35 + iNorm * 0.45, new THREE.Color(LabWorld.Q4_COLORS[String(q4Key)] ?? 0xffc46b));
+    this.setFlowActivity('gnd-met3', iNorm, 0.3 + iNorm * 0.4, new THREE.Color(LabWorld.Q4_COLORS[String(q4Key)] ?? 0xffc46b));
+    // Rail glow: blackbody ramp at the computed trace temperature (visible > ~500 K).
+    if (this.railTubeMat) {
+      const tK = (s.temps.traceC ?? 27) + 273.15;
+      if (tK > 500) {
+        const [r, g, b] = tempToRGBf(tK);
+        this.railTubeMat.emissive.setRGB(r, g, b);
+        this.railTubeMat.emissiveIntensity = Math.min(2.4, (tK - 500) / 700);
+      } else {
+        this.railTubeMat.emissive.setHex(0x6a5010);
+        this.railTubeMat.emissiveIntensity = 0.4;
+      }
+    }
+    // SoC tile thermal zones.
+    if (s.temps.tiles) this.bay3.setTileTemps(s.temps.tiles as Record<string, number>);
+    // Cryo stages.
+    this.bay1.setStageTemps([300, 4, 0.1, s.temps.cryoK ?? 0.015]);
+    // SOA bench status line.
+    const fault = s.temps.cryoK > 1.2 || (s.vgsMax ?? 0) >= 1.95;
+    this.bay4.setStatus(`SOA bench · VDD ${s.vdd.toFixed(2)} V · I ${Math.abs(s.currents.RAIL * 1000).toFixed(1)} mA`, fault);
+    this.thermal.update();
+  }
+
+  /** Physics-worker fault events → 3D effects (arc, melt smoke, quench vapour). */
+  handleFaultFx(fx: FaultFx): void {
+    if (fx.kind === 'arc') {
+      this.bay4.triggerArc();
+      const bay2Pos = new THREE.Vector3(BAY_DEFS[1].x + 0.6, this.bay2.layerY('met1') + 0.25, -0.4);
+      const flash = new THREE.PointLight(0xbfdcff, 18, 6, 2);
+      flash.position.copy(bay2Pos);
+      this.scene.add(flash);
+      setTimeout(() => this.scene.remove(flash), 450);
+      this.bay4.applyCharDecal();
+      this.bay4.setShortedGate(true);
+    } else if (fx.kind === 'melt') {
+      const railPos = new THREE.Vector3(BAY_DEFS[1].x, this.bay2.layerY('met2') + 0.2, -1.15);
+      this.smokeDie.spawn(railPos, 26, 0.25, 0.55);
+    } else if (fx.kind === 'smoke') {
+      const pcbPos = new THREE.Vector3(BAY_DEFS[2].x + 1.2, 0.85, 1.4);
+      this.smokeDie.spawn(pcbPos, 30, 0.4, 0.7);
+    } else if (fx.kind === 'quench') {
+      const mcPos = new THREE.Vector3(BAY_DEFS[0].x, 1.0, 0);
+      this.smokeCryo.spawn(mcPos, 40, 0.5, 0.9);
+    }
+  }
+
+  setThermalView(on: boolean): void {
+    this.thermal.setView(on);
+  }
+
+  /** Replay scrubbing: apply a recorded snapshot to the visuals. */
+  applyReplaySample(s: PhysicsSnapshot): void {
+    this.applyPhysicsSnapshot(s);
+  }
+
+  /** Clear all failure visuals (after AI Fix & Re-Test / reset). */
+  clearFailureVisuals(): void {
+    this.bay4.clearFailureState();
+    this.resetFlowToBaseline();
   }
 
   private buildFloor(): void {
@@ -195,6 +308,8 @@ export class LabWorld {
     this.bay3.update(dt);
     this.bay4.update(dt, performance.now() * 0.001);
     this.bay5.update(dt, performance.now() * 0.001);
+    this.smokeDie.update(dt);
+    this.smokeCryo.update(dt);
     // Sim-time-integrated pulse advance (1 sim step per rendered frame).
     this.flow.update(dt, 1);
     // Pedestal pulse highlight when hovering is skipped; subtle idle bob:

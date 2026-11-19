@@ -254,7 +254,7 @@ export class Bay2Foundry {
     }
     // Verified badge.
     const badge = makeTextSprite('DRC=0 · LVS ✓ · PEX ✓ · Phase 0 verified', { scale: 0.85, color: '#8ef0b2' });
-    badge.position.set(0, zTop + 0.78, 1.25);
+    badge.position.set(0, zTop + 1.15, 1.45);
     met3.group.add(badge);
   }
 

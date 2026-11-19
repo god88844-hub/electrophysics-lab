@@ -1,6 +1,8 @@
 import React from 'react';
 import type { LabState } from '../state/store.js';
 import { Q4_PRIMITIVES, REFERENCE, TRANSMON } from '../data/reference.js';
+import { physicsClient } from '../physics/physicsClient.js';
+import { worldRef } from '../worldRef.js';
 
 export interface BayPanelProps {
   bay: number;
@@ -31,6 +33,7 @@ const btnStyle = (active: boolean, color: string): React.CSSProperties => ({
 
 /** Per-bay Inspector content. Zero clutter: only live, data-backed controls. */
 export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.ReactElement {
+  const ph = state.physics;
   if (bay === 1) {
     const stages = ['300 K', '4 K', '100 mK', '15 mK'];
     return (
@@ -53,7 +56,36 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
               </span>
             </div>
           ))}
-          <div style={{ color: '#6f8aa8', fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>
+          <div style={{ color: state.physics && state.physics.cryoK > 1.2 ? '#ff9d7a' : '#9fd8ff', fontSize: 12.5, marginTop: 6, fontFamily: 'monospace' }}>
+            mixing chamber: {ph ? (ph.cryoK * 1000).toFixed(1) : '15.0'} mK
+          </div>
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>MICROWAVE DRIVE LOAD (dT/dt = (Q_load − Q_cool)/C_th)</div>
+          <div style={{ color: '#8ea1b8', fontSize: 11, marginBottom: 6 }}>
+            Q_load = {state.drivePowerMW} mW · quench threshold 12 mW
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={2000}
+            step={1}
+            value={state.drivePowerMW}
+            onChange={(e) => {
+              const mw = parseInt(e.target.value);
+              dispatch({ drivePowerMW: mw });
+              physicsClient.setParams({ drivePowerW: mw / 1000 });
+            }}
+            style={{ width: '100%', accentColor: '#4fc3f7' }}
+          />
+          <div style={{ color: '#6f8aa8', fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>
+            Overdrive the 15 mK stage to trigger a real thermal quench — T₁/T₂ collapse across the die. Physical
+            recovery in a real fridge ≈ 4 h.
+          </div>
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>TRANSMON (04 REFERENCE)</div>
+          <div style={{ color: '#6f8aa8', fontSize: 11, lineHeight: 1.5 }}>
             T₁ ≈ {TRANSMON.t1_us.typical} µs · T₂ ≈ {TRANSMON.t2_us.typical} µs · ZZ crosstalk ≈{' '}
             {TRANSMON.zz_crosstalk_khz.typical} kHz · readout {TRANSMON.readout_fidelity.typical}
           </div>
@@ -65,6 +97,52 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
   if (bay === 2) {
     return (
       <div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>LIVE ELECTRO-THERMAL BENCH (MNA + HEAT PDE)</div>
+          <div style={{ color: '#cfe2f7', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.7 }}>
+            VDD {ph ? ph.vdd.toFixed(2) : '1.80'} V · V_out(Q4) {ph ? ph.voutQ4.toFixed(2) : '—'} V
+            <br />
+            I_rail {ph ? Math.abs(ph.iRail * 1000).toFixed(1) : '—'} mA · T_trace {ph ? ph.traceC.toFixed(0) : '27'} °C
+            <br />
+            T_junction {ph ? ph.junctionC.toFixed(0) : '27'} °C {ph?.melted ? '· RAIL FUSED' : ''}
+          </div>
+          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>
+            Supply voltage VDD (SOA ceiling 1.95 V · nominal 1.80 V)
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={3.3}
+            step={0.01}
+            value={state.vddSlider}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              dispatch({ vddSlider: v });
+              physicsClient.setParams({ vdd: v });
+            }}
+            style={{ width: '100%', accentColor: '#ffc107' }}
+          />
+          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>Q4 gate drive level</div>
+          {[0, 0.6, 1.2, 1.8].map((lvl) => (
+            <button
+              key={lvl}
+              style={btnStyle(false, '#ffc107')}
+              onClick={() => physicsClient.setParams({ gateLevel: lvl })}
+            >
+              {lvl} V
+            </button>
+          ))}
+          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>Load resistance</div>
+          {[10000, 100000, 1000000].map((r) => (
+            <button
+              key={r}
+              style={btnStyle(false, '#ffc107')}
+              onClick={() => physicsClient.setParams({ loadR: r })}
+            >
+              {r >= 1e6 ? '1 MΩ' : `${r / 1000} kΩ`}
+            </button>
+          ))}
+        </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>LAYER-PEEL SLICER (L)</div>
           <button style={btnStyle(state.peelMode === 'exploded', '#ffc107')} onClick={() => dispatch({ peelMode: state.peelMode === 'exploded' ? 'assembled' : 'exploded' })}>
@@ -95,18 +173,6 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
             </div>
           ))}
         </div>
-        <div style={sectionStyle}>
-          <div style={labelStyle}>SKY130A STACK DATA</div>
-          {(['li1', 'met1', 'met2', 'met3'] as const).map((k) => {
-            const m = (REFERENCE.semiconductor.parameters.sky130a.metal_stack as Record<string, { sheet_resistance_ohm_per_sq: number; thickness_nm: number }>)[k];
-            return (
-              <div key={k} style={{ color: '#cfe2f7', fontSize: 12, display: 'flex', justifyContent: 'space-between', fontFamily: 'monospace' }}>
-                <span>{k}</span>
-                <span style={{ color: '#4e5d70' }}>{m.thickness_nm} nm · {m.sheet_resistance_ohm_per_sq} Ω/sq</span>
-              </div>
-            );
-          })}
-        </div>
       </div>
     );
   }
@@ -121,18 +187,35 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
           </button>
         </div>
         <div style={sectionStyle}>
+          <div style={labelStyle}>TILE THERMAL ZONES (LIVE HEAT PDE)</div>
+          <div style={{ color: '#cfe2f7', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.7 }}>
+            {ph && ph.pcbC !== undefined
+              ? `board max ${ph.pcbC.toFixed(0)} °C (FR-4 delam 260 °C)`
+              : 'waiting for solver…'}
+          </div>
+          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>
+            Tile power scale (push past 260 °C to trip delamination)
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={30}
+            step={1}
+            defaultValue={5}
+            onChange={(e) => {
+              const v = parseInt(e.target.value) / 10;
+              physicsClient.setParams({ tilePowerScale: v });
+            }}
+            style={{ width: '100%', accentColor: '#26c6da' }}
+          />
+        </div>
+        <div style={sectionStyle}>
           <div style={labelStyle}>TILE POWER MODEL (05 REFERENCE · P = C·V²·f)</div>
           <div style={{ color: '#cfe2f7', fontSize: 12, lineHeight: 1.7 }}>
             <div>CPU Cluster — {((REFERENCE.architecture.parameters.riscv_rv32im.power_mw_at_100mhz_130nm / 1000) * 8).toFixed(2)} W idle model</div>
             <div>Systolic TPU 8×8 — {(REFERENCE.architecture.parameters.systolic_array_tpu.power_w.tpu_v1 * 0.08).toFixed(1)} W idle model</div>
             <div>SIMT GPU — {(REFERENCE.architecture.parameters.simt_gpu.power_w.intel_iris_xe_155u_tdp * 0.35).toFixed(1)} W idle model</div>
             <div>Unified Memory — 2.1 W idle model</div>
-          </div>
-        </div>
-        <div style={sectionStyle}>
-          <div style={labelStyle}>OPERATING ENVELOPE</div>
-          <div style={{ color: '#8ea1b8', fontSize: 11.5, lineHeight: 1.6 }}>
-            RV32IM VDD 0.8–1.2 V · TPU VDD 0.7–0.9 V · junction max 125 °C · Si thermal-runaway alarm 200 °C
           </div>
         </div>
       </div>
@@ -146,15 +229,38 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
           <div style={labelStyle}>SOA BREAKDOWN BENCH</div>
           <div style={{ color: '#cfe2f7', fontSize: 12.5, lineHeight: 1.7 }}>
             SKY130 gate-oxide TDDB ceiling: <b style={{ color: '#ff9d7a' }}>V_gs = 1.95 V</b> (E-model γ ≈ 300 dec/V).
-            Drive VDD above the ceiling to trigger a real breakdown capture — the vault records the last 100 ms and
-            opens the Forensic Autopsy automatically.
+            Push Bay 2's VDD slider past the ceiling — the vault records the failure, opens the Forensic Autopsy, and
+            shows the slow-motion replay.
           </div>
         </div>
         <div style={sectionStyle}>
-          <div style={labelStyle}>ELECTRO-THERMAL PHYSICS</div>
+          <div style={labelStyle}>RECOVERY</div>
+          <button
+            style={btnStyle(false, '#ff9d5a')}
+            onClick={() => {
+              physicsClient.reset();
+              worldRef.current?.clearFailureVisuals();
+              dispatch({ forensic: null, autopsyOpen: false, replayIndex: null });
+            }}
+          >
+            Reset bench &amp; clear faults
+          </button>
+          <button
+            style={btnStyle(state.thermalView, '#ff5030')}
+            onClick={() => {
+              const on = !state.thermalView;
+              dispatch({ thermalView: on });
+              worldRef.current?.setThermalView(on);
+            }}
+          >
+            Thermal camera (T)
+          </button>
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>ELECTRO-THERMAL ENGINE</div>
           <div style={{ color: '#6f8aa8', fontSize: 11.5, lineHeight: 1.6 }}>
-            Live MNA solver + Fourier heat diffusion + failure thresholds from 06_failure_physics_thresholds.json.
-            (Wired into the scene in Milestone 5 — this bay currently shows the instrumented stage.)
+            MNA (Shichman–Hodges + CLM, numeric Jacobian, source stepping) + 2D FTCS Fourier heat diffusion +
+            threshold set from 06_failure_physics_thresholds.json. 240 Hz in a Web Worker.
           </div>
         </div>
       </div>
