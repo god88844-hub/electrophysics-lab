@@ -23,6 +23,19 @@ class StageMStatic(unittest.TestCase):
                       'port make','label $p','2.72','0.17','0.15','drc list count total',
                       'ext2spice cthresh 0','ext2spice rthresh 0'):
             self.assertIn(token,t)
+    def test_magic_exports_named_top_level_subcircuits_for_native_pex(self):
+        t=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('ext2spice lvs',t)
+        self.assertIn('ext2spice subcircuit top on',t)
+        self.assertEqual(t.count('ext2spice subcircuit top on'),2)
+        self.assertLess(t.index('ext2spice lvs'),t.index('ext2spice subcircuit top on'))
+        self.assertLess(t.index('ext2spice subcircuit top on'),
+                        t.index('ext2spice -o "$cell-lvs.spice"'))
+        self.assertLess(t.index('ext2spice -o "$cell-lvs.spice"'),
+                        t.index('ext2spice -o "$cell-pex.spice"'))
+        self.assertIn('ext2spice cthresh 0',t)
+        self.assertIn('ext2spice rthresh 0',t)
+
     def test_mask_labels_are_real_contact_compounds_not_fake_painted_layers(self):
         script=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
         self.assertIn('stage_m_rect nsc',script)

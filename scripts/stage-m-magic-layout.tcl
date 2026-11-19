@@ -248,10 +248,16 @@ if {![string is integer -strict $count] || $count != 0} {
     error "STAGE_M_FAIL: DRC errors $cell $count"
 }
 extract all
+# Magic's "ext2spice lvs" defaults to "subcircuit top auto".
+# For a source-bound PEX that will be included in hierarchical ALU benches,
+# always require a real top-level .subckt wrapper. This does not modify
+# transistor geometry, waive DRC, or alter the LVS comparison.
 ext2spice lvs
+ext2spice subcircuit top on
 ext2spice -o "$cell-lvs.spice"
 ext2spice cthresh 0
 ext2spice rthresh 0
+ext2spice subcircuit top on
 ext2spice -o "$cell-pex.spice"
 gds write $cell
 puts "STAGE_M_DRC_ZERO_PEX_GENERATED_LVS_STILL_REQUIRED $cell"
