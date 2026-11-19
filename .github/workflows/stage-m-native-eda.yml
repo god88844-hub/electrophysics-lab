@@ -33,7 +33,7 @@ jobs:
       - name: Verify Stage M shell scripts parse cleanly
         run: |
           bash -n scripts/stage-m-purge-queued-actions.sh scripts/stage-m-native-eda.sh
-          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py scripts/stage-m-four-terminal-soa.py scripts/stage-m-soa-waveform-capture.py scripts/stage-m-trial-decks.py scripts/stage-m-alu-assemble.py scripts/stage-m-postroute-placement.py
+          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py scripts/stage-m-four-terminal-soa.py scripts/stage-m-soa-waveform-capture.py scripts/stage-m-trial-decks.py scripts/stage-m-alu-assemble.py scripts/stage-m-postroute-placement.py scripts/stage-m-pdk-transitive-audit.py
       - name: Local-equivalent Python SPICE/Tcl/source consistency checks
         run: python3 -m unittest discover -s tests -p 'stage_m_*test.py'
       - name: Reject nonexistent PDK devices and verify candidate subcircuit boundaries
@@ -205,6 +205,11 @@ jobs:
           test "$(git -C /tmp/stage-m-open-pdks-audit rev-parse HEAD)" = 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d
           export STAGE_M_OPEN_PDKS_SOURCE=/tmp/stage-m-open-pdks-audit
           export STAGE_M_MISMATCH_AUDIT_REPORT="$PWD/benchmarks/evidence/stage-m-native-eda/mm-declaration-audit.json"
+          # This read-only provenance sweep always emits its SHA-256 evidence
+          # before the existing strict statistical corner gate evaluates it.
+          python3 scripts/stage-m-pdk-transitive-audit.py \
+            --pdk-root "$PDK_ROOT" --library "$lib" \
+            --output "$PWD/benchmarks/evidence/stage-m-native-eda/pdk-transitive-audit.json"
           node scripts/stage-m-mm-corner-audit.mjs
           sha256sum "$lib" >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
           echo 'tt_mm section inspected; explicit deck mc_mm_switch=1 still required; calibration UNKNOWN' >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
