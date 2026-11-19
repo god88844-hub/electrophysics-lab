@@ -159,12 +159,13 @@ def pin(root,uses,inst,pad):
             *transformed_box(label_box(path,pad),trans),native_layer)
 
 def half_adder_child_m3_grid(pin_info, transform):
-    """Use full child-local M3 offset plus instance transform.
+    """Bind parent routed M3 to actual imported child terminal coordinates.
 
-    Run 44524297924: saved parent doubles BOTH source instance and
-    child-local M3 geometry. The prior half-offset remap missed Xsum_a/sel
-    by 97281 native DBU in Y, disconnecting all ten mux interfaces.
-    Never fabricate a child pin or weaken exact-pin Netgen LVS.
+    Run 44524297924: imported child transforms double in saved parent .mag
+    while child-master pin rectangles preserve their original local offsets.
+    Parent-painted metal rectangles retain i-coordinate values verbatim.
+    Therefore use (2*c+local_x, 2*f+local_y) = (x+c, y+f).
+    Never weaken top-level Netgen LVS or infer missing physical contacts.
     """
     lay,x,y,x1,y1,x2,y2,original=pin_info
     if lay not in {'met3','metal3'} or original not in {'met3','metal3'}:
@@ -174,7 +175,7 @@ def half_adder_child_m3_grid(pin_info, transform):
         raise ValueError('non-identity source transform: native grid audit required')
     if not (x1<=x<=x2 and y1<=y<=y2):
         raise ValueError('native hierarchy contact not enclosed')
-    return pin_info
+    return (lay,x+c,y+f,x1+c,y1+f,x2+c,y2+f,original)
 
 def hierarchical_escape_ranks(netmap):
     """Allocate short, distinct Metal2 trunks for native Metal1 child pins.
