@@ -129,10 +129,10 @@ class PostRoutePlacementTests(unittest.TestCase):
         source=('met3',501181,634191,501148,634158,
                 501214,634224,'met3')
         mapped=route.half_adder_child_m3_grid(source,trans)
-        self.assertEqual(mapped[1],501131)
-        self.assertEqual(mapped[2],585550)
-        self.assertEqual(mapped[1]*2,1002262)
-        self.assertLessEqual(abs(mapped[2]*2-1171101),1)
+        self.assertEqual(mapped,source)
+        self.assertEqual(mapped[1]*2,1002362)
+        self.assertEqual(mapped[2]*2,1268382)
+        self.assertNotEqual(mapped[2]*2,1171101)
         self.assertLess(mapped[3],mapped[1])
         self.assertLess(mapped[1],mapped[5])
         with self.assertRaisesRegex(ValueError,'unauthenticated'):

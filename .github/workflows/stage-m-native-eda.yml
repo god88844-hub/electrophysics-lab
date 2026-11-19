@@ -55,8 +55,22 @@ jobs:
       - name: Install native Magic, Netgen LVS and ngspice from Ubuntu packages
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
+          retry_apt() {
+            local attempt
+            for attempt in 1 2 3; do
+              if sudo apt-get -o Acquire::Retries=5 "$@"; then
+                return 0
+              fi
+              if [[ "$attempt" -eq 3 ]]; then
+                echo "STAGE_M_APT_FAILED_AFTER_THREE_ATTEMPTS: $*" >&2
+                return 1
+              fi
+              echo "STAGE_M_APT_RETRY attempt=$attempt action=$*" >&2
+              sleep "$((attempt * 5))"
+            done
+          }
+          retry_apt update -qq
+          retry_apt install -y --fix-missing --no-install-recommends \
             magic netgen-lvs ngspice git make gcc g++ autoconf automake libtool \
             m4 tcsh tcl-dev tk-dev libx11-dev libxpm-dev \
             libcairo2-dev libncurses-dev libreadline-dev zlib1g-dev

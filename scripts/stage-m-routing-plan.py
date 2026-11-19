@@ -159,13 +159,12 @@ def pin(root,uses,inst,pad):
             *transformed_box(label_box(path,pad),trans),native_layer)
 
 def half_adder_child_m3_grid(pin_info, transform):
-    """Convert a post-routed child M3 label to the parent native i-grid.
+    """Use full child-local M3 offset plus instance transform.
 
-    Verified from CI artifact 44522615670: the imported parent Magic file
-    stores child instance offsets at 2*c/2*f, while the routed child master
-    retains its own native contact coordinates. A parent i-grid route must
-    therefore use c+local/2, NOT c+local. This applies ONLY to q4_half_adder
-    hierarchical metal3 labels. No terminal is invented or renamed.
+    Run 44524297924: saved parent doubles BOTH source instance and
+    child-local M3 geometry. The prior half-offset remap missed Xsum_a/sel
+    by 97281 native DBU in Y, disconnecting all ten mux interfaces.
+    Never fabricate a child pin or weaken exact-pin Netgen LVS.
     """
     lay,x,y,x1,y1,x2,y2,original=pin_info
     if lay not in {'met3','metal3'} or original not in {'met3','metal3'}:
@@ -173,14 +172,9 @@ def half_adder_child_m3_grid(pin_info, transform):
     a,b,c,d,e,f=transform
     if (a,b,d,e)!=(1,0,0,1):
         raise ValueError('non-identity source transform: native grid audit required')
-    def remap(value,offset):
-        # Magic i-coordinates are integer; at most 0.5DBU rounding.
-        return (value+offset)//2
-    out=(lay,remap(x,c),remap(y,f),remap(x1,c),remap(y1,f),
-         remap(x2,c),remap(y2,f),original)
-    if not (out[3]<=out[1]<=out[5] and out[4]<=out[2]<=out[6]):
-        raise ValueError('native hierarchy pin geometry no longer enclosed')
-    return out
+    if not (x1<=x<=x2 and y1<=y<=y2):
+        raise ValueError('native hierarchy contact not enclosed')
+    return pin_info
 
 def hierarchical_escape_ranks(netmap):
     """Allocate short, distinct Metal2 trunks for native Metal1 child pins.
