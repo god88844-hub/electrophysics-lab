@@ -15,7 +15,7 @@ export function makeRequiredNativeStageMCampaign(){
         kind:'pex-q4-primitive',cell:Q4_CELL_NAMES[c],trial:i+1,
         seed:1000000+c*1000+i+1,
         temperatureC:REQUIRED_TEMPERATURES_C[i%4],corner:'mc',
-        requiredMeasurements:['NM_L','NM_1','NM_2','NM_H','delay_s','power_w'],
+        requiredMeasurements:['NM_L','NM_1','NM_2','NM_H','delay_s','power_w','peak_power_w'],
         status:'NOT_RUN'
       }));
     }
@@ -27,7 +27,7 @@ export function makeRequiredNativeStageMCampaign(){
         seed:2000000+radix*100000+width*10000+
           REQUIRED_PDK_CORNERS.indexOf(corner)*100+i+1,
         temperatureC:REQUIRED_TEMPERATURES_C[i%4],
-        requiredMeasurements:['functional_match','delay_s','power_w'],
+        requiredMeasurements:['functional_match','NM_L','NM_1','NM_2','NM_H','delay_s','power_w','peak_power_w'],
         status:'NOT_RUN'
       }));
   return {format:'invention-lab/stage-m-native-campaign-plan/1',

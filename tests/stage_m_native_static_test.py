@@ -7,7 +7,7 @@ import unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 class StageMStatic(unittest.TestCase):
     def test_python_syntax(self):
-        for name in ('stage-m-routing-plan.py','stage-m-parallel-ngspice.py','stage-m-four-terminal-soa.py','stage-m-trial-decks.py'):
+        for name in ('stage-m-routing-plan.py','stage-m-parallel-ngspice.py','stage-m-four-terminal-soa.py','stage-m-soa-waveform-capture.py','stage-m-trial-decks.py','stage-m-alu-assemble.py'):
             source=ROOT/'scripts'/name
             ast.parse(source.read_text(),filename=str(source))
     def test_tcl_syntax(self):
@@ -72,6 +72,54 @@ class StageMStatic(unittest.TestCase):
                             'a/Xa,1e-9,0,0,0,0\n')
             with self.assertRaisesRegex(ValueError,'SOA_OXIDE_OVERSTRESS'):
                 module.trace(file,{'a/Xa':'sky130_fd_pr__nfet_01v8'})
+
+    def test_contact_alias_rectangle_and_alu_truth_table(self):
+        import importlib.util,tempfile
+        from pathlib import Path
+        def module(filename,modname):
+            spec=importlib.util.spec_from_file_location(modname,ROOT/'scripts'/filename)
+            result=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(result)
+            return result
+        route=module('stage-m-routing-plan.py','stage_m_native_contact_rectangles')
+        for name in ('ndc','pdc','pc','ndiffc','pdiffc','polycont'):
+            self.assertEqual(route.CONTACT_TO_LI1.get(name),'li1')
+        with tempfile.TemporaryDirectory() as d:
+            master=Path(d)/'mos.mag'
+            master.write_text('magic\ntech sky130A\n<< labels >>\n'
+                              'rlabel ndc 2 4 6 8 0 D\n'
+                              'rlabel pdc 2 14 6 18 0 S\n'
+                              'rlabel pc 2 24 6 28 0 G\n'
+                              '<< end >>\n')
+            uses={'Xn':['mos',[1,0,10,0,1,20]]}
+            drain=route.pin(Path(d),uses,'Xn','D')
+            self.assertEqual(drain,('li1',14,26,12,24,16,28,'ndc'))
+            self.assertEqual(route.pin(Path(d),uses,'Xn','S')[-1],'pdc')
+            self.assertEqual(route.pin(Path(d),uses,'Xn','G')[-1],'pc')
+        alu=module('stage-m-alu-assemble.py','stage_m_alu_pex_lut')
+        alu.validate_logic()
+        for radix in (2,3,4):
+            for width in (4,8):
+                name,spice,count=alu.assemble(radix,width)
+                self.assertIn('.subckt '+name,spice)
+                self.assertIn('.ends '+name,spice)
+                self.assertEqual(count,2*width*(radix*radix+radix+1)+1)
+                self.assertEqual(sum(line.startswith('X') for line in spice.splitlines()),count)
+                self.assertNotIn('VCVS',spice.upper())
+
+    def test_engineering_acceptance_never_waives_soa_or_level2(self):
+        import json
+        cfg=json.loads((ROOT/'benchmarks'/'stage-m-qualification-thresholds.json').read_text())
+        self.assertEqual(cfg['schema'],'invention-lab/stage-m-level1-engineering-acceptance/1')
+        gates=cfg['physicalGate']
+        self.assertEqual(gates['maxCorePairwiseTerminalVoltageV'],1.95)
+        self.assertEqual(gates['maxSOAViolations'],0)
+        self.assertEqual(gates['magicDrcMaxErrors'],0)
+        self.assertEqual(gates['netgenLvsMaxMismatches'],0)
+        self.assertEqual(gates['level2'],'UNQUALIFIED_NO_GO')
+        self.assertGreaterEqual(cfg['minimumWilsonLower95'],0.9)
+        self.assertEqual(set(cfg['aluBudgets']),{f'{r}:{w}' for r in (2,3,4) for w in (4,8)})
+        self.assertTrue(all(v>=0.12 for v in cfg['minimumNoiseMarginsV'].values()))
 
     def test_model_inventory_and_balanced_spice(self):
         models={'sky130_fd_pr__nfet_01v8_lvt','sky130_fd_pr__nfet_01v8',

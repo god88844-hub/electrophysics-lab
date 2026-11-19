@@ -56,7 +56,9 @@ def main():
         body=safe_read(Path(args.templates)/(name+'.spice'))
         if re.search(r'(?im)^\s*\.(?:lib|include|end)\b',body):
             raise ValueError('Injected or nested PDK library in source bench '+name)
-        required={'NM_L','NM_1','NM_2','NM_H','delay_s','power_w'} if name in CELLS else {'functional_match','delay_s','power_w'}
+        required={'NM_L','NM_1','NM_2','NM_H','delay_s','power_w','peak_power_w'}
+        if name not in CELLS:
+            required.add('functional_match')
         if not required.issubset(set(MEAS_RE.findall(body))):
             raise ValueError('Missing true SPICE noise/delay/power measurement '+name)
         if not re.search(r'(?im)^\s*\.(?:tran|dc)\b',body):

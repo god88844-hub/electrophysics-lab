@@ -25,14 +25,14 @@ def validate_plan(plan):
         if row['temperatureC'] not in (-40,25,85,125): raise ValueError('Missing PVT temperature')
         if row['kind']=='pex-q4-primitive':
             if row['cell'] not in pcount or row['corner']!='mc':raise ValueError('Wrong Q4 cell/corner')
-            if set(row['requiredMeasurements'])!=set(('NM_L','NM_1','NM_2','NM_H','delay_s','power_w')):
+            if set(row['requiredMeasurements'])!=set(('NM_L','NM_1','NM_2','NM_H','delay_s','power_w','peak_power_w')):
                 raise ValueError('Required Q4 measurement not planned')
             pcount[row['cell']]+=1
         elif row['kind']=='pex-assembled-alu':
             k=(row['radix'],row['width'],row['corner'])
             if k[0] not in (2,3,4) or k[1] not in (4,8) or k[2] not in ('tt','ss','ff','mc'):
                 raise ValueError('Wrong ALU PVT/radix')
-            if set(row['requiredMeasurements'])!=set(('functional_match','delay_s','power_w')):
+            if set(row['requiredMeasurements'])!=set(('functional_match','NM_L','NM_1','NM_2','NM_H','delay_s','power_w','peak_power_w')):
                 raise ValueError('Missing ALU measurement')
             acount[k]=acount.get(k,0)+1
         else: raise ValueError('Unknown trial kind')
@@ -122,12 +122,33 @@ def main():
             if digest(pathlib.Path(sources['pexRoot'])/(cell+'-pex.spice'))!=value:
                 raise ValueError('Extracted parasitic SHA mismatch')
         limits=json.loads(pathlib.Path(args.acceptance).read_text())
-        required={'NM_L','NM_1','NM_2','NM_H','delay_s','power_w'}
-        if set(limits)!=required or any(not isinstance(v,(int,float)) or v<=0 or not math.isfinite(v) for v in limits.values()):
-            raise ValueError('Missing approved physical acceptance limits')
-        min_lower=sources.get('minimumWilsonLower95')
-        if not isinstance(min_lower,(int,float)) or not 0<min_lower<=1:
-            raise ValueError('Missing qualified yield threshold')
+        if limits.get('schema')!='invention-lab/stage-m-level1-engineering-acceptance/1':
+            raise ValueError('Incorrect/missing engineering acceptance schema')
+        gate=limits.get('physicalGate',{})
+        if gate!={'magicDrcMaxErrors':0,'netgenLvsMaxMismatches':0,
+                 'maxCorePairwiseTerminalVoltageV':1.95,'maxSOAViolations':0,
+                 'level2':'UNQUALIFIED_NO_GO'}:
+            raise ValueError('Physical gate/1.95 V SOA cannot change')
+        noise=limits.get('minimumNoiseMarginsV',{})
+        if set(noise)!=set(('NM_L','NM_1','NM_2','NM_H')) or any(
+                not isinstance(v,(int,float)) or v<0.12 or not math.isfinite(v)
+                for v in noise.values()):
+            raise ValueError('Q4 noise margins must be >=120 mV')
+        if limits.get('requiredTotalNativeTrials')!=6400 or limits.get('requiredPrimitiveTrials')!=4000 or limits.get('requiredAluTrials')!=2400:
+            raise ValueError('Missing full source-bound trial campaign')
+        by_alu=limits.get('aluBudgets',{})
+        if set(by_alu)!={f'{r}:{w}' for r in (2,3,4) for w in (4,8)}:
+            raise ValueError('Missing radix/width-specific timing and power budgets')
+        budget_keys={'maxDelayS','maxAveragePowerW','maxPeakPowerW'}
+        def budget_ok(b):
+            return (isinstance(b,dict) and set(b)==budget_keys and
+                all(isinstance(v,(int,float)) and math.isfinite(v) and v>0 for v in b.values()) and
+                b['maxPeakPowerW']>=b['maxAveragePowerW'])
+        if not budget_ok(limits.get('primitiveBudgets')) or not all(map(budget_ok,by_alu.values())):
+            raise ValueError('Invalid individual timing/average/peak-power budgets')
+        min_lower=limits.get('minimumWilsonLower95')
+        if not isinstance(min_lower,(int,float)) or min_lower<0.9 or min_lower>1 or not math.isfinite(min_lower):
+            raise ValueError('Missing Wilson 95% >=90% lower-bound acceptance')
         decks=pathlib.Path(args.decks).resolve()
         # Reject missing/unauthenticated inputs BEFORE queuing 6400 jobs.
         if any(not (decks/str(j['seed'])/'trial.spice').is_file() or not (decks/str(j['seed'])/'provenance.json').is_file() for j in jobs):
@@ -140,17 +161,27 @@ def main():
                 results.append(f.result())
         if len(results)!=6400 or len({r['seed'] for r in results})!=6400:
             raise ValueError('Native SPICE trial count incomplete')
+        measured={r['seed']:r['measurements'] for r in results}
+        if len(measured)!=6400:
+            raise ValueError('Incomplete native measurement set')
         n=0
-        for row in results:
-            m=row['measurements']
-            ok=all(m[k]>=limits[k] for k in ('NM_L','NM_1','NM_2','NM_H') if k in m)
-            ok=ok and m['delay_s']<=limits['delay_s'] and m['power_w']<=limits['power_w']
-            if 'functional_match' in m: ok=ok and m['functional_match']==1
+        for spec in jobs:
+            m=measured[spec['seed']]
+            budget=(limits['primitiveBudgets'] if spec['kind']=='pex-q4-primitive'
+                else by_alu[f"{spec['radix']}:{spec['width']}"])
+            ok=all(m[k]>=noise[k] for k in ('NM_L','NM_1','NM_2','NM_H'))
+            ok=(ok and 0<=m['delay_s']<=budget['maxDelayS']
+                and 0<=m['power_w']<=budget['maxAveragePowerW']
+                and 0<=m['peak_power_w']<=budget['maxPeakPowerW']
+                and m['peak_power_w']>=m['power_w'])
+            if spec['kind']=='pex-assembled-alu':
+                ok=ok and m['functional_match']==1
             n+=int(ok)
         bounds=wilson(n,len(results))
-        passport.update(level1='VIRTUALLY_QUALIFIED' if bounds[0]>=min_lower and n==6400 else 'VIRTUAL_FAIL',
+        passport.update(level1='VIRTUALLY_QUALIFIED' if bounds[0]>=min_lower else 'VIRTUAL_FAIL',
           yieldPercentage=n/6400*100,wilson95=bounds,completedNativeTrials=6400,
-          passedNativeTrials=n,sourceManifestSha256=digest(args.sources))
+          passedNativeTrials=n,acceptanceSha256=digest(args.acceptance),
+          sourceManifestSha256=digest(args.sources))
     except Exception as exc:
         passport['blocker']=str(exc)
         dest.write_text(json.dumps(passport,indent=2)+'\n')

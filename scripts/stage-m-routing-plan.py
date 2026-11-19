@@ -12,7 +12,9 @@ LAYERS={'met1','m1','metal1','li1','locali'}
 # Pinned SKY130 Magic compound contacts ndc/pdc/pc/nsc/psc connect
 # existing diffusion/poly to local interconnect: never allow bare diffusion.
 CONTACT_TO_LI1={
-    'ndiffc':'li1', 'pdiffc':'li1', 'polycont':'li1',
+    'ndiffc':'li1', 'ndc':'li1',
+    'pdiffc':'li1', 'pdc':'li1',
+    'polycont':'li1', 'pc':'li1',
     'psubdiffcont':'li1', 'nsubdiffcont':'li1',
 }
 
@@ -81,6 +83,36 @@ def mag(path):
     if any(x[1] is None for x in uses.values()):raise ValueError('missing instance transform')
     return uses,labels,box
 
+def label_box(path,pad):
+    """Read the authentic Magic label rectangle; refuse synthetic dimensions."""
+    result=[]
+    for row in Path(path).read_text().splitlines():
+        if not row.startswith(('rlabel ','flabel ')):
+            continue
+        parts=row.split()
+        off=3 if len(parts)>2 and parts[2]=='s' else 2
+        if parts[-1]!=pad:
+            continue
+        try:
+            x1,y1,x2,y2=[int(v) for v in parts[off:off+4]]
+        except (ValueError,IndexError):
+            raise ValueError('malformed contact label rectangle '+pad)
+        if x2<x1 or y2<y1:
+            raise ValueError('inverted contact label rectangle '+pad)
+        result.append((x1,y1,x2,y2))
+    if len(result)!=1:
+        raise ValueError('missing/ambiguous real contact label box '+pad)
+    return result[0]
+
+def transformed_box(rect,trans):
+    x1,y1,x2,y2=rect
+    a,b,c,d,e,f=trans
+    pts=((a*x+b*y+c,d*x+e*y+f)
+         for x,y in ((x1,y1),(x1,y2),(x2,y1),(x2,y2)))
+    points=list(pts)
+    return (min(x for x,_ in points),min(y for _,y in points),
+            max(x for x,_ in points),max(y for _,y in points))
+
 def pin(root,uses,inst,pad):
     if inst not in uses:raise ValueError('missing placed cell '+inst)
     child,trans=uses[inst]
@@ -92,11 +124,17 @@ def pin(root,uses,inst,pad):
     layer,x,y=hits[0]
     # A compound Magic PDK contact IS already local interconnect, unlike
     # uncontacted ndiff/pdiff/poly. Require the original .mag label, always.
+    native_layer=layer
     if layer in CONTACT_TO_LI1:
         layer=CONTACT_TO_LI1[layer]
-    if layer not in LAYERS:raise ValueError('uncontactable geometry '+inst+'/'+pad+' '+layer)
+    elif layer=='poly':
+        # Bare poly is NOT an already-present poly contact: Magic must
+        # explicitly paint an authentic pc composite before Li1 landing.
+        layer='li1'
+    if layer not in LAYERS:raise ValueError('uncontactable geometry '+inst+'/'+pad+' '+native_layer)
     a,b,c,d,e,f=trans
-    return (layer,a*x+b*y+c,d*x+e*y+f)
+    return (layer,a*x+b*y+c,d*x+e*y+f,
+            *transformed_box(label_box(path,pad),trans),native_layer)
 
 def token(x):
     if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.$!:/-]*',x):
@@ -121,7 +159,9 @@ def render(subs,root,top):
         for port in sub['ports']:
             hits=labels.get(port,[])
             if len(hits)!=1 or hits[0][0] not in LAYERS:raise ValueError('missing authentic port '+name+'/'+port)
-            netmap[port].append(('port:'+port,*hits[0]))
+            lay,x,y=hits[0]
+            box=label_box(root/(name+'.mag'),port)
+            netmap[port].append(('port:'+port,lay,x,y,*box,lay))
         for inst,nets,master in sub['instances']:
             ports=('D','G','S','B') if master.startswith('sky130_fd_pr__') else subs[master]['ports']
             for net,port in zip(nets,ports):
@@ -130,7 +170,10 @@ def render(subs,root,top):
             raise ValueError('unconnected SPICE terminal in '+name)
         output+=['load '+token(name),'stage_m_begin_cell '+token(name)+' [list '+' '.join(map(str,bbox))+']']
         for net,points in sorted(netmap.items()):
-            coords=' '.join('[list '+' '.join((token(id),token(layer),str(x),str(y)))+']' for id,layer,x,y in points)
+            coords=' '.join('[list '+' '.join(
+                (token(id),token(layer),str(x),str(y),
+                 str(x1),str(y1),str(x2),str(y2),token(original)))
+                +']' for id,layer,x,y,x1,y1,x2,y2,original in points)
             output.append('stage_m_route_net '+token(net)+' [list '+coords+']')
         output.append('stage_m_finish_cell '+token(name)+' [list '+' '.join(map(token,sub['ports']))+']')
     output.append('load '+token(top))

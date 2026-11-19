@@ -61,6 +61,7 @@ proc stage_m_begin_cell {cell bbox} {
     set ::stage_m_current $cell
     set ::stage_m_bbox $bbox
     set ::stage_m_nets {}
+    array unset ::stage_m_pin_place
     set ::stage_m_top [expr {$ymax + 2*$::stage_m_pitch}]
     set ::stage_m_bottom [expr {$ymin - 2*$::stage_m_pitch}]
     set ::stage_m_tapx [expr {$xmin - 5*$::stage_m_pitch}]
@@ -86,14 +87,38 @@ proc stage_m_route_net {net terminals} {
         set maxx $minx
     }
     foreach terminal $terminals {
-        if {[llength $terminal] != 4} {error "STAGE_M_FAIL: invalid source terminal"}
-        lassign $terminal name layer x sy
-        if {![string is integer -strict $x] || ![string is integer -strict $sy] ||
-            $layer ni {m1 met1 metal1 li1 locali}} {
-            error "STAGE_M_FAIL: invalid terminal geometry $name"
+        if {[llength $terminal] != 9} {error "STAGE_M_FAIL: missing source-contact rectangle"}
+        lassign $terminal name layer x sy lx ly rx ry original
+        foreach v [list $x $sy $lx $ly $rx $ry] {
+            if {![string is integer -strict $v]} {
+                error "STAGE_M_FAIL: invalid source-contact coordinate $name"
+            }
+        }
+        if {$lx>$x || $rx<$x || $ly>$sy || $ry<$sy || $lx>$rx || $ly>$ry} {
+            error "STAGE_M_FAIL: terminal outside native Magic label $name"
+        }
+        if {$layer ni {m1 met1 metal1 li1 locali}} {
+            error "STAGE_M_FAIL: invalid route terminal $name/$layer"
+        }
+        # Preserve the original Magic contact layer from pinned SKY130A
+        # geometry: ndc/pdc/pc alias ndiffc/pdiffc/polycont.
+        if {$original in {ndiffc ndc pdiffc pdc polycont pc
+                          nsubdiffcont psubdiffcont}} {
+            if {$layer ni {li1 locali}} {
+                error "STAGE_M_FAIL: missing Li1 mapping $name/$original"
+            }
+        } elseif {$original eq "poly"} {
+            # A bare poly gate has no authenticated contact yet. Paint
+            # Magic's composite polycontact (pc), then require native DRC/LVS.
+            stage_m_contact pc $x $sy [stage_m_u 0.17]
+        } elseif {$original ni {m1 met1 metal1 li1 locali}} {
+            error "STAGE_M_FAIL: unsupported genuine contact $original"
         }
         if {$layer in {li1 locali}} {
-            stage_m_contact li1 $x $sy $::stage_m_li1w
+            # The physical Li1 landing must cover the ENTIRE authentic Magic
+            # label/contact rectangle, not merely its centre point.
+            set half [expr {int(ceil($::stage_m_li1w/2.0))}]
+            stage_m_rect li1 [expr {min($lx,$x-$half)}] [expr {min($ly,$sy-$half)}]                               [expr {max($rx,$x+$half)}] [expr {max($ry,$sy+$half)}]
             stage_m_contact mcon $x $sy $::stage_m_mcon
         }
         stage_m_contact met1 $x $sy $::stage_m_met1w
@@ -105,6 +130,8 @@ proc stage_m_route_net {net terminals} {
         set maxx [expr {max($maxx,$x)}]
     }
     stage_m_segment met1 $minx $y $maxx $y $::stage_m_met1w
+    # Use this physical Metal1 track for the actual SPICE top-level port.
+    set ::stage_m_pin_place($net) [list $minx $y]
     puts "STAGE_M_NET_CANDIDATE $::stage_m_current/$net"
 }
 proc stage_m_finish_cell {cell ports} {
@@ -116,9 +143,14 @@ proc stage_m_finish_cell {cell ports} {
         if {[lsearch -exact $::stage_m_nets $p] < 0} {
             error "STAGE_M_FAIL: missing schematic pin $cell/$p"
         }
-        if {[catch {findlabel $p} message]} {
-            error "STAGE_M_FAIL: no physical pin label $cell/$p ($message)"
+        if {![info exists ::stage_m_pin_place($p)]} {
+            error "STAGE_M_FAIL: no actual routed Metal1 pin track $cell/$p"
         }
+        lassign $::stage_m_pin_place($p) px py
+        set h [expr {int(ceil($::stage_m_met1w/2.0))}]
+        box [format {%si} [expr {$px-$h}]] [format {%si} [expr {$py-$h}]]             [format {%si} [expr {$px+$h}]] [format {%si} [expr {$py+$h}]]
+        # Existing labels in the placement geometry are not signoff ports;
+        # anchor each exported port to an electrically routed Metal1 track.
         label $p FreeSans 16 0 0 0 c met1
         port make $pinid
         incr pinid

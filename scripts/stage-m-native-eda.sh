@@ -36,6 +36,13 @@ if [[ "${STAGE_M_CAMPAIGN_ONLY:-0}" == "1" ]]; then
   for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
     test -s "$out/pex/$cell-pex.spice" || { echo "Missing real PEX $cell" >&2; exit 1; }
   done
+  # Generate real per-MOS four-terminal PEX waveforms for both supply
+  # ripple envelopes and all four temperatures. Missing/native SPICE
+  # vectors remain a HARD error, never a synthesized waveform substitute.
+  python3 "$repo/scripts/stage-m-soa-waveform-capture.py" \
+    --manifest "$out/source-manifest.json" \
+    --pex "$out/pex" \
+    --out "$out/soa-waveforms"
   # Every real MOS terminal is checked from ngspice-generated waveforms,
   # not from nominal rails alone. No CSV -> no signed SOA manifest.
   python3 "$repo/scripts/stage-m-four-terminal-soa.py" \
@@ -155,6 +162,27 @@ data={'pdkLibrary':str(lib.resolve()),'pdkLibrarySha256':sha(lib),
       'minimumWilsonLower95':None,'level2':'UNQUALIFIED_NO_GO',
       'qualification':'INSUFFICIENT_MODEL_DATA'}
 (out/'source-manifest.json').write_text(json.dumps(data,indent=2)+'\n')
+PY
+# Six hierarchical arithmetic circuits are assembled from the same
+# SHA-authenticated post-layout Q4 mux PEX. Their ALU-level metal
+# interconnect and LVS are NOT verified by this composition step.
+python3 "$repo/scripts/stage-m-alu-assemble.py" \
+  --pex-mux "$out/pex/q4_mux4-pex.spice" \
+  --sources "$out/source-manifest.json" \
+  --out "$out/alu-candidates"
+python3 - "$out" <<'PY'
+import json,sys
+from pathlib import Path
+out=Path(sys.argv[1])
+source=out/'source-manifest.json'
+m=json.loads(source.read_text())
+alu=json.loads((out/'alu-candidates'/'candidates-manifest.json').read_text())
+if len(alu.get('aluNetlists',{}))!=6 or any(
+    record.get('nativeLvsMatch') is not False
+    for record in alu['aluNetlists'].values()):
+    raise ValueError('ALU candidate physical gate was weakened')
+m['aluNetlists']=alu['aluNetlists']
+source.write_text(json.dumps(m,indent=2)+'\n')
 PY
 echo "REAL_PEX_EXTRACTED_PENDING_SOA_AND_POST_LAYOUT_TRIAL_DECKS" >> "$out/STATUS.txt"
 # Complete real DRC/LVS/PEX before statistical-corner admission, if requested.

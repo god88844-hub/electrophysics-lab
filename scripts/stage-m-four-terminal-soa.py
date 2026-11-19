@@ -87,7 +87,26 @@ def audit(manifest_path,schematics,pex,waveforms,output):
             for temp in TEMPS:
                 f=Path(waveforms)/(cell+'__'+profile+'__'+str(temp)+'.csv')
                 if not f.is_file():raise ValueError('real ngspice SOA waveform missing '+str(f))
-                report['transientCornerMeasurements'][cell+'/'+profile+'/'+str(temp)]=trace(f,pex_devs)
+                prefix=f.with_suffix('')
+                proof_path=Path(str(prefix)+'.proof.json')
+                if not proof_path.is_file():
+                    raise ValueError('missing genuine native ngspice capture manifest '+str(proof_path))
+                proof=json.loads(proof_path.read_text())
+                if (proof.get('command')!='ngspice -b' or proof.get('cell')!=cell or
+                    proof.get('profile')!=profile or proof.get('temperatureC')!=temp or
+                    proof.get('pexSha256')!=sha(extracted) or
+                    proof.get('pdkLibrarySha256')!=m['pdkLibrarySha256'] or
+                    proof.get('csvSha256')!=sha(f) or proof.get('level2')!='UNQUALIFIED_NO_GO'):
+                    raise ValueError('untrusted four-terminal native waveform provenance')
+                for suffix,key in (('.spice','deckSha256'),
+                                   ('.log','ngspiceLogSha256'),
+                                   ('.wrdata','rawWaveformSha256')):
+                    evidence=Path(str(prefix)+suffix)
+                    if not evidence.is_file() or sha(evidence)!=proof.get(key):
+                        raise ValueError('SHA-256 or native ngspice evidence missing '+str(evidence))
+                report['transientCornerMeasurements'][cell+'/'+profile+'/'+str(temp)]={
+                    **trace(f,pex_devs),'proofSha256':sha(proof_path),
+                    'ngspiceLogSha256':proof['ngspiceLogSha256']}
     if len(report['transientCornerMeasurements'])!=32:
         raise ValueError('incomplete 4-cell 2-profile 4-temperature SOA coverage')
     report['status']='SOA_FOUR_TERMINAL_TRANSIENT_SCREEN_PASS'
