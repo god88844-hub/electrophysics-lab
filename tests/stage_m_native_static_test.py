@@ -133,23 +133,35 @@ class StageMStatic(unittest.TestCase):
         self.assertIn('EXTRACTION_ELECTRICAL_SHORTS',native)
         self.assertIn('electrically shorted',native)
 
-    def test_source_escape_uses_distinct_metal3_crossovers(self):
-        # Native run #44471349501: met2 horizontal escapes shorted
-        # six otherwise independent detector ports.
+    def test_source_anchored_escape_tracks_keep_nets_separate(self):
+        # Native 44471349501: long MET2 horizontal escapes shorted q4_inv.
+        # Native 44493447931: long MET3 horizontal escapes shorted detector.
+        planner=(ROOT/'scripts'/'stage-m-routing-plan.py').read_text()
         layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
-        for token in ('stage_m_segment met3 $x $sy $route_x $sy',
-                      'stage_m_contact via2 $x $sy',
-                      'stage_m_contact via2 $route_x $sy',
+        for token in ('def hierarchical_escape_ranks(netmap):',
+                      "output.append('stage_m_hier_escape '",
+                      'unseparable source Metal1 hierarchical pins'):
+            self.assertIn(token,planner)
+        for token in ('proc stage_m_hier_escape {name offset}',
+                      'array unset ::stage_m_hier_escape',
+                      'stage_m_segment met1 $x $sy $route_x $sy',
+                      'stage_m_contact via $route_x $sy',
                       'stage_m_segment met2 $route_x $sy $route_x $y',
-                      'incr ::stage_m_escape_index',
-                      'set ::stage_m_met3w [stage_m_u 0.46]',
-                      'set ::stage_m_via2 [stage_m_u 0.20]'):
+                      'set route_x [expr {$x+$::stage_m_hier_escape($name)*[stage_m_u 0.70]}]'):
             self.assertIn(token,layout)
+        self.assertNotIn('stage_m_segment met3 $x $sy $route_x $sy',layout)
         self.assertNotIn('stage_m_segment met2 $x $sy $route_x $sy',layout)
-        pitch=545
-        index=list(range(100))
-        cols=[-4000-i*pitch for i in index]
-        self.assertEqual(len(set(cols)),len(cols))
+        self.assertNotIn('stage_m_contact via2 $x $sy',layout)
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('stage_m_router',
+            ROOT/'scripts'/'stage-m-routing-plan.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        plan={}
+        for name,y in [('vss',700),('vdd',1100),('o',1500),('b',1900),('a',2300)]:
+            plan[name]=[('Xns1/'+name,'metal1',7727,y,7627,y-100,7827,y+100,'metal1')]
+        ranks=module.hierarchical_escape_ranks(plan)
+        self.assertEqual(set(ranks.values()),{-2,-1,0,1,2})
+        self.assertEqual(len(ranks),5)
 
     def test_ground_rail_is_below_native_unrouted_port_bank(self):
         planner=(ROOT/'scripts'/'stage-m-routing-plan.py').read_text()

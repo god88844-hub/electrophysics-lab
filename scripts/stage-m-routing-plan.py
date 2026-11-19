@@ -141,6 +141,30 @@ def pin(root,uses,inst,pad):
     return (layer,a*x+b*y+c,d*x+e*y+f,
             *transformed_box(label_box(path,pad),trans),native_layer)
 
+def hierarchical_escape_ranks(netmap):
+    """Allocate short, distinct Metal2 trunks for native Metal1 child pins.
+
+    Native hierarchical pins share source X coordinates but have different
+    Y offsets. Reusing their X as vertical MET2 trunks shorts their nets.
+    Assign short MET1 escapes; never route shared-Y long MET3 buses.
+    """
+    columns=defaultdict(list)
+    for points in netmap.values():
+        for ident,layer,x,y,*_ in points:
+            if ident.startswith('X') and '/' in ident and layer in {'m1','met1','metal1'}:
+                columns[x].append((ident,y))
+    ranks={}
+    for x,points in columns.items():
+        ys=sorted(y for _,y in points)
+        if len(ys)!=len(set(ys)):
+            raise ValueError('unseparable source Metal1 hierarchical pins at X='+str(x))
+        for ident,y in points:
+            rank=ys.index(y)-(len(ys)-1)//2
+            if abs(rank)>8 or ident in ranks:
+                raise ValueError('out-of-bounds or duplicate hierarchy escape '+ident)
+            ranks[ident]=rank
+    return ranks
+
 def token(x):
     if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.$!:/-]*',x):
         raise ValueError('unsafe SPICE/Tcl identifier '+x)
@@ -180,6 +204,8 @@ def render(subs,root,top):
         output+=['load '+token(name),
                  'stage_m_begin_cell '+token(name)+' [list '+
                  ' '.join(map(str,bbox))+'] '+str(port_ymin)]
+        for ident,offset in sorted(hierarchical_escape_ranks(netmap).items()):
+            output.append('stage_m_hier_escape '+token(ident)+' '+str(offset))
         for net,points in sorted(netmap.items()):
             coords=' '.join('[list '+' '.join(
                 (token(id),token(layer),str(x),str(y),
