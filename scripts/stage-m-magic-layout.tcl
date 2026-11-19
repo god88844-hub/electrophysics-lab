@@ -54,16 +54,21 @@ proc stage_m_tap {kind implant x y} {
     stage_m_contact mcon $x $y $::stage_m_mcon
     stage_m_contact met1 $x $y $::stage_m_met1w
 }
-proc stage_m_begin_cell {cell bbox} {
+proc stage_m_begin_cell {cell bbox port_ymin} {
     if {[llength $bbox] != 4} {error "STAGE_M_FAIL: no bbox for $cell"}
     lassign $bbox xmin ymin xmax ymax
     if {$xmax <= $xmin || $ymax <= $ymin} {error "STAGE_M_FAIL: corrupt bbox"}
+    if {![string is integer -strict $port_ymin]} {
+        error "STAGE_M_FAIL: authentic minimum port Y missing"
+    }
     set ::stage_m_current $cell
     set ::stage_m_bbox $bbox
     set ::stage_m_nets {}
     array unset ::stage_m_pin_place
     set ::stage_m_top [expr {$ymax + 2*$::stage_m_pitch}]
-    set ::stage_m_bottom [expr {$ymin - 2*$::stage_m_pitch}]
+    # A supply rail inside the original source port bank shorts distinct
+    # Metal1 ports even when every Metal2 escape column is unique.
+    set ::stage_m_bottom [expr {min($ymin,$port_ymin) - 2*$::stage_m_pitch}]
     set ::stage_m_tapx [expr {$xmin - 5*$::stage_m_pitch}]
     # Source-pinned port pads often share X but sit at different Y positions.
     # Assign a strictly separate escape column outside ALL device geometry.

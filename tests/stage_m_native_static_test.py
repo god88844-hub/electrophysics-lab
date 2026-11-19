@@ -160,6 +160,19 @@ class StageMStatic(unittest.TestCase):
                              (2632,(2568,2696)),(3041,(2977,3105))):
             self.assertGreater(min(abs(bulk_x+200-x) for x in near),56)
 
+    def test_ground_rail_is_below_native_unrouted_port_bank(self):
+        planner=(ROOT/'scripts'/'stage-m-routing-plan.py').read_text()
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn("port_ymin=min(labels[p][0][2] for p in sub['ports'])",planner)
+        self.assertIn('proc stage_m_begin_cell {cell bbox port_ymin}',layout)
+        self.assertIn('min($ymin,$port_ymin) - 2*$::stage_m_pitch',layout)
+        ymin=-36
+        port_ymin=-1900
+        pitch=545
+        ground=min(ymin,port_ymin)-2*pitch
+        self.assertEqual(ground,-2990)
+        self.assertGreater(abs(ground-(-1100)),2*58)
+
     def test_engineering_acceptance_never_waives_soa_or_level2(self):
         import json
         cfg=json.loads((ROOT/'benchmarks'/'stage-m-qualification-thresholds.json').read_text())

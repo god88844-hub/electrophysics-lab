@@ -173,7 +173,13 @@ def render(subs,root,top):
                 netmap[net].append((inst+'/'+port,*pin(root,uses,inst,port)))
         if any(len(points)<2 for points in netmap.values()):
             raise ValueError('unconnected SPICE terminal in '+name)
-        output+=['load '+token(name),'stage_m_begin_cell '+token(name)+' [list '+' '.join(map(str,bbox))+']']
+        # Power rail must clear every authentic source port pad, not merely
+        # the transistor-array bbox. In the native detector, t3 was at
+        # Y=-1100 while the old ground rail Y=-1126 shorted them in Metal1.
+        port_ymin=min(labels[p][0][2] for p in sub['ports'])
+        output+=['load '+token(name),
+                 'stage_m_begin_cell '+token(name)+' [list '+
+                 ' '.join(map(str,bbox))+'] '+str(port_ymin)]
         for net,points in sorted(netmap.items()):
             coords=' '.join('[list '+' '.join(
                 (token(id),token(layer),str(x),str(y),
