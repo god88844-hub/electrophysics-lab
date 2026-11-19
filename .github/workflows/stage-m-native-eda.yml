@@ -33,7 +33,7 @@ jobs:
       - name: Verify Stage M shell scripts parse cleanly
         run: |
           bash -n scripts/stage-m-purge-queued-actions.sh scripts/stage-m-native-eda.sh
-          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py scripts/stage-m-four-terminal-soa.py scripts/stage-m-soa-waveform-capture.py scripts/stage-m-trial-decks.py scripts/stage-m-alu-assemble.py scripts/stage-m-postroute-placement.py scripts/stage-m-pdk-transitive-audit.py
+          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py scripts/stage-m-four-terminal-soa.py scripts/stage-m-soa-waveform-capture.py scripts/stage-m-trial-decks.py scripts/stage-m-alu-assemble.py scripts/stage-m-postroute-placement.py scripts/stage-m-pdk-transitive-audit.py scripts/stage-m-phase0-acceptance.py
       - name: Local-equivalent Python SPICE/Tcl/source consistency checks
         run: python3 -m unittest discover -s tests -p 'stage_m_*test.py'
       - name: Reject nonexistent PDK devices and verify candidate subcircuit boundaries
@@ -180,7 +180,7 @@ jobs:
         env:
           STAGE_M_LAYOUT_ONLY: '1'
         run: bash scripts/stage-m-native-eda.sh
-      - name: Record actual PDK/tool provenance and fail on missing mismatch corner
+      - name: Record exact source-pinned PDK/tool provenance and statistical availability
         run: |
           mkdir -p benchmarks/evidence/stage-m-native-eda
           {
@@ -210,28 +210,25 @@ jobs:
           python3 scripts/stage-m-pdk-transitive-audit.py \
             --pdk-root "$PDK_ROOT" --library "$lib" \
             --output "$PWD/benchmarks/evidence/stage-m-native-eda/pdk-transitive-audit.json"
-          node scripts/stage-m-mm-corner-audit.mjs
+          # Phase 0 tests authentic lack of statistical models explicitly.
+          # The strict model-intake gate remains available for Phase 1.
+          # No tt substitution or synthetic yield is authorized here.
           sha256sum "$lib" >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
-          echo 'tt_mm section inspected; explicit deck mc_mm_switch=1 still required; calibration UNKNOWN' >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
+          echo 'statistical data absent unless source-backed; calibration UNKNOWN' >> benchmarks/evidence/stage-m-native-eda/TOOLCHAIN.txt
       - name: Export exact 4000 primitive and 2400 ALU trial plan (not executed)
         run: node scripts/stage-m-native-campaign-plan.mjs
-      - name: Run source-verified Monte Carlo campaign from unchanged DRC/LVS/PEX
-        env:
-          STAGE_M_CAMPAIGN_ONLY: '1'
-        run: bash scripts/stage-m-native-eda.sh
-      - name: Require source-bound native Monte Carlo qualification passport
+      - name: Verify Phase 0 authentic expected-fail-closed acceptance
         run: |
           set -euo pipefail
-          passport=benchmarks/evidence/stage-m-native-eda/native-monte-carlo/passport.json
-          test -s "$passport"
-          python3 - "$passport" <<'PY'
-          import json,sys
-          p=json.load(open(sys.argv[1]))
-          assert p['physicalLevel2']=='UNQUALIFIED_NO_GO'
-          assert p['completedNativeTrials']==6400
-          assert p['level1']=='VIRTUALLY_QUALIFIED'
-          assert p['wilson95'] and p['yieldPercentage'] is not None
-          PY
+          out=benchmarks/evidence/stage-m-native-eda
+          python3 scripts/stage-m-phase0-acceptance.py \
+            --audit "$out/pdk-transitive-audit.json" \
+            --manifest "$out/source-manifest.json" \
+            --evidence "$out" \
+            --output "$out/phase0-software-acceptance.json"
+          test -s "$out/phase0-software-acceptance.json"
+          test ! -e "$out/native-monte-carlo/passport.json"
+          grep -qx 'UNQUALIFIED_NO_GO' <(tail -1 "$out/STATUS.txt")
       - uses: actions/upload-artifact@v4
         if: always()
         with:
