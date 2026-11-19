@@ -75,7 +75,30 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /home/runner/.cache/stage-m-eda
-          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-pr-magic-netgen-v3
+          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-magic4205ad22-v4
+      - name: Compile source-pinned Magic compatible with pinned SKY130A rules
+        if: steps.native-eda-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/RTimothyEdwards/magic.git /tmp/stage-m-pinned-magic
+          git -C /tmp/stage-m-pinned-magic checkout --detach 4205ad22bf919cc183af997b60c21140fd6d6fa9
+          test "$(git -C /tmp/stage-m-pinned-magic rev-parse HEAD)" = 4205ad22bf919cc183af997b60c21140fd6d6fa9
+          cd /tmp/stage-m-pinned-magic
+          ./configure --prefix="$EDA_PREFIX"
+          make -j2
+          make install
+          test -x "$EDA_PREFIX/bin/magic"
+          sha256sum "$EDA_PREFIX/bin/magic" > "$EDA_PREFIX/magic-bin.sha256"
+      - name: Activate SHA-checked source-pinned Magic before building PDK
+        run: |
+          set -euo pipefail
+          test -x "$EDA_PREFIX/bin/magic"
+          test -s "$EDA_PREFIX/magic-bin.sha256"
+          sha256sum -c "$EDA_PREFIX/magic-bin.sha256"
+          echo "$EDA_PREFIX/bin" >> "$GITHUB_PATH"
+          export PATH="$EDA_PREFIX/bin:$PATH"
+          magic --version
+          test "$(command -v magic)" = "$EDA_PREFIX/bin/magic"
       - name: Checkout exact original SKY130 device-model commit
         run: |
           git clone -q https://github.com/google/skywater-pdk-libs-sky130_fd_pr.git "$STAGE_M_ORIGINAL_SKY130_MODELS"
@@ -122,6 +145,8 @@ jobs:
           test -s "$PDK_ROOT/sky130A/libs.tech/magic/sky130A.magicrc"
           test -s "$PDK_ROOT/sky130A/libs.tech/netgen/sky130A_setup.tcl"
           dpkg-query -W magic netgen-lvs ngspice
+          test "$(command -v magic)" = "$EDA_PREFIX/bin/magic"
+          sha256sum -c "$EDA_PREFIX/magic-bin.sha256"
           sha256sum "$(command -v magic)" "$(command -v netgen)" "$(command -v ngspice)"
           # Require a successful matching byte manifest also on cache hits.
           test -s "$EDA_PREFIX/sky130-lib.sha256"
@@ -131,12 +156,13 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /home/runner/.cache/stage-m-eda
-          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-pr-magic-netgen-v3
+          key: ubuntu2404-stage-m-openpdks0c1f8232-prf62031a1-magic4205ad22-v4
       - name: Record actual PDK/tool provenance and fail on missing mismatch corner
         run: |
           mkdir -p benchmarks/evidence/stage-m-native-eda
           {
-            echo "native_tool_source=ubuntu-24.04-apt-repository"
+            echo "magic_source_commit=4205ad22bf919cc183af997b60c21140fd6d6fa9"
+            echo "netgen_ngspice_source=ubuntu-24.04-apt-repository"
             dpkg-query -W magic netgen-lvs ngspice
             sha256sum "$(command -v magic)" "$(command -v netgen)" "$(command -v ngspice)"
             echo "open_pdks_source_commit=0c1f82326278a0871f0a1fc4bdacf94c88e78e4d"
