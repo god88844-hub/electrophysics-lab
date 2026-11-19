@@ -418,3 +418,16 @@ table.data td.num { text-align: right; font-family: ui-monospace, monospace; }
 .scene3d-wire-editor > button:disabled{opacity:.5;}
 .scene3d-wire-result{padding:8px;background:#0e3940;border-radius:5px;color:#b2f0e2;}
 @media(max-width:680px){.scene3d-wire-editor{top:93px;left:8px;max-height:45%;}}
+
+/* Universal panel close affordance (M8) — every toggleable panel gets an
+   always-visible × button plus Esc-to-close. */
+.has-panel-close{position:relative;}
+.panel-close{
+  position:absolute;top:6px;right:8px;z-index:5;
+  min-width:26px;height:26px;padding:0 6px;
+  border:1px solid #3a4250;border-radius:6px;
+  background:#1a2029;color:#eceff4;
+  font-size:15px;line-height:1;cursor:pointer;
+}
+.panel-close:hover{background:#26303c;border-color:#5a6a80;}
+.panel-close:focus-visible{outline:2px solid #d8a03a;outline-offset:1px;}

@@ -1,5 +1,6 @@
 // Stage Q opt-in physical bridge controls. Never grants physical qualification
 // from browser UI, mocked serial streams, or user-selected instrument files.
+import {attachPanelClose} from '../ui/panel-close.mjs';
 import {fpgaLogicSpec,emitFPGAVerilog,makeFPGACaptureSession}
  from '../hardware/phase93-fpga.js';
 import {attachFPGAWebSerial} from '../hardware/phase93-webserial.js';
@@ -82,6 +83,7 @@ export function attachStageQHardwareBridge(viewer){
  }
  toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;
   toggle.setAttribute('aria-expanded',String(!panel.hidden));});
+ attachPanelClose({panel,toggle,label:'Close hardware bridge panel'});
  exportRTL.addEventListener('click',()=>{
   try{
    const spec=fpgaLogicSpec({radix:4,name:'q4_half_adder'});

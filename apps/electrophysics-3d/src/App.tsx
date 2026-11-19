@@ -151,7 +151,10 @@ export function App() {
         return;
       }
       if (e.key === 'Escape') {
-        store.set({ activeBay: 0, inspectorOpen: false, libraryOpen: false });
+        const s = store.get();
+        // Close the topmost panel first: autopsy > library > inspector.
+        if (s.autopsyOpen) store.set({ autopsyOpen: false });
+        else store.set({ activeBay: 0, inspectorOpen: false, libraryOpen: false });
         const b = bundleRef.current;
         if (b) b.rig.glideTo(new THREE.Vector3(0, 1.3, 2), 19);
       }
@@ -201,33 +204,38 @@ export function App() {
           transform: 'translateX(-50%)',
           display: 'flex',
           gap: 4,
-          background: 'rgba(8,12,18,0.82)',
+          background: 'rgba(20,23,28,0.92)',
           borderRadius: 22,
           padding: '5px 12px',
-          border: '1px solid #223042',
+          border: '1px solid #3a4250',
           zIndex: 100,
           backdropFilter: 'blur(6px)',
         }}
       >
-        {BAY_DEFS.map((bay) => (
-          <button
-            key={bay.id}
-            onClick={() => selectBay(bay.id as 1 | 2 | 3 | 4 | 5)}
-            style={{
-              background: state.activeBay === bay.id ? bay.color : 'transparent',
-              color: state.activeBay === bay.id ? '#0a0e14' : '#8ea1b8',
-              border: 'none',
-              borderRadius: 15,
-              padding: '3px 11px',
-              cursor: 'pointer',
-              fontWeight: state.activeBay === bay.id ? 700 : 400,
-              fontSize: 13,
-            }}
-            title={bay.name}
-          >
-            {bay.id}
-          </button>
-        ))}
+        {BAY_DEFS.map((bay) => {
+          const active = state.activeBay === bay.id;
+          return (
+            <button
+              key={bay.id}
+              onClick={() => selectBay(bay.id as 1 | 2 | 3 | 4 | 5)}
+              style={{
+                background: active ? '#d8a03a' : 'rgba(26,32,41,0.9)',
+                color: active ? '#14171c' : '#eceff4',
+                border: active ? '1px solid #f0c464' : '1px solid #3a4250',
+                borderRadius: 12,
+                padding: '3px 11px',
+                cursor: 'pointer',
+                fontWeight: active ? 700 : 500,
+                fontSize: 13,
+                boxShadow: active ? '0 0 0 1px #14171c inset' : 'none',
+              }}
+              title={bay.name}
+              aria-pressed={active}
+            >
+              {bay.id}
+            </button>
+          );
+        })}
         <span style={{ color: '#3a4a5f', margin: '0 4px' }}>|</span>
         <span
           style={{
@@ -280,8 +288,8 @@ export function App() {
             bottom: 38,
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'rgba(8,12,18,0.9)',
-            border: '1px solid #223042',
+            background: 'rgba(20,23,28,0.94)',
+            border: '1px solid #3a4250',
             color: '#cfe2f7',
             padding: '6px 14px',
             borderRadius: 12,
@@ -301,7 +309,7 @@ export function App() {
           right: 0,
           width: 320,
           height: '100%',
-          background: 'rgba(13,18,26,0.94)',
+          background: 'rgba(20,23,28,0.96)',
           borderLeft: '1px solid #223042',
           transform: state.inspectorOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
@@ -312,7 +320,7 @@ export function App() {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h3 style={{ color: '#e8eef7', margin: 0, fontSize: 15 }}>{activeDef ? activeDef.name : 'Inspector'}</h3>
+          <h3 style={{ color: '#eceff4', margin: 0, fontSize: 15 }}>{activeDef ? activeDef.name : 'Inspector'}</h3>
           <button
             onClick={() => store.set({ inspectorOpen: false })}
             style={{ background: 'none', border: 'none', color: '#4e5d70', cursor: 'pointer', fontSize: 16 }}

@@ -1,5 +1,6 @@
 // Stage P — in-app virtual systems panel and visual 3D proxy placement.
 // Users supply explicit ISA/ONNX data; outputs are model/reference only.
+import {attachPanelClose} from '../ui/panel-close.mjs';
 import {createCustomISA,assembleCustom,compileStructuredWorkload,
  compileTinyCLike,runCustomCPU} from './stage-p-custom-isa.js';
 import {createCustomAccelerator,executeOnnxAccelerator}
@@ -88,6 +89,7 @@ export function attachStagePSystems(viewer){
  }
  toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;
   toggle.setAttribute('aria-expanded',String(!panel.hidden));viewer.requestRender();});
+ attachPanelClose({panel,toggle,label:'Close virtual systems panel'});
  mode.addEventListener('change',()=>{
   isaJson.value='';
   const r=activeISA().registers;

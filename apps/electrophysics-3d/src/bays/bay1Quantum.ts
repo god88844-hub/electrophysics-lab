@@ -209,6 +209,19 @@ export class Bay1Quantum {
       this.plateLabelSprites.push(sprite);
     }
 
+    // Braided OFHC copper thermal straps between cold stages (real cryostat practice).
+    for (const [angle, from, to] of [[0.9, 2.25, 1.45], [2.4, 1.45, 0.72]]) {
+      const pts = [
+        new THREE.Vector3(Math.cos(angle) * 1.0, from, Math.sin(angle) * 1.0),
+        new THREE.Vector3(Math.cos(angle + 0.3) * 0.75, (from + to) / 2, Math.sin(angle + 0.3) * 0.75),
+        new THREE.Vector3(Math.cos(angle + 0.15) * 0.6, to, Math.sin(angle + 0.15) * 0.6),
+      ];
+      const strapCurve = new THREE.CatmullRomCurve3(pts);
+      const strap = new THREE.Mesh(new THREE.TubeGeometry(strapCurve, 20, 0.05, 8, false), MAT.braidedStrap);
+      strap.castShadow = true;
+      g.add(strap);
+    }
+
     // Coaxial microwave lines — stainless tubes from canister to 15 mK base.
     for (let i = 0; i < 7; i++) {
       const angle = (i / 7) * Math.PI * 2 + 0.3;
@@ -225,7 +238,7 @@ export class Bay1Quantum {
     }
 
     // Dark niobium-on-silicon 16-qubit transmon die on the 15 mK stage.
-    const die = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), MAT.niobiumDark);
+    const die = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), MAT.sapphireDie);
     die.position.set(0, 0.82, 0);
     g.add(die);
     const dieTop = new THREE.Mesh(
@@ -235,7 +248,7 @@ export class Bay1Quantum {
     dieTop.position.set(0, 0.855, 0);
     g.add(dieTop);
     // Qubit pads: 16 small gold squares in a 4×4 grid.
-    const padMat = new THREE.MeshStandardMaterial({ color: 0xe6c15c, metalness: 1, roughness: 0.2, emissive: 0x8a6b1d, emissiveIntensity: 0.25 });
+    const padMat = new THREE.MeshStandardMaterial({ color: 0xaab2bd, metalness: 0.9, roughness: 0.25, emissive: 0x2a3340, emissiveIntensity: 0.2 });
     const pads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.05, 0.006, 0.05), padMat, 16);
     const dummy = new THREE.Object3D();
     let p = 0;

@@ -1,4 +1,5 @@
 // Staged 3D UI integration; keeps canonical editing and physical gates intact.
+import {attachPanelClose} from '../ui/panel-close.mjs';
 import {planSnapPart,commitSnapPart,commitAutoManhattanHarness} from './stage-n-snap-build.js';
 import {ZOOM_LEVELS,semanticDistance,semanticZoomState} from './stage-n-semantic-zoom.js';
 import {overlayFromExperiment,inferSignalFromVoltageReadings} from './stage-n-live-overlay.js';
@@ -85,6 +86,7 @@ export function attachStageNWorkbench(viewer,onPhysicalLayoutChange){
  }
  toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;
   toggle.setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden)update();});
+ attachPanelClose({panel,toggle,label:'Close sandbox workbench panel'});
  zoom.addEventListener('change',()=>{viewer.distance=semanticDistance(zoom.value);
   viewer.requestRender();update();});
  place.addEventListener('click',()=>{
