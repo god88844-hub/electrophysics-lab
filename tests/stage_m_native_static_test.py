@@ -42,5 +42,32 @@ class StageMStatic(unittest.TestCase):
             for line in raw.splitlines():
                 if line.lower().startswith('x') and 'sky130_fd_pr__' in line:
                     self.assertIn(next(x for x in line.split() if x.startswith('sky130_fd_pr__')),models)
+    def test_native_magic_font_and_sticky_port_labels(self):
+        import importlib.util
+        import tempfile
+        from pathlib import Path
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_route_labels',ROOT/'scripts'/'stage-m-routing-plan.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as d:
+            file=Path(d)/'q4_thresh_det.mag'
+            file.write_text(
+                'magic\ntech sky130A\n<< labels >>\n'
+                'flabel metal1 s 20 30 60 70 0 FreeSans 200 0 0 0 vin\n'
+                'rlabel met1 s 10 20 20 30 0 VDD\n'
+                'flabel locali 10 20 20 30 0 FreeSans 200 0 0 0 G\n'
+                '<< end >>\n')
+            _,labels,_=mod.mag(file)
+            self.assertEqual(labels['vin'],[('metal1',40,50)])
+            self.assertEqual(labels['VDD'],[('met1',15,25)])
+            self.assertEqual(labels['G'],[('locali',15,25)])
+            file.write_text(
+                'magic\n<< labels >>\n'
+                'flabel metal1 s wrong 0 2 2 0 FreeSans 200 0 0 0 vin\n'
+                '<< end >>\n')
+            with self.assertRaisesRegex(ValueError,'noninteger'):
+                mod.mag(file)
+
 if __name__=='__main__':
     unittest.main()

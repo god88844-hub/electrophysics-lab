@@ -51,11 +51,22 @@ def mag(path):
             nums=list(map(int,line.split()[1:]))
             if len(nums)!=6:raise ValueError('unrecognized Magic orientation')
             uses[current][1]=nums
-        elif line.startswith('rlabel '):
-            parts=line.split(maxsplit=7)
-            if len(parts)!=8:raise ValueError('unparseable terminal')
-            _,lay,x1,y1,x2,y2,_,name=parts
-            labels[name].append((lay,(int(x1)+int(x2))//2,(int(y1)+int(y2))//2))
+        elif line.startswith(('rlabel ', 'flabel ')):
+            # Magic font labels are stored as "flabel"; native device ports
+            # may use either flavor and may include an optional "s" flag.
+            # Never synthesize a missing pin or silently accept bad coordinates.
+            parts=line.split()
+            kind,lay=parts[:2]
+            offset=3 if len(parts)>2 and parts[2]=='s' else 2
+            count=offset+(11 if kind=='flabel' else 6)
+            if len(parts)!=count:
+                raise ValueError('unparseable native Magic '+kind+' label')
+            coords=parts[offset:offset+4]
+            if any(not re.fullmatch(r'-?\d+',x) for x in coords):
+                raise ValueError('noninteger native Magic label coordinate')
+            x1,y1,x2,y2=map(int,coords)
+            name=parts[-1]
+            labels[name].append((lay,(x1+x2)//2,(y1+y2)//2))
         elif line.startswith('box '):
             b=list(map(int,line.split()[1:]))
             if len(b)==4:
