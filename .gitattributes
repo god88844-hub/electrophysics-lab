@@ -1,3 +1,3 @@
-# Hash-verified datasets must never be EOL-normalized — SHA-256 manifests
-# (e.g. data/reference-library/MANIFEST.json) are computed over exact bytes.
+# Hash-verified datasets and CSP-hashed pages must never be EOL-normalized.
 data/**/*.json -text
+*.html -text
