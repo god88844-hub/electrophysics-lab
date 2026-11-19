@@ -99,7 +99,7 @@ def pin(root,uses,inst,pad):
     return (layer,a*x+b*y+c,d*x+e*y+f)
 
 def token(x):
-    if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.$!-]*',x):
+    if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.$!:-]*',x):
         raise ValueError('unsafe SPICE/Tcl identifier '+x)
     return '{'+x+'}'
 

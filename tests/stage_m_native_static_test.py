@@ -97,5 +97,16 @@ class StageMStatic(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'uncontactable'):
                 module.pin(root,uses,'Xn','D')
 
+    def test_source_port_colon_is_tcl_brace_quoted_and_no_injection(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_safe_token',ROOT/'scripts'/'stage-m-routing-plan.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(mod.token('port:t1'),'{port:t1}')
+        for bad in ('port:t1;exec','port:t1\\nputs', 'port:{bad}'):
+            with self.assertRaisesRegex(ValueError,'unsafe'):
+                mod.token(bad)
+
 if __name__=='__main__':
     unittest.main()
