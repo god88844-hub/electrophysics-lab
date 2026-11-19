@@ -4,7 +4,7 @@ export const Q4_CELL_NAMES=Object.freeze([
   'q4_thresh_det','q4_inv','q4_mux4','q4_half_adder'
 ]);
 export const REQUIRED_TEMPERATURES_C=Object.freeze([-40,25,85,125]);
-export const REQUIRED_PDK_CORNERS=Object.freeze(['tt','ss','ff','tt_mm']);
+export const REQUIRED_PDK_CORNERS=Object.freeze(['tt','ss','ff','mc']);
 const FAIL='INSUFFICIENT_MODEL_DATA';
 export function makeRequiredNativeStageMCampaign(){
   const q4PrimitiveTrials=[];
@@ -14,7 +14,7 @@ export function makeRequiredNativeStageMCampaign(){
       q4PrimitiveTrials.push(Object.freeze({
         kind:'pex-q4-primitive',cell:Q4_CELL_NAMES[c],trial:i+1,
         seed:1000000+c*1000+i+1,
-        temperatureC:REQUIRED_TEMPERATURES_C[i%4],corner:'tt_mm',
+        temperatureC:REQUIRED_TEMPERATURES_C[i%4],corner:'mc',
         requiredMeasurements:['NM_L','NM_1','NM_2','NM_H','delay_s','power_w'],
         status:'NOT_RUN'
       }));
@@ -47,7 +47,7 @@ const safePath=s=>typeof s==='string'&&
   /^\/[A-Za-z0-9_./-]+$/.test(s)&&
   !s.split('/').includes('..');
 export function inspectDeclaredMismatchTrialDeck({
-  deck,expectedLibraryPath,expectedPexPath,seed,temperatureC,corner='tt_mm'
+  deck,expectedLibraryPath,expectedPexPath,seed,temperatureC,corner='mc'
 }={}){
   const no=(reason)=>({status:FAIL,reason,nativeSpiceAuthorized:false,
     sourceAuthenticated:false,physicalQualification:'UNQUALIFIED_NO_GO'});
@@ -65,10 +65,10 @@ export function inspectDeclaredMismatchTrialDeck({
   const lines=deck.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   const get=(re)=>lines.filter(x=>re.test(x));
   const libs=get(/^\.lib\b/i);
-  // The pinned processed library may expose TT with original mismatch
-  // definitions rather than a separately named tt_mm section. In that
-  // case native .lib tt + the explicit switch is the authenticated mode.
-  const physicalCorner=corner==='tt_mm'?'tt':corner;
+  // Model corners must come from the exact pinned processed PDK. Never
+  // substitute nominal TT for statistical MC. A tt_mm alias is admissible
+  // only if the audited original library actually provides that section.
+  const physicalCorner=corner;
   if(libs.length!==1||
      libs[0]!=='.lib "'+expectedLibraryPath+'" '+physicalCorner)
     return no('wrong-or-multiple-PDK-corner-binding');
@@ -89,8 +89,11 @@ export function inspectDeclaredMismatchTrialDeck({
     return no('bounded-SPICE-deck-terminator-required');
   if(!get(/^\.tran\b/i).length&&!get(/^\.dc\b/i).length)
     return no('no-analysis-request');
-  if(corner!=='tt_mm')
-    return no('this-mismatch-trial-preflight-requires-tt_mm');
+  if(corner!=='mc')
+    return no('this-mismatch-trial-preflight-requires-pinned-mc');
+  if(get(/^\.param\s+mc_pr_switch\s*=/i).length!==1 ||
+     !/^\.param\s+mc_pr_switch\s*=\s*1(?:\.0*)?$/i.test(get(/^\.param\s+mc_pr_switch\s*=/i)[0]))
+    return no('explicit-unambiguous-mc_pr_switch-1-required');
   return {status:'DECLARED_MISMATCH_DECK_NOT_PHYSICALLY_ADMITTED',
     requestedCorner:corner,seed,temperatureC,
     explicitMismatchEnabled:true,actualModelCorner:physicalCorner,

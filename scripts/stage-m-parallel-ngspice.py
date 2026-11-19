@@ -24,13 +24,13 @@ def validate_plan(plan):
         seeds.add(seed)
         if row['temperatureC'] not in (-40,25,85,125): raise ValueError('Missing PVT temperature')
         if row['kind']=='pex-q4-primitive':
-            if row['cell'] not in pcount or row['corner']!='tt_mm':raise ValueError('Wrong Q4 cell/corner')
+            if row['cell'] not in pcount or row['corner']!='mc':raise ValueError('Wrong Q4 cell/corner')
             if set(row['requiredMeasurements'])!=set(('NM_L','NM_1','NM_2','NM_H','delay_s','power_w')):
                 raise ValueError('Required Q4 measurement not planned')
             pcount[row['cell']]+=1
         elif row['kind']=='pex-assembled-alu':
             k=(row['radix'],row['width'],row['corner'])
-            if k[0] not in (2,3,4) or k[1] not in (4,8) or k[2] not in ('tt','ss','ff','tt_mm'):
+            if k[0] not in (2,3,4) or k[1] not in (4,8) or k[2] not in ('tt','ss','ff','mc'):
                 raise ValueError('Wrong ALU PVT/radix')
             if set(row['requiredMeasurements'])!=set(('functional_match','delay_s','power_w')):
                 raise ValueError('Missing ALU measurement')
@@ -67,12 +67,17 @@ def run_one(row,decks,out,ngspice,expected_hashes,limit):
     # The pinned open_pdks build exposes native .lib tt with mismatch model
     # includes; a separate .lib tt_mm section is not always published.
     # Keep tt_mm as the *campaign mode* and require explicit model switch.
-    actual_corner='tt' if row['corner']=='tt_mm' else row['corner']
-    if not re.search(r'(?im)^\s*\.lib\s+\S+\s+'+actual_corner+r'\s*$',d):
-        raise ValueError('Native source-pinned PDK corner not bound')
+    actual_corner=expected_hashes.get('pdkCorner') if row['corner']=='mc' else row['corner']
+    if not re.search(r'(?im)^\s*\.lib\s+"?'+re.escape(expected_hashes['pdkLibrary'])+r'"?\s+'+actual_corner+r'\s*$',d):
+        raise ValueError('Exact processed source-pinned PDK corner not bound')
+    if (row['corner']=='mc' and (expected_hashes.get('pdkCorner') not in ('mc','tt_mm') or
+        m.get('selectedLibrarySectionSha256')!=expected_hashes.get('selectedLibrarySectionSha256') or m.get('pdkCorner')!=actual_corner)):
+        raise ValueError('Statistical source section not hash-bound')
     if '.include' not in d or '-pex.spice' not in d:raise ValueError('Not post-layout RC deck')
-    if row['corner']=='tt_mm' and len(re.findall(r'(?im)^\s*\.param\s+mc_mm_switch\s*=\s*1(?:\.0*)?\s*$',d))!=1:
+    if row['corner']=='mc' and len(re.findall(r'(?im)^\s*\.param\s+mc_mm_switch\s*=\s*1(?:\.0*)?\s*$',d))!=1:
         raise ValueError('Mismatch switch not enabled')
+    if row['corner']=='mc' and len(re.findall(r'(?im)^\s*\.param\s+mc_pr_switch\s*=\s*1(?:\.0*)?\s*$',d))!=1:
+        raise ValueError('Process Monte Carlo switch not enabled')
     output=out/str(row['seed']);output.mkdir(parents=True,exist_ok=True)
     log=output/'ngspice.log'
     proc=subprocess.run([ngspice,'-b','-o',str(log),str(deck)],cwd=root,capture_output=True,text=True,timeout=limit)
@@ -96,6 +101,19 @@ def main():
         sources=json.loads(pathlib.Path(args.sources).read_text())
         if sources.get('drcLvsAllFourVerified') is not True or sources.get('soaLimitV')!=1.95 or sources.get('allCoreTerminalSOAChecksPassed') is not True or sources.get('level2')!='UNQUALIFIED_NO_GO':
             raise ValueError('Native physical/SOA acceptance prerequisites absent')
+        if (sources.get('pdkCorner') not in ('mc','tt_mm') or sources.get('statisticalSwitchesVerified')!={'mc_mm_switch':1,'mc_pr_switch':1} or not re.fullmatch(r'[0-9a-f]{64}',sources.get('selectedLibrarySectionSha256',''))):
+            raise ValueError('Authenticated MC section and both switches required')
+        if sources.get('fourTerminalTransientSOAEvidenceVerified') is not True:
+            raise ValueError('Real four-terminal transient SOA evidence missing')
+        soa_path=pathlib.Path(args.sources).resolve().parent/'four-terminal-soa-evidence.json'
+        if not soa_path.is_file() or digest(soa_path)!=sources.get('fourTerminalSOAEvidenceSha256'):
+            raise ValueError('SHA-bound native SOA report absent')
+        soa=json.loads(soa_path.read_text())
+        if (soa.get('status')!='SOA_FOUR_TERMINAL_TRANSIENT_SCREEN_PASS' or
+            len(soa.get('transientCornerMeasurements',{}))!=32 or
+            soa.get('limitV')!=1.95 or
+            soa.get('physicalQualification')!='UNQUALIFIED_NO_GO'):
+            raise ValueError('SOA report lacks all four terminals and corners')
         if digest(sources['pdkLibrary'])!=sources['pdkLibrarySha256']:
             raise ValueError('Pinned SKY130 PDK hash mismatch')
         if set(sources['pexSha256'])!={'q4_thresh_det','q4_inv','q4_mux4','q4_half_adder'}:

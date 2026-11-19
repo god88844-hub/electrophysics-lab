@@ -7,7 +7,7 @@ import unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 class StageMStatic(unittest.TestCase):
     def test_python_syntax(self):
-        for name in ('stage-m-routing-plan.py','stage-m-parallel-ngspice.py'):
+        for name in ('stage-m-routing-plan.py','stage-m-parallel-ngspice.py','stage-m-four-terminal-soa.py','stage-m-trial-decks.py'):
             source=ROOT/'scripts'/name
             ast.parse(source.read_text(),filename=str(source))
     def test_tcl_syntax(self):
@@ -37,6 +37,42 @@ class StageMStatic(unittest.TestCase):
                       '6400','UNQUALIFIED_NO_GO','INSUFFICIENT_MODEL_DATA',
                       'sha256','mc_mm_switch'):
             self.assertIn(token,s)
+    def test_real_mc_and_waveform_gates(self):
+        mm=(ROOT/'scripts'/'stage-m-mm-corner-audit.mjs').read_text()
+        runner=(ROOT/'scripts'/'stage-m-parallel-ngspice.py').read_text()
+        soa=(ROOT/'scripts'/'stage-m-four-terminal-soa.py').read_text()
+        decks=(ROOT/'scripts'/'stage-m-trial-decks.py').read_text()
+        for token in ("section(processed,'mc')",'mc_mm_switch','mc_pr_switch',
+                      'selectedLibrarySectionSha256'):
+            self.assertIn(token,mm)
+        for token in ('fourTerminalSOAEvidenceSha256','pdkCorner','mc_pr_switch',
+                      'SOA_FOUR_TERMINAL_TRANSIENT_SCREEN_PASS'):
+            self.assertIn(token,runner)
+        for token in ('SOA=1.95','drain_v','gate_v','source_v','bulk_v',
+                      'SOA_OXIDE_OVERSTRESS','fourTerminalTransientSOAEvidenceVerified'):
+            self.assertIn(token,soa)
+        for token in ('6400','Missing real PEX ALU','selectedLibrarySectionSha256',
+                      'AUTHENTICATED_DECKS_NOT_EXECUTED'):
+            self.assertIn(token,decks)
+    def test_soadynamic_rejects_real_overvoltage_samples(self):
+        import importlib.util,tempfile
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_four_terminal',ROOT/'scripts'/'stage-m-four-terminal-soa.py')
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as tmp:
+            file=pathlib.Path(tmp)/'trace.csv'
+            file.write_text('device,time_s,drain_v,gate_v,source_v,bulk_v\n'
+                            'a/Xa,0,0,1.89,0,0\n'
+                            'a/Xa,1e-9,1.2,0,0,0\n')
+            got=module.trace(file,{'a/Xa':'sky130_fd_pr__nfet_01v8'})
+            self.assertLessEqual(got['maxAbsTerminalStressV']['Vgs'],1.95)
+            file.write_text('device,time_s,drain_v,gate_v,source_v,bulk_v\n'
+                            'a/Xa,0,0,2.1,0,0\n'
+                            'a/Xa,1e-9,0,0,0,0\n')
+            with self.assertRaisesRegex(ValueError,'SOA_OXIDE_OVERSTRESS'):
+                module.trace(file,{'a/Xa':'sky130_fd_pr__nfet_01v8'})
+
     def test_model_inventory_and_balanced_spice(self):
         models={'sky130_fd_pr__nfet_01v8_lvt','sky130_fd_pr__nfet_01v8',
                 'sky130_fd_pr__pfet_01v8','sky130_fd_pr__pfet_01v8_hvt'}

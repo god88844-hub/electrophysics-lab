@@ -36,6 +36,20 @@ if [[ "${STAGE_M_CAMPAIGN_ONLY:-0}" == "1" ]]; then
   for cell in q4_thresh_det q4_inv q4_mux4 q4_half_adder; do
     test -s "$out/pex/$cell-pex.spice" || { echo "Missing real PEX $cell" >&2; exit 1; }
   done
+  # Every real MOS terminal is checked from ngspice-generated waveforms,
+  # not from nominal rails alone. No CSV -> no signed SOA manifest.
+  python3 "$repo/scripts/stage-m-four-terminal-soa.py" \
+    --manifest "$out/source-manifest.json" \
+    --schematics "$src" --pex "$out/pex" \
+    --waveforms "$out/soa-waveforms" \
+    --output "$out/four-terminal-soa-evidence.json"
+  # Requires source-verified binary/ternary/Q4 ALU PEX and real .meas
+  # testbenches. No behavioral substitutes or fabricated trial logs.
+  python3 "$repo/scripts/stage-m-trial-decks.py" \
+    --plan "$out/native-campaign-plan.json" \
+    --sources "$out/source-manifest.json" \
+    --templates "$repo/benchmarks/stage-m-native-testbenches" \
+    --decks "$out/trial-decks"
   python3 "$repo/scripts/stage-m-parallel-ngspice.py" \
     --plan "$out/native-campaign-plan.json" \
     --sources "$out/source-manifest.json" \

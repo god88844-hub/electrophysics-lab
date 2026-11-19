@@ -45,19 +45,35 @@ try{
     const model='sky130_fd_pr__'+device+'__mismatch.corner.spice';
     if(!originalTT.includes(model))throw Error('pinned-source-mismatch-model-missing-'+device);
   }
-  // The published original library uses TT and mismatch files. The installed
-  // library may not expose a separately named tt_mm section. Do not create one.
-  const nativeMm=section(processed,'tt_mm');
+  // Upstream processed open_pdks names its statistical section "mc".
+  // Only accept the optional "tt_mm" alias if it is actually published by
+  // the exact pinned processed PDK, never synthesize an alias from "tt".
+  const candidates=[['mc',section(processed,'mc')],
+                    ['tt_mm',section(processed,'tt_mm')]];
+  const switchEnabled=(body,name)=>{
+    if(typeof body!=='string')return false;
+    const noncomment=body.split(/\r?\n/).filter(x=>!/^\s*[*#]/.test(x)).join('\n');
+    const assignments=[...noncomment.matchAll(new RegExp('\\b'+name+'\\s*=\\s*([^\\s;]+)','gi'))]
+      .map(x=>x[1]);
+    return assignments.length===1 && /^1(?:\\.0*)?$/.test(assignments[0]);
+  };
+  const found=candidates.find(([,body])=>
+    switchEnabled(body,'mc_mm_switch') &&
+    switchEnabled(body,'mc_pr_switch'));
+  if(!found)throw Error('processed-PDK-missing-authenticated-mc-with-both-statistical-switches');
+  const [selectedCorner,selectedBlock]=found;
   const result={
     format:'invention-lab/stage-m-processed-mismatch-intake/2',
-    status:'PINNED_TT_WITH_ORIGINAL_MISMATCH_MODELS;DECK_SWITCH_REQUIRED',
+    status:'PINNED_PROCESSED_STATISTICAL_CORNER_AND_SWITCHES_VERIFIED',
     originalSky130Commit:ORIGINAL,openPdksCommit:OPEN_PDKS,
     processedModelRealPath:file,processedLibrarySha256:sha256(raw),
     originalLibrarySha256:sha256(originalRaw),
     originalTtContainsRequiredFourMismatchModels:true,
-    processedTtAvailable:true,processedNamedTtMmAvailable:!!nativeMm,
-    actualPdkCornerToSelect:nativeMm?'tt_mm':'tt',
-    requestedStatisticalMode:'tt_with_explicit_mc_mm_switch=1',
+    processedTtAvailable:true,
+    actualPdkCornerToSelect:selectedCorner,
+    selectedLibrarySectionSha256:sha256(Buffer.from(selectedBlock)),
+    verifiedStatisticalSwitches:{mc_mm_switch:1,mc_pr_switch:1},
+    requestedStatisticalMode:'pinned_processed_'+selectedCorner,
     perTrialMismatchSwitchRequired:1,
     perTrialPdkHashRequired:true,
     mismatchSwitchVerifiedInActualDeck:false,
@@ -67,6 +83,27 @@ try{
     level1Status:'INSUFFICIENT_MODEL_DATA',level1Yield:'UNKNOWN',
     level2:'UNQUALIFIED_NO_GO'
   };
-  if(report)await writeFile(report,JSON.stringify(result,null,2)+'\n');
+  if(report){
+    await writeFile(report,JSON.stringify(result,null,2)+'\n');
+    // Do not grant SOA or Monte Carlo approval. Link only authenticated
+    // model metadata into the existing physical source manifest when present.
+    const manifestPath=path.join(path.dirname(report),'source-manifest.json');
+    try{
+      const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
+      if(manifest.pdkLibrarySha256!==result.processedLibrarySha256)
+        throw Error('source-manifest-library-SHA-mismatch');
+      if(manifest.level2!=='UNQUALIFIED_NO_GO'||manifest.soaLimitV!==1.95)
+        throw Error('physical-SOA-gate-mismatch');
+      Object.assign(manifest,{
+        pdkCorner:selectedCorner,
+        selectedLibrarySectionSha256:result.selectedLibrarySectionSha256,
+        statisticalSwitchesVerified:result.verifiedStatisticalSwitches,
+        pdkAuditReportSha256:sha256(await readFile(report))
+      });
+      await writeFile(manifestPath,JSON.stringify(manifest,null,2)+'\n');
+    }catch(error){
+      if(error?.code!=='ENOENT')throw error;
+    }
+  }
   console.log(JSON.stringify(result,null,2));
 }catch(e){exitFail(String(e.message??e));}

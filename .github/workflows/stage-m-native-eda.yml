@@ -33,7 +33,7 @@ jobs:
       - name: Verify Stage M shell scripts parse cleanly
         run: |
           bash -n scripts/stage-m-purge-queued-actions.sh scripts/stage-m-native-eda.sh
-          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py
+          python3 -m py_compile scripts/stage-m-routing-plan.py scripts/stage-m-parallel-ngspice.py scripts/stage-m-four-terminal-soa.py scripts/stage-m-trial-decks.py
       - name: Local-equivalent Python SPICE/Tcl/source consistency checks
         run: python3 -m unittest discover -s tests -p stage_m_native_static_test.py
       - name: Reject nonexistent PDK devices and verify candidate subcircuit boundaries
