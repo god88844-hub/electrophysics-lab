@@ -19,10 +19,18 @@ class StageMStatic(unittest.TestCase):
         self.assertEqual(value.stdout.strip(),'1')
     def test_tcl_layers_pins_and_physical_checks(self):
         t=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
-        for token in ('nwell','nsdm','psdm','licon1','li1','mcon','met1','met2','via',
+        for token in ('nwell','nsc','psc','nsdm','psdm','licon1','li1','mcon','met1','met2','via',
                       'port make','label $p','2.72','0.17','0.15','drc count total',
                       'ext2spice cthresh 0','ext2spice rthresh 0'):
             self.assertIn(token,t)
+    def test_mask_labels_are_real_contact_compounds_not_fake_painted_layers(self):
+        script=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        self.assertIn('stage_m_rect nsc',script)
+        self.assertIn('stage_m_rect psc',script)
+        self.assertNotIn('stage_m_contact licon1',script)
+        self.assertNotIn('stage_m_rect nsdm',script)
+        self.assertNotIn('stage_m_rect psdm',script)
+
     def test_real_spice_batch_and_fail_closed_passport(self):
         s=(ROOT/'scripts'/'stage-m-parallel-ngspice.py').read_text()
         for token in ('os.cpu_count()','ThreadPoolExecutor','-b','-o',
@@ -105,6 +113,17 @@ class StageMStatic(unittest.TestCase):
         spec.loader.exec_module(mod)
         self.assertEqual(mod.token('port:t1'),'{port:t1}')
         for bad in ('port:t1;exec','port:t1\\nputs', 'port:{bad}'):
+            with self.assertRaisesRegex(ValueError,'unsafe'):
+                mod.token(bad)
+
+    def test_schematic_instance_slash_quoted_without_tcl_injection(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location(
+            'stage_m_safe_slash',ROOT/'scripts'/'stage-m-routing-plan.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(mod.token('Xn_buf_lo/D'),'{Xn_buf_lo/D}')
+        for bad in ('Xn_buf_lo/D;exec','Xn_buf_lo/D\\nexec','Xn_buf_lo/[exec]'):
             with self.assertRaisesRegex(ValueError,'unsafe'):
                 mod.token(bad)
 

@@ -35,16 +35,21 @@ proc stage_m_segment {layer x1 y1 x2 y2 width} {
     stage_m_rect $layer [expr {min($x1,$x2)-$h}] [expr {min($y1,$y2)-$h}] [expr {max($x1,$x2)+$h}] [expr {max($y1,$y2)+$h}]
 }
 proc stage_m_tap {kind implant x y} {
-    set d [stage_m_u 0.6]
-    set enc [stage_m_u 1.2]
-    if {$kind eq "nwell"} {
+    # SKY130 Magic compound contact layers nsc/psc map physically to
+    # nsdm/psdm doped well/substrate taps with real licon1+li1.
+    # Raw mask names are not independent Magic paint layers in this PDK.
+    # All enclosing implant, well, and contact rules remain under native DRC.
+    set d [stage_m_u 0.60]
+    set enc [stage_m_u 1.20]
+    if {$kind eq "nwell" && $implant eq "nsdm"} {
         stage_m_rect nwell [expr {$x-$enc}] [expr {$y-$enc}] [expr {$x+$enc}] [expr {$y+$enc}]
-        stage_m_rect ndiff [expr {$x-$d}] [expr {$y-$d}] [expr {$x+$d}] [expr {$y+$d}]
+        stage_m_rect nsc [expr {$x-$d}] [expr {$y-$d}] [expr {$x+$d}] [expr {$y+$d}]
+    } elseif {$kind eq "psub" && $implant eq "psdm"} {
+        stage_m_rect psc [expr {$x-$d}] [expr {$y-$d}] [expr {$x+$d}] [expr {$y+$d}]
     } else {
-        stage_m_rect pdiff [expr {$x-$d}] [expr {$y-$d}] [expr {$x+$d}] [expr {$y+$d}]
+        error "STAGE_M_FAIL: unrecognized SKY130 well/substrate tap type"
     }
-    stage_m_rect $implant [expr {$x-$d}] [expr {$y-$d}] [expr {$x+$d}] [expr {$y+$d}]
-    stage_m_contact licon1 $x $y [stage_m_u 0.17]
+    # Contact nsc/psc already touches local interconnect via the licon1 cut.
     stage_m_contact li1 $x $y $::stage_m_li1w
     stage_m_contact mcon $x $y $::stage_m_mcon
     stage_m_contact met1 $x $y $::stage_m_met1w
