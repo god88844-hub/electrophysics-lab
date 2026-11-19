@@ -113,6 +113,32 @@ class PostRoutePlacementTests(unittest.TestCase):
                 placer.place_parent(root,source,'parent',1.9,0.01,
                     root/'bbox-report.json')
 
+    def test_half_adder_child_pin_transform_from_real_native_artifact(self):
+        import importlib.util
+        route_spec=importlib.util.spec_from_file_location(
+            'stage_m_half_adder_grid',
+            ROOT/'scripts'/'stage-m-routing-plan.py')
+        route=importlib.util.module_from_spec(route_spec)
+        route_spec.loader.exec_module(route)
+        # CI #44522615670: Xsum_a transformation is (501081,536910)
+        # in the source placement plan, and (1002162,1073820) in the
+        # saved parent .mag. Child q4_mux4 M3 'sel' label centre is
+        # (100,97281) in its saved master. The physical parent endpoint
+        # is (1002262,1171101), whose i-grid is half those coordinates.
+        trans=[1,0,501081,0,1,536910]
+        source=('met3',501181,634191,501148,634158,
+                501214,634224,'met3')
+        mapped=route.half_adder_child_m3_grid(source,trans)
+        self.assertEqual(mapped[1],501131)
+        self.assertEqual(mapped[2],585550)
+        self.assertEqual(mapped[1]*2,1002262)
+        self.assertLessEqual(abs(mapped[2]*2-1171101),1)
+        self.assertLess(mapped[3],mapped[1])
+        self.assertLess(mapped[1],mapped[5])
+        with self.assertRaisesRegex(ValueError,'unauthenticated'):
+            route.half_adder_child_m3_grid(
+                ('metal1',*source[1:7],'metal1'),trans)
+
     def test_duplicate_importer_label_resolves_only_sha_bound_routed_port(self):
         import hashlib
         route_spec=importlib.util.spec_from_file_location(

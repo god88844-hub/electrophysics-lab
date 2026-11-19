@@ -158,6 +158,30 @@ def pin(root,uses,inst,pad):
     return (layer,a*x+b*y+c,d*x+e*y+f,
             *transformed_box(label_box(path,pad),trans),native_layer)
 
+def half_adder_child_m3_grid(pin_info, transform):
+    """Convert a post-routed child M3 label to the parent native i-grid.
+
+    Verified from CI artifact 44522615670: the imported parent Magic file
+    stores child instance offsets at 2*c/2*f, while the routed child master
+    retains its own native contact coordinates. A parent i-grid route must
+    therefore use c+local/2, NOT c+local. This applies ONLY to q4_half_adder
+    hierarchical metal3 labels. No terminal is invented or renamed.
+    """
+    lay,x,y,x1,y1,x2,y2,original=pin_info
+    if lay not in {'met3','metal3'} or original not in {'met3','metal3'}:
+        raise ValueError('unauthenticated hierarchy grid remap')
+    a,b,c,d,e,f=transform
+    if (a,b,d,e)!=(1,0,0,1):
+        raise ValueError('non-identity source transform: native grid audit required')
+    def remap(value,offset):
+        # Magic i-coordinates are integer; at most 0.5DBU rounding.
+        return (value+offset)//2
+    out=(lay,remap(x,c),remap(y,f),remap(x1,c),remap(y1,f),
+         remap(x2,c),remap(y2,f),original)
+    if not (out[3]<=out[1]<=out[5] and out[4]<=out[2]<=out[6]):
+        raise ValueError('native hierarchy pin geometry no longer enclosed')
+    return out
+
 def hierarchical_escape_ranks(netmap):
     """Allocate short, distinct Metal2 trunks for native Metal1 child pins.
 
@@ -250,7 +274,13 @@ def render(subs,root,top,only_cell=None,scale_um=None):
         for inst,nets,master in sub['instances']:
             ports=('D','G','S','B') if master.startswith('sky130_fd_pr__') else subs[master]['ports']
             for net,port in zip(nets,ports):
-                netmap[net].append((inst+'/'+port,*pin(root,uses,inst,port)))
+                info=pin(root,uses,inst,port)
+                # Only the q4_half_adder parent instantiates routed M3
+                # child mux4 pins. Its importer doubles instance transforms
+                # but not the child-master label offsets on native save.
+                if name=='q4_half_adder' and master in subs:
+                    info=half_adder_child_m3_grid(info,uses[inst][1])
+                netmap[net].append((inst+'/'+port,*info))
         if any(len(points)<2 for points in netmap.values()):
             raise ValueError('unconnected SPICE terminal in '+name)
         # Power rail must clear every authentic source port pad, not merely
