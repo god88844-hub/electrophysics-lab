@@ -1,0 +1,85 @@
+{
+  "id": "05_chip_architecture_benchmarks",
+  "domain": "chip-architecture",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "RISC-V RV32IM ISA specification (riscv.org, version 2.2); Google TPU v1 paper (Jouppi et al., ISCA 2017); NVIDIA Ampere architecture whitepaper (NVIDIA Corp., 2020); Forth standard (Forth-2012); Systolic array theory from Kung & Su (1984)",
+  "source_url": "https://riscv.org/technical/specifications/, https://ai.googleblog.com/2017/04/quantuping-neural-networks.html, https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-us-nvidia-1758950-r4-web.pdf",
+  "license_or_access": "public (RISC-V ISA spec); published academic (TPU); public (NVIDIA whitepaper)",
+  "parameters": {
+    "riscv_rv32im": {
+      "name": "RISC-V RV32IM (educational CPU)",
+      "isa": "RV32IM (integer + multiply/divide)",
+      "register_count": 32,
+      "register_width_bits": 32,
+      "instruction_formats": ["R", "I", "S", "B", "U", "J"],
+      "base_instructions": 47,
+      "m_extension_instructions": 8,
+      "pipeline_stages": 5,
+      "typical_frequency_mhz": { "educational_fpga": 50, "asic_130nm": 100, "asic_7nm": 1000 },
+      "cpi_typical": 1.2,
+      "power_mw_at_100mhz_130nm": 15,
+      "note": "Educational reference; the Invention Lab IL-8 ISA is a simplified 8-bit subset for teaching"
+    },
+    "systolic_array_tpu": {
+      "name": "Systolic-Array Tensor Processing Unit",
+      "dataflow": "weight-stationary",
+      "grid_size": { "tpu_v1": 256, "educational": 8 },
+      "mac_per_cycle": { "tpu_v1": 65536, "educational_8x8": 64 },
+      "arithmetic": "INT8 multiply + INT32 accumulate",
+      "quantization": "per-axis symmetric INT8 with FP32 accumulator (QDQ: Quantize → Dequantize → Quantize)",
+      "clock_mhz": { "tpu_v1": 700, "educational": 100 },
+      "peak_tops_int8": { "tpu_v1": 92, "educational_8x8_at_100mhz": 0.0064 },
+      "memory_hierarchy": {
+        "on_chip_sram_mb": { "tpu_v1": 28, "educational_kb": 8 },
+        "hbm_gbps": { "tpu_v1": 600 }
+      },
+      "power_w": { "tpu_v1": 75 },
+      "utilization_note": "Weight-stationary dataflow achieves >85% utilization for dense GEMM when grid divides evenly into matrix dimensions",
+      "note": "Systolic array cycles = K + 2P − 2 for a P×P tile computing C[M×N] = A[M×K]·B[K×N] with K the inner dimension"
+    },
+    "simt_gpu": {
+      "name": "SIMT GPU (Graphics / Compute)",
+      "warp_width": { "nvidia": 32, "amd": 64, "intel": 16 },
+      "register_file_per_sm_kb": { "nvidia_ampere": 256, "educational": 16 },
+      "shared_memory_per_sm_kb": { "nvidia_ampere": 164, "educational": 8 },
+      "sm_count": { "nvidia_a100": 108, "rtx_3060": 28, "intel_iris_xe_155u": 96 },
+      "cuda_cores_per_sm": { "nvidia_ampere": 64 },
+      "clock_mhz": { "nvidia_a100": 1410, "intel_iris_xe_155u": 1450 },
+      "memory_bandwidth_gbps": { "nvidia_a100_hbm2e": 1555, "intel_iris_xe_lpddr5": 68 },
+      "power_w": { "nvidia_a100": 400, "intel_iris_xe_155u_tdp": 28 },
+      "note": "Intel Core Ultra 7 155U integrated Intel Graphics: 96 EU, 1450 MHz, LPDDR5x-7467 shared memory"
+    },
+    "forth_engine": {
+      "name": "Forth Engine (stack-based educational)",
+      "stack_depth": 32,
+      "cell_width_bits": 16,
+      "word_count": 64,
+      "core_words": ["DUP", "DROP", "SWAP", "OVER", "+", "-", "*", "/", "AND", "OR", "XOR", "@", "!", ":", ";"],
+      "note": "Stack-based Forth interpreter — matches the IL-8 CPU's OUT/IN port model"
+    }
+  },
+  "equations": [
+    "systolic cycles for P×P array, K inner dim, M×N output tiles: cycles = ceil(M/P) · ceil(N/P) · (K + 2P − 2)",
+    "systolic utilization: U = (M·N·K) / (tiles · (K + 2P − 2) · P²) for dense GEMM",
+    "SIMT throughput: ops_per_cycle = SM_count · cores_per_SM · ops_per_core_per_clock",
+    "Amdahl's law: speedup = 1 / ((1 − p) + p/s) where p is the parallel fraction, s is the speedup of the parallel part",
+    "Roofline model: achievable_FLOPs = min(peak_FLOPs, arithmetic_intensity · peak_bandwidth)",
+    "Amdahl-based pipeline speedup: S_pipe = N_stages when perfectly balanced; actual = N_stages · (1 / (1 + pipeline_overhead))"
+  ],
+  "valid_operating_envelope": {
+    "riscv_rv32im": { "vdd_range_v": [0.8, 1.2], "temp_range_c": [-40, 125] },
+    "systolic_tpu": { "vdd_range_v": [0.7, 0.9], "temp_range_c": [-40, 100], "note": "INT8 accumulator overflow threshold: K_max for INT32 accumulator = 2^31 / (255 × 255) ≈ 33038" },
+    "simt_gpu": { "temp_range_c": [0, 100], "power_tdp_w": 28 }
+  },
+  "failure_thresholds": {
+    "int32_accumulator_overflow": {
+      "condition": "accumulated product sum exceeds 2^31 − 1 (INT32 max) in QDQ INT8 GEMM",
+      "detection": "requires per-tile saturation check in the systolic array design",
+      "mitigation": "INT32 accumulator safely handles K up to 33038 for INT8 inputs (±127 × ±127 = 16129 max product per MAC)"
+    },
+    "thermal_throttle": {
+      "condition": "junction temperature exceeds TDP-specified limit",
+      "effect": "clock throttling, potential permanent damage above absolute maximum rating"
+    }
+  }
+}

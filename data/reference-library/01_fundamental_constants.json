@@ -1,0 +1,106 @@
+{
+  "id": "01_fundamental_constants",
+  "domain": "fundamental-physics",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "CODATA 2022 recommended values of the fundamental physical constants (2022 adjustment). NIST SP 96b. Published 2024. DOI: 10.5281/zenodo.10767569",
+  "source_url": "https://physics.nist.gov/cuu/Constants/index.html",
+  "license_or_access": "public domain (NIST)",
+  "parameters": {
+    "elementary_charge": {
+      "symbol": "q_e",
+      "value": 1.602176634e-19,
+      "unit": "C",
+      "si_prefix": null,
+      "uncertainty": 0,
+      "exact": true,
+      "note": "Defined exactly since SI 2019 redefinition"
+    },
+    "boltzmann_constant": {
+      "symbol": "k_B",
+      "value": 1.380649e-23,
+      "unit": "J/K",
+      "si_prefix": null,
+      "uncertainty": 0,
+      "exact": true,
+      "note": "Defined exactly since SI 2019 redefinition"
+    },
+    "reduced_planck_constant": {
+      "symbol": "ħ",
+      "value": 1.0545718176461565e-34,
+      "unit": "J·s",
+      "si_prefix": null,
+      "uncertainty": 0,
+      "exact": true,
+      "note": "Derived from exact h = 6.62607015e-34 J·s and exact π"
+    },
+    "speed_of_light": {
+      "symbol": "c",
+      "value": 299792458,
+      "unit": "m/s",
+      "si_prefix": null,
+      "uncertainty": 0,
+      "exact": true,
+      "note": "Defined exactly since SI 1983"
+    },
+    "vacuum_permittivity": {
+      "symbol": "ε_0",
+      "value": 8.8541878128e-12,
+      "unit": "F/m",
+      "si_prefix": null,
+      "uncertainty": 1.3e-21,
+      "exact": false,
+      "note": "Measured; related to μ_0 and c by ε_0 = 1/(μ_0·c²). Relative uncertainty 1.5e-10 since CODATA 2018"
+    },
+    "vacuum_permeability": {
+      "symbol": "μ_0",
+      "value": 1.25663706127e-6,
+      "unit": "N/A²",
+      "si_prefix": null,
+      "uncertainty": 1.9e-19,
+      "exact": false,
+      "note": "Relative uncertainty 1.5e-10 since CODATA 2018 (no longer exact since SI 2019)"
+    },
+    "stefan_boltzmann_constant": {
+      "symbol": "σ_SB",
+      "value": 5.670374419e-8,
+      "unit": "W/(m²·K⁴)",
+      "si_prefix": null,
+      "uncertainty": 0,
+      "exact": true,
+      "note": "Derived exactly from σ_SB = π²·k_B⁴/(60·ħ³·c²)"
+    },
+    "avogadro_constant": {
+      "symbol": "N_A",
+      "value": 6.02214076e23,
+      "unit": "1/mol",
+      "si_prefix": null,
+      "uncertainty": 0,
+      "exact": true,
+      "note": "Defined exactly since SI 2019"
+    }
+  },
+  "derived": {
+    "thermal_voltage_V_T_300K": {
+      "symbol": "V_T",
+      "value": 0.025852,
+      "unit": "V",
+      "equation": "V_T = k_B·T/q_e",
+      "conditions": { "T": 300, "T_unit": "K" },
+      "note": "Thermal voltage at 300 K (≈26.85 mV)"
+    },
+    "thermal_voltage_V_T_formula": {
+      "equation": "V_T(T) = k_B·T/q_e",
+      "unit": "V",
+      "note": "Use for any temperature; at 27 °C (300.15 K) V_T ≈ 25.89 mV"
+    }
+  },
+  "valid_operating_envelope": {
+    "note": "Fundamental constants are universal; no operating envelope restriction applies"
+  },
+  "failure_thresholds": {},
+  "equations": [
+    "V_T(T) = k_B·T/q_e",
+    "σ_SB = π²·k_B⁴/(60·ħ³·c²)",
+    "ε_0 = 1/(μ_0·c²)"
+  ]
+}

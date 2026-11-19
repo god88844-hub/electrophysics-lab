@@ -1,0 +1,123 @@
+{
+  "id": "04_quantum_hardware_modalities",
+  "domain": "quantum-hardware",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "Published parameters: Google Sycamore (Arute et al., Nature 574, 505–510, 2019); IBM Quantum (IBM Quantum Development roadmap 2023–2026); QuEra/Harvard neutral-atom (Ebadi et al., Nature 612, 2023); Quantinuum trapped-ion (Mt. Const. from Quantinuum H2); UChicago SNSPD (Reddy et al., APL Photonics); dilution refrigerator specs from Bluefors product datasheets (XLD400)",
+  "source_url": "https://quantumai.google/hardware, https://www.ibm.com/quantum/technology, https://www.quantinuum.com/, https://www.bluefors.com/",
+  "license_or_access": "public domain (published parameters); institutional (IBM/Google/Quantinuum data cited from peer-reviewed publications)",
+  "parameters": {
+    "superconducting_transmon": {
+      "name": "Superconducting Transmon QPU",
+      "qubit_type": "superconducting transmon (Coplanar Waveguide resonator readout)",
+      "typical_frequency_ghz": { "min": 4.0, "max": 6.0, "typical": 5.0 },
+      "anharmonicity_alpha_mhz": { "min": -340, "max": -200, "typical": -280 },
+      "t1_us": { "min": 50, "typical": 100, "max": 300 },
+      "t2_us": { "min": 50, "typical": 150, "max": 300 },
+      "t2_note": "T2 ≤ 2·T1 by fundamental bound; T2 echo typically 150–300 µs",
+      "gate_1q_duration_ns": { "typical": 25, "range": [15, 50] },
+      "gate_1q_error": { "typical": 0.0005, "best_reported": 0.0001 },
+      "gate_2q_duration_ns": { "typical": 300, "range": [150, 600] },
+      "gate_2q_error": { "typical": 0.005, "best_reported": 0.001 },
+      "zz_crosstalk_khz": { "typical": 50, "range": [10, 200] },
+      "readout_fidelity": { "typical": 0.98, "best_reported": 0.999 },
+      "mixing_chamber_temp_mk": { "typical": 15, "range": [10, 20] },
+      "cryo_cooling_power": {
+        "stage_4k_w": 1.5,
+        "stage_100mk_w": 0.1,
+        "stage_15mk_w": 0.012,
+        "note": "Bluefors XLD400 dilution refrigerator; cooling power at each stage — loading above these limits causes thermal quench"
+      },
+      "qubit_count_demonstrated": { "google_sycamore": 53, "ibm_condor": 1121, "ibm_heron": 133 },
+      "citations": [
+        "Arute et al., 'Quantum supremacy using a programmable superconducting processor', Nature 574, 505–510 (2019)",
+        "IBM Quantum Development Roadmap (2023–2026) — Heron/Condor specifications"
+      ]
+    },
+    "silicon_photonic_soi": {
+      "name": "Silicon Photonic QPU (SOI)",
+      "qubit_type": "dual-rail or path-encoded photonic qubit at 1550 nm C-band",
+      "wavelength_nm": 1550,
+      "waveguide_propagation_loss_db_per_cm": { "typical": 0.5, "best_reported": 0.1 },
+      "directional_coupler_insertion_loss_db": { "typical": 0.1, "best_reported": 0.01 },
+      "mzi_insertion_loss_db": { "typical": 1.0, "best_reported": 0.1 },
+      "thermo_optic_phase_shifter": {
+        "p_pi_mw": { "typical": 5, "range": [1, 20] },
+        "thermal_crosstalk_db": { "typical": -15, "range": [-25, -10] },
+        "response_time_us": { "typical": 10, "range": [1, 100] }
+      },
+      "snspd_detector": {
+        "efficiency_percent": { "typical": 90, "best_reported": 98 },
+        "dark_count_per_second": { "typical": 100, "best_reported": 1 },
+        "jitter_ps": { "typical": 30, "best_reported": 10 },
+        "reset_time_ns": { "typical": 20, "range": [10, 100] }
+      },
+      "cryo_requirement": "SNSPD requires cryogenic operation (typically 0.8–2 K on a separate cryostat stage)",
+      "citations": [
+        "Reddy et al., 'Superconducting nanowire single-photon detectors', APL Photonics 8, 051101 (2023)"
+      ]
+    },
+    "neutral_atom_rubidium87": {
+      "name": "Neutral-Atom Array (87Rb)",
+      "qubit_type": "87Rb neutral atom in optical tweezer (ground-state hyperfine qubit)",
+      "atom_species": "87Rb",
+      "transition_wavelength_nm": { "d2_line": 780.24, "rydberg": 480 },
+      "trap_depth_mhz": { "typical": 100, "range": [20, 500] },
+      "rydberg_blockade_radius_um": { "typical": 5, "range": [3, 10] },
+      "rydberg_c6_ghz_um6": { "typical": 500, "note": "C6 coefficient for |60S⟩ Rydberg state" },
+      "shuttle_velocity_um_per_s": { "typical": 100, "max": 1000 },
+      "gate_1q_error": { "typical": 0.0005 },
+      "gate_2q_error": { "typical": 0.005, "best_reported": 0.001 },
+      "atom_count_demonstrated": { "harvard_2023": 866, "quera_2024": 256 },
+      "vacuum_pressure_torr": { "typical": 1e-10 },
+      "heating_rate_mk_per_s": { "typical": 0.01 },
+      "citations": [
+        "Ebadi et al., 'Quantum optimization of maximum independent set using Rydberg atom arrays', Nature 612, 71–77 (2023)"
+      ]
+    },
+    "trapped_ion_ytterbium171": {
+      "name": "Trapped-Ion QPU (171Yb+)",
+      "qubit_type": "171Yb+ hyperfine qubit (|F=0,m=0⟩ ↔ |F=1,m=1⟩ ground state)",
+      "transition_wavelength_nm": { "clock_411": 411, "detection_369": 369.53 },
+      "trap_depth_mhz": { "typical": 1000 },
+      "gate_1q_error": { "typical": 0.0002, "best_reported": 0.0001 },
+      "gate_2q_error": { "typical": 0.001, "best_reported": 0.0005 },
+      "gate_2q_type": "Mølmer–Sørensen",
+      "shuttle_time_ms": { "typical": 50, "range": [20, 200] },
+      "ion_count_demonstrated": { "quantinuum_h2": 56 },
+      "vacuum_pressure_torr": { "typical": 1e-11 },
+      "heating_rate_quanta_per_s": { "typical": 1 },
+      "citations": [
+        "Quantinuum H2 specifications — 56 qubits, 99.9% 2Q gate fidelity (2024)"
+      ]
+    }
+  },
+  "equations": [
+    "Lindblad master equation: dρ/dt = −i[H,ρ]/ħ + Σ_k γ_k (L_k ρ L_k† − ½{L_k†L_k, ρ}) — open-system dynamics with decoherence rates γ_k",
+    "Gate error (average): E = 1 − F_avg where F_avg = (|tr(U†U_ideal)|² + d) / (d + 1)",
+    "Rydberg blockade: V(r) = C₆/r⁶; blockade radius r_b = (C₆/Ω)^(1/6) where Ω is the Rabi frequency",
+    "Blackbody decoherence rate: Γ_bb = (k_B·T/ħ)² · (2·π·c/(ω₀))² · (1/4π) — thermal photon-induced transitions",
+    "Dilution fridge cooling power: Q_cool(T) = Q_ideal(T) · η, Q_ideal(T) ∝ (T/T_c)² for dilution stage"
+  ],
+  "valid_operating_envelope": {
+    "superconducting": { "temperature_mk": [10, 20], "magnetic_field_ut": [0, 1], "note": "Dilution fridge, mu-metal shielding" },
+    "photonic": { "temperature_k": [0.8, 300], "note": "SNSPD cryogenic; waveguide can be room temperature" },
+    "neutral_atom": { "vacuum_torr": [1e-11, 1e-9], "temperature_mk": [0.01, 1], "note": "UHV chamber" },
+    "trapped_ion": { "vacuum_torr": [1e-11, 1e-10], "note": "UHV trap chamber" }
+  },
+  "failure_thresholds": {
+    "cryo_quench": {
+      "condition": "Q_load > Q_cooling_capacity at any dilution fridge stage",
+      "effect": "temperature rises above superconducting transition → decoherence collapse, qubit loss, hours of recovery time",
+      "threshold_15mk_w": 0.012,
+      "note": "Exceeding the 15 mK cooling power budget (typically 12 mW for Bluefors XLD400) causes thermal quench"
+    },
+    "magnetic_field_intrusion": {
+      "condition": "B > B_c for superconducting materials (Nb: B_c ≈ 200 mT)",
+      "effect": "superconducting transition, SQUID readout failure"
+    },
+    "vacuum_loss": {
+      "condition": "pressure > 1e-9 torr for neutral atoms / trapped ions",
+      "effect": "collision-induced atom/ion loss, heating rate spikes"
+    }
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "id": "02_semiconductor_pdk_silicon",
+  "domain": "semiconductor-pdk-and-materials",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "SKY130A PDK (SkyWater Technology, pinned open_pdks commit 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d); FreePDK45 (NCSU/OSU, North Carolina State University); ASAP7 PDK (Arizona State University); material properties from CRC Handbook of Chemistry and Physics, 103rd ed. and Ioffe Institute semiconductor database",
+  "source_url": "https://github.com/google/skywater-pdk, https://www.skywatertechnology.com/sky130/, https://www.asap.asu.edu/asap7, https://ptm.asu.edu/",
+  "license_or_access": "Apache-2.0 (SKY130); free academic (FreePDK45); free academic (ASAP7); public CRC/Ioffe data",
+  "parameters": {
+    "sky130a": {
+      "pdk_name": "SKY130A",
+      "foundry": "SkyWater Technology Foundry",
+      "technology_node": "130 nm",
+      "pinned_open_pdks_commit": "0c1f82326278a0871f0a1fc4bdacf94c88e78e4d",
+      "pinned_skywater_commit": "f62031a1be9aefe902d6d54cddd6f59b57627436",
+      "nominal_vdd_v": 1.8,
+      "core_soa_max_vgs_v": 1.95,
+      "core_soa_note": "Strict 1.95 V core safe-operating-area ceiling for SKY130 core devices (li1 to met5)",
+      "metal_stack": {
+        "li1": { "thickness_nm": 250, "sheet_resistance_ohm_per_sq": 0.955, "material": "silicided local interconnect" },
+        "met1": { "thickness_nm": 570, "sheet_resistance_ohm_per_sq": 0.125, "material": "aluminium (Al) with TiN barrier" },
+        "met2": { "thickness_nm": 845, "sheet_resistance_ohm_per_sq": 0.075, "material": "aluminium" },
+        "met3": { "thickness_nm": 1035, "sheet_resistance_ohm_per_sq": 0.055, "material": "aluminium" },
+        "met4": { "thickness_nm": 2260, "sheet_resistance_ohm_per_sq": 0.027, "material": "aluminium" },
+        "met5": { "thickness_nm": 3390, "sheet_resistance_ohm_per_sq": 0.018, "material": "aluminium" }
+      },
+      "oxide_thickness_nm": { "gate_oxide": 4.1, "field_oxide": 420 },
+      "gate_pitch_nm": 480,
+      "vth_nmos_typ_v": 0.55,
+      "vth_pmos_typ_v": -0.55,
+      "ox_breakdown_field_mv_per_cm": 1000,
+      "ox_breakdown_note": "SiO2 intrinsic breakdown ~10 MV/cm; SKY130 practical TDDB-limited operating ceiling set by foundry spec to 1.95 V for core devices"
+    },
+    "freepdk45": {
+      "pdk_name": "FreePDK45",
+      "foundry": "North Carolina State University (virtual/academic)",
+      "technology_node": "45 nm planar",
+      "nominal_vdd_v": 1.0,
+      "gate_pitch_nm": 90,
+      "ox_breakdown_field_mv_per_cm": 1000,
+      "note": "Virtual PDK for academic research; no fabricated silicon. Published nominal VDD = 1.0 V"
+    },
+    "asap7": {
+      "pdk_name": "ASAP7",
+      "foundry": "Arizona State University (virtual/academic)",
+      "technology_node": "7 nm FinFET",
+      "nominal_vdd_v": 0.7,
+      "gate_pitch_nm": 54,
+      "fin_height_nm": 42,
+      "fin_pitch_nm": 27,
+      "ox_breakdown_field_mv_per_cm": 1000,
+      "note": "Virtual predictive PDK from ASU; no fabricated silicon. Published nominal VDD = 0.7 V"
+    }
+  },
+  "material_properties": {
+    "silicon": {
+      "resistivity_ohm_cm_at_300K_doped_1e15": 2.3,
+      "tcr_per_k": 0.002,
+      "thermal_conductivity_w_per_m_k": 148,
+      "thermal_conductivity_note": "at 300 K; decreases with T approximately as T^(-1.5) above 100 K",
+      "specific_heat_j_per_kg_k": 700,
+      "density_kg_per_m3": 2329,
+      "melting_point_c": 1414,
+      "bandgap_ev_at_300K": 1.12
+    },
+    "silicon_dioxide": {
+      "thermal_conductivity_w_per_m_k": 1.4,
+      "specific_heat_j_per_kg_k": 740,
+      "density_kg_per_m3": 2220,
+      "melting_point_c": 1710,
+      "dielectric_constant": 3.9,
+      "breakdown_field_mv_per_cm": 10000
+    },
+    "copper": {
+      "resistivity_ohm_m_at_300K": 1.68e-8,
+      "tcr_per_k": 0.0039,
+      "thermal_conductivity_w_per_m_k": 401,
+      "specific_heat_j_per_kg_k": 385,
+      "density_kg_per_m3": 8960,
+      "melting_point_c": 1085,
+      "fusing_note": "Joule fusing depends on geometry and pulse duration — use Onderdonk or Preece equations for specific traces"
+    },
+    "aluminium": {
+      "resistivity_ohm_m_at_300K": 2.65e-8,
+      "tcr_per_k": 0.0043,
+      "thermal_conductivity_w_per_m_k": 237,
+      "specific_heat_j_per_kg_k": 900,
+      "density_kg_per_m3": 2700,
+      "melting_point_c": 660,
+      "electromigration_note": "SKY130 metal is Al with TiN barrier; Black's equation applies for EM lifetime"
+    },
+    "gold": {
+      "resistivity_ohm_m_at_300K": 2.44e-8,
+      "tcr_per_k": 0.0034,
+      "thermal_conductivity_w_per_m_k": 318,
+      "specific_heat_j_per_kg_k": 129,
+      "density_kg_per_m3": 19300,
+      "melting_point_c": 1064
+    },
+    "niobium": {
+      "resistivity_ohm_m_at_300K": 1.5e-7,
+      "tcr_per_k": 0.0026,
+      "thermal_conductivity_w_per_m_k": 53,
+      "specific_heat_j_per_kg_k": 265,
+      "density_kg_per_m3": 8570,
+      "melting_point_c": 2477,
+      "superconducting_transition_k": 9.3,
+      "note": "Type-II superconductor; used in superconducting quantum circuits"
+    },
+    "fr4_pcb": {
+      "thermal_conductivity_w_per_m_k": 0.3,
+      "specific_heat_j_per_kg_k": 600,
+      "density_kg_per_m3": 1900,
+      "glass_transition_c": 130,
+      "delamination_c": 260,
+      "note": "FR-4 standard PCB substrate; Tg ~130 °C, delamination threshold ~260 °C (reflow peak)"
+    }
+  },
+  "equations": [
+    "Black's equation (electromigration MTTF): MTTF = A · J^(-n) · exp(E_a / (k_B·T)), n ≈ 2 for Al interconnects, E_a ≈ 0.7 eV",
+    "Onderdonk fusing equation: I_fuse = S · sqrt(T_melt − T_ambient / (t · ρ_0 · α)) — approximate for short pulses",
+    "Joule heating: P = I²·R(T), R(T) = R_0·(1 + α·(T − T_0))",
+    "Thermal diffusion (1D): ∂T/∂t = α_D·∂²T/∂x² + q/(ρ·c_p), α_D = k/(ρ·c_p)"
+  ],
+  "valid_operating_envelope": {
+    "sky130_core": { "vgs_max_v": 1.95, "temp_max_c": 125, "note": "foundry-specified commercial operating range" },
+    "freepdk45": { "vdd_max_v": 1.0, "note": "virtual academic PDK" },
+    "asap7": { "vdd_max_v": 0.7, "note": "virtual academic PDK" }
+  },
+  "failure_thresholds": {
+    "sky130_gate_oxide_tddb": {
+      "vgs_threshold_v": 1.95,
+      "note": "SKY130 core SOA ceiling; exceeding accelerates TDDB exponentially (E-model: ln(MTTF) ∝ −γ·Vgs, γ ≈ 300 dec/V for 4.1 nm SiO2)"
+    },
+    "copper_fusing_c": 1085,
+    "fr4_delamination_c": 260,
+    "silicon_melting_c": 1414,
+    "aluminium_fusing_note": "SKY130 metal (Al) fusing depends on current density; for 1 µm wide met1, typical DC fusing current ≈ 5–10 mA"
+  }
+}
