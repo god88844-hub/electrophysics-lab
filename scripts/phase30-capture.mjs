@@ -241,6 +241,19 @@ p==='js/evidence/stage-m-signoff-readiness.js'||
  p==='docs/STAGE-O-84-88.md'||
  p==='scripts/stage-o-synthetic-benchmark.mjs'||
  p==='.github/workflows/stage-o-84-88.yml'||
+ p==='js/scene/stage-p-custom-isa.js'||
+ p==='scripts/browser-smoke.mjs'||
+ p==='js/scene/stage-p-accelerator.js'||
+ p==='js/scene/stage-p-virtual-computer.js'||
+ p==='js/scene/stage-p-hybrid-qpu.js'||
+ p==='js/scene/stage-p-systems-ui.js'||
+ p==='tests/stage-p-custom-isa.test.mjs'||
+ p==='tests/stage-p-accelerator.test.mjs'||
+ p==='tests/stage-p-virtual-computer.test.mjs'||
+ p==='tests/stage-p-hybrid-qpu.test.mjs'||
+ p==='tests/stage-p-integration.test.mjs'||
+ p==='docs/STAGE-P-89-92.md'||
+ p==='.github/workflows/stage-p-89-92.yml'||
  p==='README.md'||p==='package.json');
 const unexpectedChanges=changes.filter(p=>!approvedChangedPath(p));
 const paths=execFileSync('git',['ls-files','-z']).toString('utf8').split('\0').filter(Boolean).sort();

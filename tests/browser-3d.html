@@ -48,6 +48,24 @@ try{
     'Stage N WASD fly camera did not move');
   assert(JSON.stringify(d.toJSON())===flyCircuitBefore,
     'Camera fly movement changed the canonical circuit');
+  // Stage P — real browser executes custom ISA, sorting, virtual ROM and
+  // hybrid classical/quantum feedback without a physical-accuracy claim.
+  assert(viewer.stageP?.toggle?.dataset.action==='stage-p-virtual-computers',
+    'Stage P virtual computer panel not installed');
+  viewer.stageP.toggle.click();
+  assert(viewer.stageP.panel.hidden===false,'Stage P panel did not open');
+  viewer.stageP.sort.click();
+  assert(viewer.stageP.result.textContent.includes('"1"')&&
+    viewer.stageP.result.textContent.includes('"9"'),
+    'Stage P custom Q4 sort program did not produce bounded outputs');
+  viewer.stageP.boot.click();
+  assert(viewer.stageP.result.textContent.includes('ROM_HALTED'),
+    'Stage P virtual Q4 computer failed to boot its ROM');
+  viewer.stageP.quantum.click();
+  assert(viewer.stageP.result.textContent.includes('IDEAL_REFERENCE_FEEDBACK_COMPLETE'),
+    'Stage P classical-to-quantum feedback reference failed');
+  assert(viewer.stageP.result.textContent.includes('false'),
+    'Stage P hardware signoff was not explicitly denied');
   // Phase 84: real browser goal parser and approval gate.
   assert(viewer.stageO?.toggle?.dataset.action==='stage-o-coinventor',
     'Stage O co-inventor panel not attached');

@@ -1,0 +1,40 @@
+name: Stage P custom computers and hybrid QPU
+on:
+  push:
+    branches: [stage-p/phase89-92-virtual-systems, main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  stage-p-cross-platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full repo and Stage M N O P regression tests
+        run: npm test
+      - name: Check virtual-system source modules
+        run: |
+          node --check js/scene/stage-p-custom-isa.js
+          node --check js/scene/stage-p-accelerator.js
+          node --check js/scene/stage-p-virtual-computer.js
+          node --check js/scene/stage-p-hybrid-qpu.js
+          node --check js/scene/stage-p-systems-ui.js
+          node --check js/scene/viewer.js
+  stage-p-browser-webgl:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Custom CPU/TPU/virtual-monitor browser smoke
+        run: node scripts/browser-smoke.mjs
