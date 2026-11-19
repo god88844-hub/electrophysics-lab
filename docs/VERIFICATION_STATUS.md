@@ -1,0 +1,52 @@
+# Verification status — Phase 0 audit ledger
+
+A green **software** check never establishes measured silicon performance. Examine the exact commit and artifact, not the headline verdict.
+
+## Authentic native evidence
+
+| Run | Verified finding | Source |
+| --- | --- | --- |
+| [44533413910](https://github.com/god88844-hub/invention-lab/actions/runs/44533413910) | Q4 primitive Magic DRC 0, Netgen terminal LVS unique, RC PEX | Native job artifact |
+| [44536314808](https://github.com/god88844-hub/invention-lab/actions/runs/44536314808) | Processed PDK file hash validated; missing combined MC model | Real processed library |
+| [44548482333](https://github.com/god88844-hub/invention-lab/actions/runs/44548482333) | 783 installed SPICE files, 150 reachable includes; zero active statistical expressions | Source-bounded transitive audit |
+
+| Primitive | Exact top-level pins | Native DRC / LVS / PEX |
+| --- | ---: | --- |
+| q4_thresh_det | 6/6 | PASS native physical-cell rules |
+| q4_inv | 6/6 | PASS native physical-cell rules |
+| q4_mux4 | 8/8 | PASS native physical-cell rules |
+| q4_half_adder | 8/8 | PASS native physical-cell rules |
+
+**Scope:** These are four primitive cell native geometries; **0/6 hierarchical ALUs** have independent top-level physical DRC/LVS/PEX verification. No genuine 6,400-trial statistical campaign has completed on the pinned model.
+
+## Exact pinned SHA-256 / source provenance
+
+| Evidence | Source identity |
+| --- | --- |
+| Original SkyWater sky130_fd_pr source | `f62031a1be9aefe902d6d54cddd6f59b57627436` |
+| open_pdks source | `0c1f82326278a0871f0a1fc4bdacf94c88e78e4d` |
+| Processed sky130.lib.spice | `4fcb2a538312de6f71c718c6be325fe865d5c4248a76dd5f7d2e8512df0d54ef` |
+| Transitive audit JSON, run 44548482333 | `89014e4f6936a1e340eebc5059019fc956e95d78f9f34a9a323972b4fd850123` |
+| ZIP artifact run 44548482333 | `4895669cee21f56bdbcb5ad1d88569344c223594c8673e936e095e3b0ddf84bb` |
+| Source manifest run 44548482333 | `025ec0441a055d39f7191e6d2218b6f23a81012456e5d71e9127eed0c1f38f41` |
+
+Per-cell PEX digest evidence: [Stage M forensic source JSON](../benchmarks/evidence/stage-m-44548482333-fail-closed-forensics.json). The [Phase 0 software acceptance script](../scripts/stage-m-phase0-acceptance.py) compares each actual file and refuses fabricated yield or altered model bytes.
+
+## Never bypass
+
+- SKY130 1.8 V core four-terminal **pairwise SOA <= 1.95 V**, validated from genuine waveforms before claiming it passes.
+- Original PDK source commit and every source/model file SHA-256; selected statistical corner must contain authentic active process+mismatch switches and real seeded variation.
+- Magic zero-error physical DRC, Netgen top-level unique terminal LVS with exact complete external pin set and order, SHA-bound PEX. Never accept a matching nested subcell as top-level LVS.
+- **Absent statistical input = Level-1 INSUFFICIENT_MODEL_DATA**, yield UNKNOWN, Wilson interval UNKNOWN. Phase 0 expected-fail-closed can PASS as a software *gate test*; it cannot be VIRTUALLY_QUALIFIED.
+- **Level-2 UNQUALIFIED_NO_GO** until independently authenticated physical measurement and reviewer trust. No CI/self-signed bypass.
+
+## Honest capabilities
+
+| Workstream | Software/research state | Physical boundary |
+| --- | --- | --- |
+| N Workbench | 3D scene/interaction and bounded automated checks | No full physical CAD signoff |
+| O Co-Inventor | Approval-gated and synthetic/model-based optimization | Not wafer-calibrated yield |
+| P virtual ISA / TPU / quantum | Source-bounded interpreter, ONNX and idealized feedback | No full Linux boot, measured TPU or live quantum |
+| Q hardware bridge | Candidate FPGA/SCPI/trace/GDS workflows | No physical signoff or wafer authorization |
+
+See [ROADMAP](../ROADMAP.md) and [continuation guide](CONTINUATION_GUIDE.md). Verify current main GitHub CI for any later merge or release.

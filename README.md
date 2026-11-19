@@ -1,3 +1,27 @@
+# Invention Lab — Phase 0 software research
+
+**Simulation Evidence != Physical Validation.** This project helps design, simulate, inspect and test computing inventions without fabricating evidence or promising silicon performance.
+
+[96-phase roadmap](ROADMAP.md) · [Verification status](docs/VERIFICATION_STATUS.md) · [Continuation guide](docs/CONTINUATION_GUIDE.md) · [Actions](https://github.com/god88844-hub/invention-lab/actions)
+
+```bash
+npm test                 # Node software suite
+npm start                # localhost:8080
+```
+
+| Domain | Verified research software | Still open |
+| --- | --- | --- |
+| 3D Workbench | Canonical scene wiring, source-level tests and staged interaction tools | No guaranteed GPU performance or fabrication-complete scene |
+| AI Co-Inventor | Human-approved edits, bounded topology search, synthetic seeded optimization | No calibrated transistor yield or autonomous signoff |
+| Custom ISA, TPU and quantum | Bounded interpreters, ONNX comparisons and idealized quantum references | No full RISC-V Linux boot, physical TPU, or live QPU certification |
+| Hardware Bridge | Candidate FPGA/GDSII interfaces, SCPI and trace ingestion | No authorized fabrication or independent physical calibration |
+| Four SKY130 Q4 primitive cells | **4/4 authentic Magic DRC 0, Netgen unique LVS and PEX** | Six physical ALUs are **not yet verified** |
+| Model provenance | 783 SHA-inventoried files; 150 selected includes, 0 active statistical expressions | Level-1 **INSUFFICIENT_MODEL_DATA**; Level-2 **UNQUALIFIED_NO_GO** |
+
+**Phase 0 is the software integration milestone, not universal physical qualification.** The original detailed README follows; its limitations and source records are retained.
+
+---
+
 # ⚗ Invention Lab
 
 An interactive computing invention laboratory: design, assemble, simulate, experiment with,
