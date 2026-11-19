@@ -141,7 +141,10 @@ def place_parent(mag_dir, source, cell, halo_um, scale_um, report):
     if any(not u['master'].startswith('sky130_fd_pr__') for u in fixed_mos):
         raise ValueError('unrecognized parent-owned instance in source geometry')
     mos_cursor_y=static[3]+row_gap
-    mos_column_x=static[2]+2*row_gap
+    # Reserve eight external port escapes at 1.20 um pitch to the
+    # RIGHT of the original pin bank before positioning native MOS rows.
+    # Parent terminals must never reuse the port MET2 x-coordinates.
+    mos_column_x=static[2]+8*row_gap
     fixed_records=[]
     prior=None
     for use in sorted(fixed_mos,key=lambda item:item['instance']):

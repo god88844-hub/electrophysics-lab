@@ -200,6 +200,21 @@ class StageMStatic(unittest.TestCase):
         self.assertEqual(set(ranks.values()),{-2,-1,0,1,2})
         self.assertEqual(len(ranks),5)
 
+    def test_parent_port_and_local_mos_met2_banks_do_not_overlap(self):
+        layout=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
+        placement=(ROOT/'scripts'/'stage-m-postroute-placement.py').read_text()
+        self.assertIn('mos_column_x=static[2]+8*row_gap',placement)
+        self.assertIn('set ::stage_m_port_escape_base [stage_m_u 0.30]',layout)
+        self.assertIn('$::stage_m_port_escape_base +',layout)
+        self.assertIn('$::stage_m_port_escape_index * $step',layout)
+        # SKY130 0.005um/DBU, 1.2um port track pitch, 0.28um MET2.
+        port_tracks=[60+240*i for i in range(1,9)]
+        local_left=[-3270-240*i for i in range(1,60)]
+        mos_start=200+8*545
+        self.assertLess(max(port_tracks)+56,mos_start)
+        self.assertLess(max(local_left)+56,min(port_tracks))
+        self.assertEqual(len(set(port_tracks+local_left)),len(port_tracks)+len(local_left))
+
     def test_parent_mos_drain_source_route_opposite_corridors(self):
         source=(ROOT/'scripts'/'stage-m-magic-layout.tcl').read_text()
         self.assertIn('set ::stage_m_local_escape_right_index 0',source)

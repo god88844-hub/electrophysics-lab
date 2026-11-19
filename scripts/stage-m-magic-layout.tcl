@@ -116,7 +116,14 @@ proc stage_m_begin_cell {cell bbox port_ymin} {
     set ::stage_m_tapx [expr {$xmin - 5*$::stage_m_pitch}]
     # Source-pinned port pads often share X but sit at different Y positions.
     # Assign a strictly separate escape column outside ALL device geometry.
-    set ::stage_m_port_escape_base [expr {$::stage_m_tapx - 3*$::stage_m_pitch}]
+    if {$::stage_m_is_parent} {
+        # Eight top-level ports get their own compact positive-X bank.
+        # Post-route placement reserves >= eight 2.72um rows before the
+        # first parent MOS; no source pin shares a local MOS MET2 trunk.
+        set ::stage_m_port_escape_base [stage_m_u 0.30]
+    } else {
+        set ::stage_m_port_escape_base [expr {$::stage_m_tapx - 3*$::stage_m_pitch}]
+    }
     stage_m_tap nwell nsdm $::stage_m_tapx $::stage_m_top
     stage_m_tap psub psdm $::stage_m_tapx $::stage_m_bottom
 }
@@ -208,9 +215,15 @@ proc stage_m_route_net {net terminals} {
             if {![info exists ::stage_m_port_escape($name)]} {
                 incr ::stage_m_port_escape_index
                 set step [stage_m_u 1.20]
-                set ::stage_m_port_escape($name) [expr {
-                    $::stage_m_port_escape_base -
-                    $::stage_m_port_escape_index * $step}]
+                if {$::stage_m_is_parent} {
+                    set ::stage_m_port_escape($name) [expr {
+                        $::stage_m_port_escape_base +
+                        $::stage_m_port_escape_index * $step}]
+                } else {
+                    set ::stage_m_port_escape($name) [expr {
+                        $::stage_m_port_escape_base -
+                        $::stage_m_port_escape_index * $step}]
+                }
             }
             set route_x $::stage_m_port_escape($name)
         } elseif {$::stage_m_is_parent} {
