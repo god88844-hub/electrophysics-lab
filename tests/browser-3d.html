@@ -48,6 +48,27 @@ try{
     'Stage N WASD fly camera did not move');
   assert(JSON.stringify(d.toJSON())===flyCircuitBefore,
     'Camera fly movement changed the canonical circuit');
+  // Phase 84: real browser goal parser and approval gate.
+  assert(viewer.stageO?.toggle?.dataset.action==='stage-o-coinventor',
+    'Stage O co-inventor panel not attached');
+  viewer.stageO.toggle.click();
+  assert(viewer.stageO.panel.hidden===false,'Co-inventor panel not open');
+  viewer.stageO.goal.value='Design a Q4 half-adder with >300 mV noise margin on SKY130';
+  viewer.stageO.goalButton.click();
+  viewer.stageO.generate.click();
+  assert(viewer.stageO.output.textContent.includes('IDEAL_LOGIC_REFERENCE_GENERATED'),
+    'Q4 goal did not produce the canonical ideal reference circuit');
+  viewer.stageO.goalButton.click();
+  assert(viewer.stageO.output.textContent.includes('EVIDENCE_REQUIRED'),
+    'Physical-model constraints were not shown for Q4 SKY130');
+  viewer.stageO.json.value=JSON.stringify([{name:'design.move_component',
+    args:{blockId:a.id,x:3,y:4}}]);
+  const original3d=JSON.stringify(d.toJSON());
+  viewer.stageO.propose.click();
+  assert(viewer.stageO.approve.disabled===false,'Human approval button was not exposed');
+  assert(JSON.stringify(d.toJSON())===original3d,
+    'AI proposal mutated canonical diagram without approval');
+  // Do not click approve: browser regression requires no source mutation.
   // Stage N panels are interactive, but never self-certify a physical device.
   assert(viewer.stageN?.toggle?.dataset.action==='stage-n-sandbox',
     'Stage N interactive 3D sandbox was not attached');
