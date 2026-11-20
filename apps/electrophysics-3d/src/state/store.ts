@@ -112,6 +112,10 @@ const initial: LabState = {
   quantumExp: { running: false, k: 0, total: 110, history: [], bundle: null, finalError: null },
   qecCurve: null,
   pulseParams: { amplitude: 25, sigmaNs: 7.5, beta: 0 },
+  sandboxOpen: false,
+  sandboxComponents: [],
+  sandboxLoaded: false,
+  soc: { arch: 'unified', radix: 'int8', result: null, rv32: null, playing: false, speed: 3 },
 };
 
 type Listener = () => void;

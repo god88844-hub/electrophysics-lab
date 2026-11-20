@@ -107,11 +107,12 @@ test.describe('M8 universal × close buttons', () => {
       await page.waitForFunction(() => document.querySelector('[data-action="engineering-cad"]') !== null, null, { timeout: 120_000 });
       const cadToggle = page.locator('[data-action="engineering-cad"]');
       await cadToggle.click();
-      await expect(page.locator('section.scene3d-wire-editor:not([hidden])')).toBeVisible();
-      const closeBtn = page.locator('section.scene3d-wire-editor:not([hidden]) button.panel-close');
+      const cadPanel = page.locator('section[aria-label="Dimensioned CAD and thermal engineering workspace"]');
+      await expect(cadPanel).toBeVisible();
+      const closeBtn = cadPanel.locator('button.panel-close');
       await expect(closeBtn).toBeVisible();
       await closeBtn.click();
-      await expect(page.locator('section.scene3d-wire-editor:not([hidden])')).toHaveCount(0);
+      await expect(cadPanel).toBeHidden();
       // aria-expanded must reset for accessibility.
       await expect(cadToggle).toHaveAttribute('aria-expanded', 'false');
     } finally {

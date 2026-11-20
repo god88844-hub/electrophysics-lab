@@ -125,6 +125,30 @@ export class LabWorld {
 
   private lastSnapshot: PhysicsSnapshot | null = null;
 
+  private sandboxGroup = new THREE.Group();
+
+  /** Render user-placed sandbox components on the Bay 2 bench (real meshes). */
+  setSandboxComponents(components: Array<{ id: string; kind: string; position: [number, number] }>): void {
+    this.bay2.group.add(this.sandboxGroup);
+    for (const child of [...this.sandboxGroup.children]) {
+      this.sandboxGroup.remove(child);
+    }
+    for (const c of components) {
+      const [sx, sz] = c.position;
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.16, 0.34),
+        new THREE.MeshStandardMaterial({ color: 0x5a4a38, metalness: 0.6, roughness: 0.4 })
+      );
+      mesh.position.set(-2 + sx * 1.4, this.bay2.layerY('met3') + 0.35, -1.4 + sz * 1.2);
+      mesh.castShadow = true;
+      mesh.name = 'sandbox-' + c.id;
+      this.sandboxGroup.add(mesh);
+      const label = makeTextSprite(c.kind, { scale: 0.4, color: '#ffd98a', fontSize: 30 });
+      label.position.set(mesh.position.x, mesh.position.y + 0.3, mesh.position.z);
+      this.sandboxGroup.add(label);
+    }
+  }
+
   /** Map a live (or replayed) physics snapshot onto every physics-driven visual. */
   applyPhysicsSnapshot(s: PhysicsSnapshot): void {
     this.lastSnapshot = s;
