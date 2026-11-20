@@ -5,6 +5,7 @@
   "source_citation": "Published parameters: Google Sycamore (Arute et al., Nature 574, 505–510, 2019); IBM Quantum (IBM Quantum Development roadmap 2023–2026); QuEra/Harvard neutral-atom (Ebadi et al., Nature 612, 2023); Quantinuum trapped-ion (Mt. Const. from Quantinuum H2); UChicago SNSPD (Reddy et al., APL Photonics); dilution refrigerator specs from Bluefors product datasheets (XLD400)",
   "source_url": "https://quantumai.google/hardware, https://www.ibm.com/quantum/technology, https://www.quantinuum.com/, https://www.bluefors.com/",
   "license_or_access": "public domain (published parameters); institutional (IBM/Google/Quantinuum data cited from peer-reviewed publications)",
+  "units": {"system":"SI","time":"us/ns","frequency":"GHz/MHz/kHz","temperature":"mK/K","length":"um/nm","loss":"dB"},
   "parameters": {
     "superconducting_transmon": {
       "name": "Superconducting Transmon QPU",

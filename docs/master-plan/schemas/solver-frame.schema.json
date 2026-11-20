@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "invention-lab/solver-frame.schema.json",
+  "title": "Fixed-Size 60 Hz Solver Telemetry Frame",
+  "description": "Typed telemetry frame pushed from the physics/quantum/chip workers to the 3D renderer and oscilloscope at 60 Hz without GC churn: fixed-size typed arrays, no per-frame object allocation beyond the frame envelope.",
+  "type": "object",
+  "required": ["format", "frameId", "tSimS", "circuits", "thermal", "provenance"],
+  "properties": {
+    "format": { "const": "invention-lab/solver-frame/1" },
+    "frameId": { "type": "integer", "minimum": 0, "description": "monotonic frame counter" },
+    "tSimS": { "type": "number", "minimum": 0, "description": "simulation time in seconds" },
+    "live": { "type": "boolean", "description": "false while replaying the forensic ring buffer" },
+    "circuits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "nodeVoltages", "currents"],
+        "properties": {
+          "id": { "type": "string" },
+          "nodeVoltages": { "type": "array", "items": { "type": "number" }, "description": "Float64Array over serialized node indices" },
+          "currents": { "type": "array", "items": { "type": "number" } },
+          "vgsMax": { "type": "number" },
+          "vgsMaxNode": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "thermal": {
+      "type": "object",
+      "required": ["gridMaxC"],
+      "properties": {
+        "gridMaxC": { "type": "number" },
+        "tiles": { "type": "object", "description": "block id → °C for the SoC thermal zones", "additionalProperties": { "type": "number" } },
+        "traceC": { "type": "number" },
+        "junctionC": { "type": "number" },
+        "cryoK": { "type": "number" }
+      }
+    },
+    "quantum": {
+      "type": "object",
+      "properties": {
+        "bloch": { "type": "array", "items": { "type": "object", "required": ["x", "y", "z", "purity"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" }, "purity": { "type": "number" } } } },
+        "gateFidelity": { "type": ["number", "null"] }
+      }
+    },
+    "soc": {
+      "type": "object",
+      "properties": {
+        "tileActivity": { "type": "array", "items": { "type": "number" }, "description": "64 normalized per-tile switching activities" },
+        "busLevels": { "type": "array", "items": { "type": "number" } }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["badge"],
+      "properties": {
+        "badge": { "enum": ["SIMULATED_PHYSICS_MODEL", "SIMULATED_ARCHITECTURAL_MODEL", "SIMULATED_NOISY_QUANTUM", "ORACLE_VERIFIED_AGAINST_NGSPICE"] },
+        "solver": { "type": "string" }
+      }
+    }
+  }
+}

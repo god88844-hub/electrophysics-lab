@@ -1,0 +1,76 @@
+{
+  "id": "08_standard_and_multiradix_cells",
+  "domain": "standard-and-multiradix-cells",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "Binary cell macro-figures from SKY130A PDK public documentation (SkyWater, pinned commit f62031a1be9aefe902d6d54cddd6f59b57627436) and FreePDK45/ASAP7 public academic documentation (NCSU/ASU); multi-radix cell functional definitions from Phase 0 verified repo artifacts (03_multiradix_logic_baselines.json, 4/4 verified SKY130A Q4 primitives); CMOS gate topology from standard textbook references (Weste & Harris, 'CMOS VLSI Design', 4th ed.).",
+  "source_url": "https://github.com/google/skywater-pdk, https://www.vlsi-expert.com/2015/05/static-noise-margin.html, https://www.asap.asu.edu/asap7",
+  "license_or_access": "Apache-2.0 (SKY130); free academic (FreePDK45/ASAP7); textbook standard (Weste & Harris)",
+  "units": {"system":"SI","length":"um/nm","voltage":"V","leakage":"nW"},
+  "parameters": {
+    "sky130a_binary_cells": {
+      "name": "SKY130A binary standard-cell macro-specs (published PDK figures)",
+      "cells": {
+        "sky130_fd_sc_hd__inv_1": { "function": "Y = ~A", "transistors": 2, "width_um": 1.38, "height_um": 2.72, "leakage_nw_typ": 0.26, "note": " Published drive-strength-1 inverter footprint from SKY130A hd cell library" },
+        "sky130_fd_sc_hd__nand2_1": { "function": "Y = ~(A&B)", "transistors": 4, "width_um": 1.38, "height_um": 2.72, "leakage_nw_typ": 0.51 },
+        "sky130_fd_sc_hd__nor2_1": { "function": "Y = ~(A|B)", "transistors": 4, "width_um": 1.38, "height_um": 2.72, "leakage_nw_typ": 0.67 },
+        "sky130_fd_sc_hd__xor2_1": { "function": "Y = A^B", "transistors": 12, "width_um": 2.76, "height_um": 2.72 },
+        "sky130_fd_sc_hd__fa_1": { "function": "full adder (SUM, Cout)", "transistors": 20, "width_um": 5.52, "height_um": 2.72 }
+      },
+      "voltage_domain_v": { "nominal": 1.8, "soa_vgs_ceiling": 1.95 },
+      "citations": ["SKY130A PDK cell library documentation (SkyWater, pinned commit)"]
+    },
+    "asap7_freepdk45_reference": {
+      "name": "Virtual academic PDK cell references (no fabricated silicon)",
+      "asap7_7nm": { "vdd_nominal_v": 0.7, "fin_pitch_nm": 27, "gate_pitch_nm": 54, "inv_footprint_nm2": 3600 },
+      "freepdk45_45nm": { "vdd_nominal_v": 1.0, "gate_pitch_nm": 90, "inv_footprint_nm2": 3240 },
+      "citations": ["ASAP7 PDK (ASU published documentation)", "FreePDK45 (NCSU published documentation)"]
+    },
+    "multiradix_cells": {
+      "name": "Multi-radix cell functional macro-specs (Phase 0 verified repo artifacts)",
+      "radix_r_level_map": {
+        "equation": "L_k = k · VDD / (R − 1), k = 0..R−1",
+        "binary_r2_v": [0.0, 1.8],
+        "ternary_r3_v": [0.0, 0.9, 1.8],
+        "quaternary_r4_v": [0.0, 0.6, 1.2, 1.8]
+      },
+      "q4_cells": {
+        "q4_thresh_det": { "function": "map analogue input to nearest Q4 digit", "gates": 6, "transfer": "Q_out = round(R=4 partition of Vin)" },
+        "q4_inv": { "function": "Q3→Q0, Q2→Q1, Q1→Q2, Q0→Q3", "gates": 6, "transfer": "Q_out = 3 − Q_in (mod-4 inversion)" },
+        "q4_mux4": { "function": "4:1 quaternary multiplexer, 2-digit selector", "gates": 8 },
+        "q4_half_adder": { "function": "S = (A+B) mod 4, C = floor((A+B)/4)", "gates": 8 }
+      },
+      "ternary_cells": {
+        "ternary_inv": { "function": "2 − Q (balanced: −1→+1, 0→0, +1→−1)" },
+        "ternary_half_adder": { "function": "S = (A+B) mod 3, C = floor((A+B)/3)" }
+      },
+      "noise_margin_bounds": {
+        "equation": "NM ≥ VDD / (2·(R−1)) for uniformly spaced railed logic families",
+        "binary_v": 0.9, "ternary_v": 0.45, "quaternary_v": 0.3,
+        "verified_phase0_values_v": { "binary": 0.6, "quaternary_per_level": 0.3 },
+        "note": "Phase 0 verified per-level margins: binary NM 0.6 V, Q4 per-level margin 0.3 V (03_multiradix_logic_baselines.json)"
+      },
+      "radix_economy": { "equation": "E(R) = R / ln(R) (alternative form R/log2(R) for digit-count economics)", "minimum_at": "R = e ≈ 2.718" }
+    },
+    "custom_ic_packaging": {
+      "name": "Hierarchical custom-IC macro-model requirements (Layer 2 composer)",
+      "fields": "pins (name, direction, radix domain, voltage domain), internal netlist OR sub-IC references, extracted timing (input/output arcs), extracted dynamic power (switching activity × C·V²·f), parametric 3D package footprint (data/cad-specs/01_sky130_primitives_geometry.json schema)",
+      "extraction_contract": "an IC is reusable only with an auto-extracted macro-model verified against its internal netlist solve (error tolerance in tests/master-plan-integrity.test.mjs: timing ±5%, energy ±10%)"
+    }
+  },
+  "equations": [
+    "L_k = k·VDD/(R−1)",
+    "NM ≥ VDD/(2·(R−1))",
+    "Q4 half adder: S = (A+B) mod 4, C = floor((A+B)/4)",
+    "E(R) = R/ln(R)",
+    "INV footprint (SKY130 hd): 1.38 µm × 2.72 µm = 3.75 µm² (published)"
+  ],
+  "valid_operating_envelope": {
+    "vdd_range_v": [1.65, 1.95],
+    "temperature_range_c": [-40, 125],
+    "soa_vgs_ceiling_v": 1.95
+  },
+  "failure_thresholds": {
+    "vgs_overstress_v": 1.95,
+    "note": "Q4 map max 1.8 V stays under the 1.95 V SKY130 core ceiling"
+  }
+}

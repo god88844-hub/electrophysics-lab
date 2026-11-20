@@ -1,3 +1,5 @@
+<!-- v4 POINTER: This legacy planning stub is superseded. The single source of truth for forward-looking planning is docs/master-plan/00_INDEX.md. Content below is preserved verbatim for history. -->
+
 # AGENT_HANDOFF_PROTOCOL.md — strict playbook for switching builder agents
 
 ## Pre-flight checklist (new agent MUST verify before writing any code)

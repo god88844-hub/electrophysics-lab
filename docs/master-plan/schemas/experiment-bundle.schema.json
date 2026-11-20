@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "invention-lab/experiment-bundle.schema.json",
+  "title": "Deterministic Reproducible Experiment Bundle",
+  "description": "Reproducible research/breakthrough export: fixed seed, initial vs optimized metrics, noise citation, SHA-256 seal, and an explicit simulation badge. Identical seed + identical code version must reproduce the bundle bit-for-bit.",
+  "type": "object",
+  "required": ["format", "kind", "badge", "seed", "initialFidelity", "optimizedFidelity", "reproducibility", "citation"],
+  "properties": {
+    "format": { "const": "invention-lab/breakthrough-bundle/1" },
+    "kind": { "type": "string", "description": "experiment family, e.g. x-gate-error-minimization-under-transmon-noise" },
+    "badge": { "enum": ["SIMULATED_PHYSICS_MODEL", "SIMULATED_ARCHITECTURAL_MODEL", "SIMULATED_NOISY_QUANTUM", "SIMULATED_NOISY_MODEL"] },
+    "seed": { "type": "integer", "description": "fixed PRNG seed; identical seed ⇒ identical trace" },
+    "initialFidelity": { "type": "number", "minimum": 0, "maximum": 1 },
+    "optimizedFidelity": { "type": "number", "minimum": 0, "maximum": 1 },
+    "optimizedParams": { "type": "object", "additionalProperties": { "type": "number" } },
+    "iterations": { "type": "integer", "minimum": 1 },
+    "noise": { "type": "object", "description": "noise parameters verbatim from data/reference-library (T1/T2/ZZ, temperature, etc.)" },
+    "reproducibility": {
+      "type": "object",
+      "required": ["codeVersion"],
+      "properties": {
+        "codeVersion": { "type": "string", "description": "git commit SHA of the producing run" },
+        "platform": { "type": "string" },
+        "checkedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "citation": { "type": "string", "description": "the data/reference-library citation backing the noise model" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "canonical-JSON integrity seal computed at export" }
+  }
+}

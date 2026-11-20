@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "invention-lab/custom-ic.schema.json",
+  "title": "Hierarchical Custom IC / Module Package",
+  "description": "Layer-2 reusable black-box IC: pins, radix domains, internal netlist or sub-IC references, auto-extracted behavioral timing/power macro-model (verified against the internal solve), parametric 3D package footprint. Enables Layer 1 → 2 → 3 → 4 → 5 composition.",
+  "type": "object",
+  "required": ["format", "icId", "pins", "radixDomain", "implementation", "macroModel", "footprint", "verification"],
+  "properties": {
+    "format": { "const": "invention-lab/custom-ic/1" },
+    "icId": { "type": "string", "pattern": "^[a-z0-9_\\-]+$" },
+    "label": { "type": "string", "maxLength": 120 },
+    "pins": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "direction", "radix"],
+        "properties": {
+          "name": { "type": "string" },
+          "direction": { "enum": ["input", "output", "inout", "power", "ground"] },
+          "radix": { "enum": ["binary", "ternary", "quaternary", "analog", "clock"] },
+          "voltageLevelsV": { "type": "array", "items": { "type": "number" }, "description": "L_k = k·VDD/(R−1) per 03_multiradix_logic_baselines.json" }
+        }
+      }
+    },
+    "radixDomain": { "enum": ["binary", "ternary", "quaternary", "mixed"] },
+    "implementation": {
+      "type": "object",
+      "required": ["kind"],
+      "oneOf": [
+        {
+          "properties": { "kind": { "const": "netlist" }, "components": { "type": "array" }, "wires": { "type": "array" } }
+        },
+        {
+          "properties": { "kind": { "const": "subICs" }, "subICs": { "type": "array", "items": { "type": "string" }, "description": "child icIds forming the hierarchy" } }
+        }
+      ]
+    },
+    "macroModel": {
+      "type": "object",
+      "required": ["timingArcs", "dynamicPower"],
+      "properties": {
+        "timingArcs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "delayNs"],
+            "properties": {
+              "from": { "type": "string" }, "to": { "type": "string" },
+              "delayNs": { "type": "number", "minimum": 0 },
+              "tolerancePct": { "const": 5, "description": "max deviation vs internal netlist solve" }
+            }
+          }
+        },
+        "dynamicPower": {
+          "type": "object",
+          "required": ["wattsPerToggle"],
+          "properties": {
+            "wattsPerToggle": { "type": "number", "minimum": 0 },
+            "tolerancePct": { "const": 10, "description": "max deviation vs internal netlist energy" }
+          }
+        }
+      }
+    },
+    "footprint": {
+      "type": "object",
+      "required": ["kind", "dimensionsUm"],
+      "properties": {
+        "kind": { "enum": ["sky130_hd", "custom_rect"] },
+        "dimensionsUm": { "type": "object", "required": ["w", "h"], "properties": { "w": { "type": "number", "minimum": 0.1 }, "h": { "type": "number", "minimum": 0.1 } } },
+        "parametricSpecRef": { "type": "string", "description": "path into data/cad-specs/*.json" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": ["status", "checkedAt"],
+      "properties": {
+        "status": { "enum": ["VERIFIED_AGAINST_INTERNAL_SOLVE", "STALE"] },
+        "checkedAt": { "type": "string", "format": "date-time" },
+        "solver": { "const": "packages/physics-engine MNA" }
+      }
+    }
+  }
+}

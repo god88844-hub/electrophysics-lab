@@ -1,0 +1,26 @@
+{
+  "format": "invention-lab/reference-library-manifest/1",
+  "generatedAt": "2026-11-20T19:59:49.791Z",
+  "files": [
+    {
+      "file": "01_sky130_primitives_geometry.json",
+      "sha256": "8161a92f4f1d5ff238504f0f8ecad6e646764f7816dcbb56e43d3fd23609d37a",
+      "size_bytes": 4444
+    },
+    {
+      "file": "02_pcb_bga_soc_packages.json",
+      "sha256": "daca56aade3e1a3f43895540d56f7545283bb74caca4950fff8916aebdbad267",
+      "size_bytes": 4308
+    },
+    {
+      "file": "03_quantum_hardware_rigs.json",
+      "sha256": "26480eb06837f2bc305bdc1053f324c9d792099ceaed4be26cbd8eb70726095a",
+      "size_bytes": 4968
+    },
+    {
+      "file": "04_lab_instruments_and_probes.json",
+      "sha256": "a4266401d16b94e6b5c53588b1901922034ab189bff7a4afef9ee97cc4f541c3",
+      "size_bytes": 3461
+    }
+  ]
+}

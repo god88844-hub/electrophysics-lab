@@ -1,0 +1,158 @@
+{
+  "id": "01_academy_missions",
+  "domain": "academy-curriculum",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "Mission physics criteria derive exclusively from repo-verified artifacts: 02/03/04/05/06/07/08 reference-library JSONs and Phase 0 verified primitives. Every pass criterion is a machine-checkable physics condition (solver output threshold), never a subjective statement.",
+  "source_url": "internal (repo-verified artifacts only)",
+  "license_or_access": "repo-internal",
+  "units": { "system": "SI", "voltage": "V", "current": "A", "temperature_c": "°C", "temperature_k": "K", "length_workspace": "µm (Silicon CAD) / mm (SoC) / cm (Quantum)" },
+  "missions": [
+    {
+      "id": "M1-MOSFET-IV",
+      "layer": 1,
+      "title": "Transistor IV Curves",
+      "workspace": "silicon",
+      "objective": "Place an SKY130 NMOS + voltage rail + load resistor; sweep gate voltage; observe the square-law IV family in the oscilloscope dock.",
+      "setup": { "components": ["rail(1.8 V)", "nmos", "resistor(100 kΩ)", "probe"], "starter_circuit": "oxide-breakdown-variant-nominal" },
+      "pass_criteria": [
+        { "check": "solver_output", "condition": "Id at Vgs=1.8 V within ±5% of the square-law reference: Id = 0.5·KP·(Vgs−Vth)²·(1+λ·Vds) with KP=0.004 A/V², Vth=0.55 V (02 JSON)" },
+        { "check": "solver_output", "condition": "Id at Vgs=0.6 V < 1% of Id at Vgs=1.8 V (sub-threshold off state)" }
+      ],
+      "failure_mode_teaches": "channel-length modulation (λ term)"
+    },
+    {
+      "id": "M2-OXIDE-SOA",
+      "layer": 1,
+      "title": "Gate-Oxide SOA & TDDB",
+      "workspace": "silicon",
+      "objective": "Push VDD past the 1.95 V SKY130 core ceiling and capture the oxide-breakdown forensic autopsy.",
+      "setup": { "components": ["rail(2.5 V)", "pmos", "nmos", "resistor(100 kΩ)"] },
+      "pass_criteria": [
+        { "check": "failure_event", "condition": "gate_oxide_breakdown event with value > 1.95 V and threshold == 1.95 (06 JSON)" },
+        { "check": "forensic_report", "condition": "E-model TDDB equation string present: ln(TTF) = ln(A) − γ·Vgs, γ ≈ 300 dec/V" },
+        { "check": "ai_fix", "condition": "AI Fix clamps VDD ≤ 1.80 V and the re-run is clean (no failure event)" }
+      ],
+      "failure_mode_teaches": "SKY130 core SOA ceiling; hard breakdown at ≥3 V shorted-gate fault"
+    },
+    {
+      "id": "M3-CU-FUSING",
+      "layer": 1,
+      "title": "Copper Trace Fusing",
+      "workspace": "silicon",
+      "objective": "Route a 3 µm-wide trace under a 3 V rail and 20 Ω load; watch Joule heating reach the Cu melting point.",
+      "setup": { "components": ["rail(3.0 V)", "trace(widthUm=3)", "resistor(20 Ω)"] },
+      "pass_criteria": [
+        { "check": "failure_event", "condition": "trace_fusing event with traceTempC ≥ 1085 °C (06 JSON cu_melting_c)" },
+        { "check": "forensic_report", "condition": "P = I²·R(T) + Onderdonk equation string present" }
+      ],
+      "failure_mode_teaches": "electro-thermal feedback R(T) = R₀(1+α(T−T₀)); 260 °C FR-4 delamination contrast mission available"
+    },
+    {
+      "id": "M4-Q4-INVERTER",
+      "layer": 2,
+      "title": "Q4 Inverter Noise Margins",
+      "workspace": "silicon",
+      "objective": "Drive the verified q4_inv cell across all four input digits and measure per-level noise margins.",
+      "setup": { "components": ["rail(1.8 V)", "q4_inv", "resistor(100 kΩ)", "probe"] },
+      "pass_criteria": [
+        { "check": "solver_output", "condition": "for each input level Lk ∈ {0, 0.6, 1.2, 1.8} V the output lands within ±0.3 V of the mapped level 3−k (03 JSON q4_inv transfer)" },
+        { "check": "solver_output", "condition": "per-level noise margin ≥ VDD/(2·(R−1)) = 0.3 V (03 JSON noise_margin_bounds)" }
+      ],
+      "failure_mode_teaches": "binary-vs-Q4 noise-margin shootout comparison"
+    },
+    {
+      "id": "M5-CUSTOM-IC",
+      "layer": 2,
+      "title": "Package Your First Custom IC",
+      "workspace": "silicon",
+      "objective": "Compose a working circuit into a reusable black-box custom IC with auto-extracted macro-model.",
+      "setup": { "components": ["user-built circuit from M1-M4 parts"] },
+      "pass_criteria": [
+        { "check": "macro_model", "condition": "extracted timing arcs within ±5% and dynamic power within ±10% of the internal netlist solve (custom-ic.schema.json contract)" },
+        { "check": "reusability", "condition": "the IC instantiates in a fresh schematic and reproduces its internal behavior through the macro-model" }
+      ],
+      "failure_mode_teaches": "hierarchical composition Layer 1 → Layer 2"
+    },
+    {
+      "id": "M6-TPU-GEMM",
+      "layer": 3,
+      "title": "Systolic TPU Matmul & Utilization",
+      "workspace": "soc",
+      "objective": "Run a 32×32 INT8 GEMM on the 8×8 systolic array; read utilization, cycles, and per-tile heat.",
+      "setup": { "workload": "quantized 32×32 GEMM (chip-engine)", "grid": "8×8 INT8/QDQ" },
+      "pass_criteria": [
+        { "check": "exact_output", "condition": "C matrix equals exact INT8-accumulated reference math (chip-engine test oracle)" },
+        { "check": "cycle_model", "condition": "cycles = ceil(M/8)·ceil(N/8)·(K+2·8−2) (05 JSON systolic cycle equation)" },
+        { "check": "thermal", "condition": "per-tile activity drives Fourier thermal colors (0..1 normalized)" }
+      ],
+      "failure_mode_teaches": "utilization loss on small matrices; INT32 accumulator bounds (K ≤ 33038)"
+    },
+    {
+      "id": "M7-UNIFIED-MEMORY",
+      "layer": 4,
+      "title": "Unified Memory vs Discrete PCIe",
+      "workspace": "soc",
+      "objective": "Run the same inference under discrete-PCIE and unified-memory architectures and compare cycles/bandwidth/energy.",
+      "setup": { "workload": "memory-bound M=1 N=4096 K=4096 GEMV (LLM-decode shape)" },
+      "pass_criteria": [
+        { "check": "comparison", "condition": "unified-memory total cycles < discrete-PCIE total cycles (zero-copy: weights resident)" },
+        { "check": "comparison", "condition": "Q4 NPU bytes-on-bus < INT8 NPU bytes-on-bus (2 digits/byte packing)" },
+        { "check": "badge", "condition": "results carry the SIMULATED_ARCHITECTURAL_MODEL badge" }
+      ],
+      "failure_mode_teaches": "Roofline: memory-bound workloads amplify architecture differences"
+    },
+    {
+      "id": "M8-DVFS-THERMAL",
+      "layer": 4,
+      "title": "DVFS Thermal Throttling",
+      "workspace": "soc",
+      "objective": "Push tile frequency until the junction hits the 200 °C Si thermal-runaway alarm; observe throttling.",
+      "setup": { "workload": "sustained matmul with tilePowerScale ramp" },
+      "pass_criteria": [
+        { "check": "failure_event", "condition": "si_thermal_runaway warn event at ≥ 200 °C junction (06 JSON)" },
+        { "check": "controller", "condition": "DVFS loop reduces frequency when T > 125 °C envelope max (05 JSON valid_operating_envelope)" }
+      ],
+      "failure_mode_teaches": "P = αCV²f vs. leakage doubling every ~10 °C above onset"
+    },
+    {
+      "id": "M9-LINDBLAD-DECAY",
+      "layer": 5,
+      "title": "T1/T2 Decay Under Real Noise",
+      "workspace": "quantum",
+      "objective": "Prepare |1⟩, watch amplitude damping decay; verify against the analytic exponential.",
+      "setup": { "device": "transmon (04 JSON: T1 = 100 µs, T2 = 150 µs)" },
+      "pass_criteria": [
+        { "check": "solver_output", "condition": "population(T1) = e⁻¹ ± 0.02 of the analytic value (Lindblad test oracle)" },
+        { "check": "solver_output", "condition": "coherence(T2) = 0.5·e⁻¹ ± 0.02" }
+      ],
+      "failure_mode_teaches": "open-system dynamics; trace preservation Tr(ρ)=1"
+    },
+    {
+      "id": "M10-CRYO-QUENCH",
+      "layer": 5,
+      "title": "Cryogenic Quench Forensics",
+      "workspace": "quantum",
+      "objective": "Overdrive the 15 mK mixing chamber past 12 mW and capture the quench collapse.",
+      "setup": { "device": "dilution cryostat (06 JSON: Q_cool(15 mK) = 12 mW)" },
+      "pass_criteria": [
+        { "check": "failure_event", "condition": "cryo_quench event when Q_load > 12 mW (strict >)" },
+        { "check": "solver_output", "condition": "dT/dt = (Q_load − Q_cool(T))/C_th drives stage past the 1.2 K Al Tc; all Bloch spheres collapse" }
+      ],
+      "failure_mode_teaches": "quadratic dilution cooling Q ∝ (T/100 mK)²; ≈4 h real recovery time"
+    },
+    {
+      "id": "M11-SURFACE-CODE",
+      "layer": 5,
+      "title": "Error Correction Beats Physics",
+      "workspace": "quantum",
+      "objective": "Run the Pauli-frame QEC sweep and show logical error < physical error.",
+      "setup": { "device": "d3 repetition surface segment + 3-qubit bit-flip code" },
+      "pass_criteria": [
+        { "check": "sweep", "condition": "logical error rate at p = 0.05 strictly below the physical rate (quadratic suppression)" },
+        { "check": "determinism", "condition": "fixed seed reproduces the exact sweep table" }
+      ],
+      "failure_mode_teaches": "syndrome extraction, weight-1 decoding, threshold behavior"
+    }
+  ],
+  "grading_note": "All pass criteria are evaluated by the platform's own solver outputs and unit-test oracles — the Academy never grades on visual appearance, only on machine-checkable physics."
+}

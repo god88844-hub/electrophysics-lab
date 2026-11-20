@@ -5,6 +5,7 @@
   "source_citation": "CODATA 2022 recommended values of the fundamental physical constants (2022 adjustment). NIST SP 96b. Published 2024. DOI: 10.5281/zenodo.10767569",
   "source_url": "https://physics.nist.gov/cuu/Constants/index.html",
   "license_or_access": "public domain (NIST)",
+  "units": { "system": "SI (CODATA 2022)", "length": "m", "mass": "kg", "time": "s", "current": "A", "temperature": "K" },
   "parameters": {
     "elementary_charge": {
       "symbol": "q_e",

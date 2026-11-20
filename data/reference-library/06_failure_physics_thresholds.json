@@ -5,6 +5,7 @@
   "source_citation": "Black's equation (J.R. Black, IEEE Proc. 1967); Planck's law of blackbody radiation (Planck, 1901); Wikipedia: Black-body radiation (for CIE 1931 RGB color mapping); Bluefors XLD400 dilution refrigerator datasheet; SKY130 PDK reliability specifications",
   "source_url": "https://en.wikipedia.org/wiki/Black-body_radiation, https://en.wikipedia.org/wiki/Electromigration, https://www.bluefors.com/products/xld400-dilution-refrigerator",
   "license_or_access": "public domain (physics equations); SKY130 PDK reliability specs (Apache-2.0)",
+  "units": {"system":"SI","temperature_c":"°C","temperature_k":"K","power":"W","voltage":"V","color_rgb":"0-255 uint8"},
   "parameters": {
     "blackbody_rgb_temperature_curve": {
       "description": "Blackbody radiation visible colour mapped from Planck's law to RGB via CIE 1931 colour space — used for thermal-glow shader effects from 300 K to 2500 K",

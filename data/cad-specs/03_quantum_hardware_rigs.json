@@ -1,0 +1,56 @@
+{
+  "id": "03_quantum_hardware_rigs",
+  "domain": "parametric-cad-quantum-rigs",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "Dilution refrigerator stage figures from Bluefors XLD400 published datasheet (cited in 04/06 reference JSONs); OFHC copper RRR and gold plating from published cryogenic engineering references (NIST cryogenic material properties); transmon die structure (CPW resonators, Josephson junctions, sapphire/niobium) from published transmon architecture literature (Koch et al. 2007 transmon; Blais et al. 2021 cQED review); SOI MZI photonic chip from 04_quantum_hardware_modalities.json silicon_photonic_soi; UHV chamber and 87Rb tweezer array from 04_quantum_hardware_modalities.json neutral_atom_rubidium87 (Ebadi et al., Nature 612, 2023).",
+  "source_url": "https://www.bluefors.com/products/xld400-dilution-refrigerator, https://arxiv.org/abs/2102.06963",
+  "license_or_access": "public (vendor datasheets + peer-reviewed publications)",
+  "units": { "length": "cm", "workspace": "Quantum Lab" },
+  "dilution_cryostat": {
+    "stages": [
+      { "label": "300 K", "y_cm": 3.1, "plate_radius_cm": 1.35, "plate_thickness_cm": 0.1, "cooling_power_w": null, "color": "24k brushed gold #d4af37, metalness 0.92, roughness 0.24", "material": "OFHC copper, gold-plated (RRR > 100)" },
+      { "label": "4 K", "y_cm": 2.25, "plate_radius_cm": 1.15, "cooling_power_w": 1.5, "material": "OFHC copper gold-plated" },
+      { "label": "100 mK", "y_cm": 1.45, "plate_radius_cm": 0.95, "cooling_power_w": 0.1, "material": "OFHC copper gold-plated" },
+      { "label": "15 mK", "y_cm": 0.72, "plate_radius_cm": 0.78, "cooling_power_w": 0.012, "material": "OFHC copper gold-plated (mixing chamber)" }
+    ],
+    "cooling_power_source": "06_failure_physics_thresholds.json cryogenic_mixing_chamber_quench (Bluefors XLD400)",
+    "components": [
+      { "name": "coaxial microwave lines", "count": 7, "material": "stainless steel SMA bundles #9aa2ad", "routing": "canister → 4 K → 100 mK → 15 mK, attenuator barrels at each stage" },
+      { "name": "thermal straps", "count": 2, "material": "braided OFHC copper #8a6f4d", "routing": "4 K→100 mK, 100 mK→15 mK" },
+      { "name": "support rods", "count": 4, "material": "stainless steel, G10 spacers implied at stage boundaries" },
+      { "name": "canister", "radius_cm": 0.52, "height_cm": 0.5, "material": "stainless steel" }
+    ]
+  },
+  "transmon_die": {
+    "size_cm": 0.5,
+    "substrate": "dark sapphire #10141c (mirror-polished, clearcoat 0.8)",
+    "qubits": 16,
+    "pad_grid": "4×4 gold pads, 0.1 cm pitch",
+    "coplanar_waveguides": { "rows": 3, "meander_span_cm": 0.34, "conductor_width_cm": 0.02, "material": "niobium silver #aab2bd", "note": "λ/4 CPW resonators coupling pads to readout line" },
+    "josephson_junctions": { "count": 16, "marker_size_cm": 0.018, "material": "gold marker #d9a441", "note": "Al/AlOx/Al junctions represented by markers at pad intersections" },
+    "superconducting_transition_note": "Al Tc ≈ 1.2 K — quench visualization collapses coherence above this (06 JSON)"
+  },
+  "photonic_mzi_chip": {
+    "size_cm": { "w": 1.7, "h": 1.2 },
+    "substrate": "SOI dark silicon",
+    "waveguides": { "count": 2, "material": "silicon ridge, 1550 nm presentation #ffc46b", "propagation_loss_db_per_cm": 0.5, "source": "04_quantum_hardware_modalities.json silicon_photonic_soi" },
+    "directional_couplers": { "count": 1, "material": "brushed gold block" },
+    "thermo_optic_heaters": { "p_pi_mw": 5.0, "material": "metallic heater pads over waveguides" },
+    "edge_grating_couplers": { "count": 2, "note": "grating in/out couplers at die edges" }
+  },
+  "neutral_atom_uhv_chamber": {
+    "chamber": { "type": "stainless-steel UHV chamber with glass viewports", "vacuum_torr": 1e-10, "source": "04_quantum_hardware_modalities.json neutral_atom_rubidium87 vacuum_pressure_torr" },
+    "optical_table": { "size_cm": { "w": 2.4, "h": 1.8 }, "material": "matte black #1c212b" },
+    "tweezer_grid": { "rows": 8, "cols": 8, "atom_color": "#ff6d8a", "atom_radius_cm": 0.035, "lattice_pitch_cm": 0.12, "trap_depth_mhz": 100.0 },
+    "rydberg_blockade_halos": { "radius_cm": 0.085, "count": 12, "note": "ring halos around atoms inside each other's blockade radius; V = C6/r6 with C6 = 500 GHz·µm6 (04 JSON)" },
+    "lasers": { "rydberg_nm": 480, "trap_nm": 780.24, "presentation": "blue translucent beam + focused cones" }
+  },
+  "bloch_instrumentation": {
+    "docked_panel": "bottom instrument dock Bloch tab — three mini spheres (q0..q2) fed by Lindblad readouts",
+    "hud_overlay_toggle": "optional in-scene spheres via Quantum inspector (default OFF)",
+    "sphere_radius_cm": 0.42
+  },
+  "parametric_bindings": {
+    "generator_contract": "Bay1Quantum renders the cryostat/die/MZI/tweezer rig from these dimensions; stage temps drive plate emissive via the cryo ODE; every dimension traces to 03/04/06 JSON or this file"
+  }
+}
