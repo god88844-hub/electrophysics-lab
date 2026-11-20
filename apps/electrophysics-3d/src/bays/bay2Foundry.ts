@@ -80,29 +80,29 @@ export class Bay2Foundry {
   private materialForLayer(key: LayerKey): { mat: THREE.MeshStandardMaterial; kind: 'slab' | 'vias' } {
     switch (key) {
       case 'substrate':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0x161c28, metalness: 0.5, roughness: 0.32 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0x1a2029, metalness: 0.5, roughness: 0.32 }), kind: 'slab' };
       case 'nwell':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0x2e6e58, transparent: true, opacity: 0.7, metalness: 0.25, roughness: 0.45 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0x6a6a3f, transparent: true, opacity: 0.7, metalness: 0.25, roughness: 0.45 }), kind: 'slab' };
       case 'psub':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0x35506e, transparent: true, opacity: 0.66, metalness: 0.25, roughness: 0.5 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0x3d4450, transparent: true, opacity: 0.66, metalness: 0.25, roughness: 0.5 }), kind: 'slab' };
       case 'diffusion':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0x6e5a4e, metalness: 0.35, roughness: 0.5 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0x7a5a48, metalness: 0.35, roughness: 0.5 }), kind: 'slab' };
       case 'poly':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0x5e6b80, metalness: 0.4, roughness: 0.48 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0x8a3f38, metalness: 0.4, roughness: 0.48 }), kind: 'slab' };
       case 'li1':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0x8a92a2, metalness: 0.85, roughness: 0.3 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0x8f949c, metalness: 0.85, roughness: 0.3 }), kind: 'slab' };
       case 'mcon':
         return { mat: new THREE.MeshStandardMaterial({ color: 0x7c8496, metalness: 0.9, roughness: 0.3 }), kind: 'vias' };
       case 'met1':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0xbfc5cf, metalness: 0.95, roughness: 0.22 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0x3d6a8a, metalness: 0.95, roughness: 0.22 }), kind: 'slab' };
       case 'via':
         return { mat: new THREE.MeshStandardMaterial({ color: 0xbfc5cf, metalness: 0.95, roughness: 0.25 }), kind: 'vias' };
       case 'met2':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0xcdd3dd, metalness: 0.95, roughness: 0.2 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: 0.95, roughness: 0.2 }), kind: 'slab' };
       case 'via2':
         return { mat: new THREE.MeshStandardMaterial({ color: 0xcdd3dd, metalness: 0.95, roughness: 0.25 }), kind: 'vias' };
       case 'met3':
-        return { mat: new THREE.MeshStandardMaterial({ color: 0xdbe1ea, metalness: 0.95, roughness: 0.18 }), kind: 'slab' };
+        return { mat: new THREE.MeshStandardMaterial({ color: 0xd9a441, metalness: 0.95, roughness: 0.18 }), kind: 'slab' };
     }
   }
 

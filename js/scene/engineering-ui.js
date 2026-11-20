@@ -1,3 +1,4 @@
+import {attachPanelClose} from '../ui/panel-close.mjs';
 import {setCADEnvelope,dimensionedAssembly} from './dimensioned-cad.js';
 import {parseMillimetreOBJ,objTrianglesForPart} from './imported-obj-geometry.js';
 import {simulateWireThermal,simulateSegmentedWireThermal} from './wire-electrothermal.js';
@@ -112,6 +113,7 @@ export function attachEngineeringWorkbench(root,controls,diagramAccessor,onChang
  };
  button.addEventListener('click',()=>{panel.hidden=!panel.hidden;
   button.setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden)update();});
+ attachPanelClose({panel,toggle:button,label:'Close engineering CAD panel'});
  selector.addEventListener('change',load);
  save.addEventListener('click',()=>{
   try{

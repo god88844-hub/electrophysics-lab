@@ -43,6 +43,32 @@ export class Bay3Soc {
   }
 
   private buildBoard(): void {
+    // Silkscreen legend + ENIG gold bond pads + BGA solder balls (real PCB).
+    const silkscreen = makeTextSprite('EL-LAB SOC REV C · J1 · U1-U5', { scale: 1.6, color: '#dfe5ec', background: 'none', fontSize: 26 });
+    silkscreen.position.set(-3.4, 0.63, 3.2);
+    this.group.add(silkscreen);
+    const enigMat = MAT.enigGold;
+    const pads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.012, 0.12), enigMat, 40);
+    const ballMat = MAT.bgaSolder;
+    const balls = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 8, 6), ballMat, 40);
+    const dummy = new THREE.Object3D();
+    let pi = 0;
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 8; col++) {
+        const px = -2.4 + col * 0.62;
+        const pz = 2.9;
+        dummy.position.set(px, 0.62, pz);
+        dummy.rotation.set(0, 0, 0);
+        dummy.updateMatrix();
+        pads.setMatrixAt(pi, dummy.matrix);
+        dummy.position.y = 0.4;
+        dummy.updateMatrix();
+        balls.setMatrixAt(pi, dummy.matrix);
+        pi++;
+      }
+    }
+    this.group.add(pads, balls);
+
     // Translucent green/black PCB interposer stack.
     const pcb = new THREE.Mesh(new THREE.BoxGeometry(10.5, 0.22, 7), MAT.pcbGreen);
     pcb.position.y = 0.5;
@@ -151,13 +177,7 @@ export class Bay3Soc {
     // through in the assembled state.
     const lid = new THREE.Mesh(
       new THREE.BoxGeometry(8.9, 0.12, 5.6),
-      new THREE.MeshPhysicalMaterial({
-        color: 0x1a2130,
-        metalness: 0.4,
-        roughness: 0.18,
-        transparent: true,
-        opacity: 0.3,
-      })
+      MAT.aluHeatSpreader
     );
     lid.position.y = 1.35;
     lid.name = 'packageLid';

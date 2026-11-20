@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ElectronFlow } from './engine/electronFlow.js';
 import { MAT } from './bays/materials.js';
 import { makeTextSprite } from './engine/labels.js';
+import { makeBreadboardTexture } from './bays/materials.js';
 import { Bay1Quantum, type Bay1Mode } from './bays/bay1Quantum.js';
 import { Bay2Foundry } from './bays/bay2Foundry.js';
 import { Bay3Soc } from './bays/bay3Soc.js';
@@ -124,6 +125,30 @@ export class LabWorld {
 
   private lastSnapshot: PhysicsSnapshot | null = null;
 
+  private sandboxGroup = new THREE.Group();
+
+  /** Render user-placed sandbox components on the Bay 2 bench (real meshes). */
+  setSandboxComponents(components: Array<{ id: string; kind: string; position: [number, number] }>): void {
+    this.bay2.group.add(this.sandboxGroup);
+    for (const child of [...this.sandboxGroup.children]) {
+      this.sandboxGroup.remove(child);
+    }
+    for (const c of components) {
+      const [sx, sz] = c.position;
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.16, 0.34),
+        new THREE.MeshStandardMaterial({ color: 0x5a4a38, metalness: 0.6, roughness: 0.4 })
+      );
+      mesh.position.set(-2 + sx * 1.4, this.bay2.layerY('met3') + 0.35, -1.4 + sz * 1.2);
+      mesh.castShadow = true;
+      mesh.name = 'sandbox-' + c.id;
+      this.sandboxGroup.add(mesh);
+      const label = makeTextSprite(c.kind, { scale: 0.4, color: '#ffd98a', fontSize: 30 });
+      label.position.set(mesh.position.x, mesh.position.y + 0.3, mesh.position.z);
+      this.sandboxGroup.add(label);
+    }
+  }
+
   /** Map a live (or replayed) physics snapshot onto every physics-driven visual. */
   applyPhysicsSnapshot(s: PhysicsSnapshot): void {
     this.lastSnapshot = s;
@@ -196,18 +221,29 @@ export class LabWorld {
   }
 
   private buildFloor(): void {
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 46), MAT.floor);
+    // Real precision optical breadboard: matte anodized dark-slate aluminum
+    // with an M6 tapped-hole grid on 25 mm centers (procedural texture).
+    const tex = makeBreadboardTexture();
+    tex.repeat.set(20, 11.5);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(80, 46),
+      new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, metalness: 0.55, roughness: 0.85 })
+    );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.01;
     floor.receiveShadow = true;
     this.scene.add(floor);
-    const grid = new THREE.GridHelper(80, 80, 0x1e3a5f, 0x111a28);
-    grid.position.y = 0.005;
-    this.scene.add(grid);
-    // Bay divider strips (cleanly separated labs).
+    // Anti-static ESD bench mats under the foundry and SoC bays.
+    for (const x of [BAY_DEFS[1].x, BAY_DEFS[2].x]) {
+      const mat = new THREE.Mesh(new THREE.BoxGeometry(14, 0.02, 9), MAT.esdMat);
+      mat.position.set(x, 0.005, 0);
+      mat.receiveShadow = true;
+      this.scene.add(mat);
+    }
+    // Machined bay divider channels (brushed steel, not neon).
     for (const x of [-12, -4, 4, 12]) {
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 40), new THREE.MeshStandardMaterial({ color: 0x223047, roughness: 0.8 }));
-      strip.position.set(x, 0.01, 0);
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 40), MAT.stainless);
+      strip.position.set(x, 0.012, 0);
       this.scene.add(strip);
     }
   }

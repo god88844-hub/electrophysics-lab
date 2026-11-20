@@ -1,4 +1,10 @@
 import React, { useEffect, useRef } from 'react';
+import type { SandboxComponent } from '../state/store.js';
+
+/** Live-execution hooks for the Bay 3 SoC twin (lazy import keeps boot light). */
+async function chipEngine() {
+  return import('@chip/index.mjs');
+}
 import type { LabState } from '../state/store.js';
 import { Q4_PRIMITIVES, REFERENCE, TRANSMON } from '../data/reference.js';
 import { physicsClient } from '../physics/physicsClient.js';
@@ -32,7 +38,7 @@ function ConvergenceChart({ history }: { history: Array<{ k: number; error: numb
     ctx.font = '10px monospace';
     ctx.fillText(`error ${history[history.length - 1].error.toFixed(4)}`, 8, 12);
   }, [history]);
-  return <canvas ref={ref} width={280} height={90} style={{ width: '100%', borderRadius: 6, border: '1px solid #223042' }} />;
+  return <canvas ref={ref} width={280} height={90} style={{ width: '100%', borderRadius: 6, border: '1px solid #3a4250' }} />;
 }
 
 export interface BayPanelProps {
@@ -44,11 +50,11 @@ export interface BayPanelProps {
 const sectionStyle: React.CSSProperties = {
   marginBottom: 14,
   padding: '10px 12px',
-  background: 'rgba(22,30,42,0.6)',
+  background: 'rgba(28,33,41,0.72)',
   borderRadius: 10,
-  border: '1px solid #223042',
+  border: '1px solid #3a4250',
 };
-const labelStyle: React.CSSProperties = { color: '#8ea1b8', fontSize: 11, marginBottom: 6, letterSpacing: '0.06em' };
+const labelStyle: React.CSSProperties = { color: '#aeb9c8', fontSize: 11, marginBottom: 6, letterSpacing: '0.06em' };
 const btnStyle = (active: boolean, color: string): React.CSSProperties => ({
   background: active ? color : 'transparent',
   color: active ? '#0a0e14' : '#8ea1b8',
@@ -80,7 +86,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
         <div style={sectionStyle}>
           <div style={labelStyle}>CRYO STAGES (04 / 06 REFERENCE)</div>
           {stages.map((s) => (
-            <div key={s} style={{ color: '#cfe2f7', fontSize: 12.5, display: 'flex', justifyContent: 'space-between' }}>
+            <div key={s} style={{ color: '#eceff4', fontSize: 12.5, display: 'flex', justifyContent: 'space-between' }}>
               <span>{s}</span>
               <span style={{ color: '#4e5d70', fontFamily: 'monospace' }}>
                 {s === '15 mK' ? 'Q_max 12 mW' : s === '100 mK' ? 'Q_max 100 mW' : s === '4 K' ? 'Q_max 1.5 W' : 'ambient'}
@@ -93,7 +99,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>MICROWAVE DRIVE LOAD (dT/dt = (Q_load − Q_cool)/C_th)</div>
-          <div style={{ color: '#8ea1b8', fontSize: 11, marginBottom: 6 }}>
+          <div style={{ color: '#aeb9c8', fontSize: 11, marginBottom: 6 }}>
             Q_load = {state.drivePowerMW} mW · quench threshold 12 mW
           </div>
           <input
@@ -109,14 +115,14 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
             }}
             style={{ width: '100%', accentColor: '#4fc3f7' }}
           />
-          <div style={{ color: '#6f8aa8', fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>
+          <div style={{ color: '#8fa0b4', fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>
             Overdrive the 15 mK stage to trigger a real thermal quench — T₁/T₂ collapse across the die. Physical
             recovery in a real fridge ≈ 4 h.
           </div>
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>TRANSMON (04 REFERENCE)</div>
-          <div style={{ color: '#6f8aa8', fontSize: 11, lineHeight: 1.5 }}>
+          <div style={{ color: '#8fa0b4', fontSize: 11, lineHeight: 1.5 }}>
             T₁ ≈ {TRANSMON.t1_us.typical} µs · T₂ ≈ {TRANSMON.t2_us.typical} µs · ZZ crosstalk ≈{' '}
             {TRANSMON.zz_crosstalk_khz.typical} kHz · readout {TRANSMON.readout_fidelity.typical}
           </div>
@@ -135,7 +141,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>PULSE EDITOR (DRAG, 25 ns GATE)</div>
-          <div style={{ color: '#8ea1b8', fontSize: 11 }}>amplitude {state.pulseParams.amplitude} MHz</div>
+          <div style={{ color: '#aeb9c8', fontSize: 11 }}>amplitude {state.pulseParams.amplitude} MHz</div>
           <input
             type="range"
             min={5}
@@ -149,7 +155,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
             }}
             style={{ width: '100%', accentColor: '#4fc3f7' }}
           />
-          <div style={{ color: '#8ea1b8', fontSize: 11 }}>σ {state.pulseParams.sigmaNs} ns · DRAG β {state.pulseParams.beta.toFixed(2)}</div>
+          <div style={{ color: '#aeb9c8', fontSize: 11 }}>σ {state.pulseParams.sigmaNs} ns · DRAG β {state.pulseParams.beta.toFixed(2)}</div>
           <input
             type="range"
             min={3}
@@ -193,7 +199,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>AI CO-INVENTOR — DISCOVERY EXPERIMENT</div>
-          <div style={{ color: '#6f8aa8', fontSize: 11, lineHeight: 1.5, marginBottom: 8 }}>
+          <div style={{ color: '#8fa0b4', fontSize: 11, lineHeight: 1.5, marginBottom: 8 }}>
             Minimize X-gate error under real T₁/T₂ + ZZ crosstalk (fixed-seed SPSA → Nelder–Mead against the Lindblad
             solver). Reproducible: identical seed ⇒ identical trace.
           </div>
@@ -282,14 +288,14 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
       <div>
         <div style={sectionStyle}>
           <div style={labelStyle}>LIVE ELECTRO-THERMAL BENCH (MNA + HEAT PDE)</div>
-          <div style={{ color: '#cfe2f7', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.7 }}>
+          <div style={{ color: '#eceff4', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.7 }}>
             VDD {ph ? ph.vdd.toFixed(2) : '1.80'} V · V_out(Q4) {ph ? ph.voutQ4.toFixed(2) : '—'} V
             <br />
             I_rail {ph ? Math.abs(ph.iRail * 1000).toFixed(1) : '—'} mA · T_trace {ph ? ph.traceC.toFixed(0) : '27'} °C
             <br />
             T_junction {ph ? ph.junctionC.toFixed(0) : '27'} °C {ph?.melted ? '· RAIL FUSED' : ''}
           </div>
-          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>
+          <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>
             Supply voltage VDD (SOA ceiling 1.95 V · nominal 1.80 V)
           </div>
           <input
@@ -305,7 +311,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
             }}
             style={{ width: '100%', accentColor: '#ffc107' }}
           />
-          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>Q4 gate drive level</div>
+          <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>Q4 gate drive level</div>
           {[0, 0.6, 1.2, 1.8].map((lvl) => (
             <button
               key={lvl}
@@ -315,7 +321,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
               {lvl} V
             </button>
           ))}
-          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>Load resistance</div>
+          <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>Load resistance</div>
           {[10000, 100000, 1000000].map((r) => (
             <button
               key={r}
@@ -327,11 +333,104 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
           ))}
         </div>
         <div style={sectionStyle}>
+          <div style={labelStyle}>SANDBOX WORKBENCH — BUILD &amp; STRESS REAL NETLISTS</div>
+          <button
+            style={btnStyle(state.sandboxOpen, '#ffc107')}
+            onClick={() => dispatch({ sandboxOpen: !state.sandboxOpen })}
+          >
+            {state.sandboxOpen ? 'Hide component palette' : 'Open component palette (starts closed)'}
+          </button>
+          {state.sandboxOpen && (
+            <div>
+              <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 6, marginBottom: 4 }}>
+                Place components on the bench; wires connect declared node names. Live compile → MNA + thermal solver.
+              </div>
+              {(['nmos', 'pmos', 'trace', 'resistor', 'rail', 'gnd', 'q4_inv', 'q4_half_adder', 'cmos_inv', 'binary_half_adder', 'probe'] as const).map((kind) => (
+                <button
+                  key={kind}
+                  style={btnStyle(false, '#ffc107')}
+                  onClick={() => {
+                    const n = state.sandboxComponents.length;
+                    const comp: SandboxComponent = {
+                      id: kind + '_' + n,
+                      kind,
+                      params: kind === 'trace' ? { widthUm: 10, lengthUm: 500 } : kind === 'rail' ? { V: state.vddSlider } : undefined,
+                      nodes: kind === 'nmos' ? ['gate', 'drain', 'gnd']
+                        : kind === 'pmos' ? ['gate', 'drain', 'vdd']
+                        : kind === 'rail' ? ['vdd']
+                        : kind === 'gnd' ? ['gnd']
+                        : kind === 'probe' ? ['drain']
+                        : ['in', 'drain', 'vdd'],
+                      position: [n % 4, Math.floor(n / 4) % 3],
+                    };
+                    dispatch({ sandboxComponents: [...state.sandboxComponents, comp] });
+                  }}
+                >
+                  + {kind}
+                </button>
+              ))}
+              <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>One-click starter circuits (real thresholds preserved)</div>
+              {(['q4-half-adder', 'noise-margin-shootout', 'oxide-breakdown', 'trace-fusing'] as const).map((name) => (
+                <button
+                  key={name}
+                  style={btnStyle(false, '#8ef0b2')}
+                  onClick={async () => {
+                    const { starterCircuit } = await import('@physics/index.mjs');
+                    const spec = starterCircuit(name);
+                    const comps = (spec.components ?? []).map((c: { id: string; kind: string; position?: number[] }, i: number) => ({
+                      id: c.id, kind: c.kind, params: (c as { params?: Record<string, unknown> }).params,
+                      nodes: (c as { nodes?: string[] }).nodes ?? [],
+                      position: [c.position?.[0] ?? i % 4, c.position?.[1] ?? Math.floor(i / 4)] as [number, number],
+                    }));
+                    dispatch({ sandboxComponents: comps, sandboxLoaded: true });
+                    physicsClient.setNetlist(spec);
+                    flashToast('Starter circuit compiled into the live MNA solver');
+                  }}
+                >
+                  {name}
+                </button>
+              ))}
+              <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>
+                Placed: {state.sandboxComponents.length}
+              </div>
+              {state.sandboxComponents.map((c) => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'monospace', color: '#eceff4' }}>
+                  <span>{c.id} · {c.kind}</span>
+                  <button
+                    style={{ background: 'none', border: '1px solid #4a3028', color: '#c9a29a', borderRadius: 5, cursor: 'pointer', fontSize: 10 }}
+                    onClick={() => {
+                      const rest = state.sandboxComponents.filter((x) => x.id !== c.id);
+                      dispatch({ sandboxComponents: rest });
+                      if (rest.length === 0) physicsClient.clearNetlist();
+                    }}
+                  >
+                    delete
+                  </button>
+                </div>
+              ))}
+              {state.sandboxComponents.length > 0 && (
+                <button
+                  style={{ ...btnStyle(false, '#8ef0b2'), marginTop: 8 }}
+                  onClick={async () => {
+                    const { compileSandbox } = await import('@physics/index.mjs');
+                    compileSandbox({ components: state.sandboxComponents, wires: [], rails: { vdd: state.vddSlider } }); // compile-check
+                    physicsClient.setNetlist({ components: state.sandboxComponents, wires: [], rails: { vdd: state.vddSlider } });
+                    dispatch({ sandboxLoaded: true });
+                    flashToast('Sandbox netlist compiled into the live solver');
+                  }}
+                >
+                  Compile &amp; run netlist
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <div style={sectionStyle}>
           <div style={labelStyle}>LAYER-PEEL SLICER (L)</div>
           <button style={btnStyle(state.peelMode === 'exploded', '#ffc107')} onClick={() => dispatch({ peelMode: state.peelMode === 'exploded' ? 'assembled' : 'exploded' })}>
             {state.peelMode === 'exploded' ? 'Exploded stack' : 'Assembled stack'}
           </button>
-          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8 }}>
+          <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8 }}>
             Focal plane: layer {state.peelDepth} / 12 (0 = met3 top · 11 = substrate)
           </div>
           <input
@@ -349,7 +448,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
           {Q4_PRIMITIVES.map((p) => (
             <div key={p.cell_name} style={{ marginBottom: 8 }}>
               <div style={{ color: '#ffd98a', fontSize: 12.5, fontFamily: 'monospace' }}>{p.cell_name}</div>
-              <div style={{ color: '#8ea1b8', fontSize: 11 }}>{p.function}</div>
+              <div style={{ color: '#aeb9c8', fontSize: 11 }}>{p.function}</div>
               <div style={{ color: '#5fd48a', fontSize: 10.5, fontFamily: 'monospace' }}>
                 {p.gate_count} gates · DRC=0 · LVS ✓ · PEX ✓
               </div>
@@ -371,12 +470,12 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>TILE THERMAL ZONES (LIVE HEAT PDE)</div>
-          <div style={{ color: '#cfe2f7', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.7 }}>
+          <div style={{ color: '#eceff4', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.7 }}>
             {ph && ph.pcbC !== undefined
               ? `board max ${ph.pcbC.toFixed(0)} °C (FR-4 delam 260 °C)`
               : 'waiting for solver…'}
           </div>
-          <div style={{ color: '#8ea1b8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>
+          <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>
             Tile power scale (push past 260 °C to trip delamination)
           </div>
           <input
@@ -393,8 +492,57 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
           />
         </div>
         <div style={sectionStyle}>
+          <div style={labelStyle}>LIVE EXECUTION — SOC DIGITAL TWIN</div>
+          <div style={{ color: '#aeb9c8', fontSize: 10.5, fontFamily: 'monospace', marginBottom: 6 }}>
+            badge: SIMULATED_ARCHITECTURAL_MODEL
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button style={btnStyle(state.soc.arch === 'discrete', '#26c6da')} onClick={() => dispatch({ soc: { ...state.soc, arch: 'discrete' } })}>Discrete PCIe</button>
+            <button style={btnStyle(state.soc.arch === 'unified', '#26c6da')} onClick={() => dispatch({ soc: { ...state.soc, arch: 'unified' } })}>Unified memory</button>
+            <button style={btnStyle(state.soc.radix === 'int8', '#b08cff')} onClick={() => dispatch({ soc: { ...state.soc, radix: 'int8' } })}>INT8 NPU</button>
+            <button style={btnStyle(state.soc.radix === 'q4', '#b08cff')} onClick={() => dispatch({ soc: { ...state.soc, radix: 'q4' } })}>Q4 NPU</button>
+          </div>
+          <button style={{ ...btnStyle(false, '#8ef0b2'), marginTop: 8 }} onClick={async () => {
+            const { compareArchitectures, systolicMatmul } = await chipEngine();
+            const A = Array.from({ length: 32 }, (_, i) => Array.from({ length: 32 }, (_, k) => ((i * 7 + k * 13) % 120) - 60));
+            const B = Array.from({ length: 32 }, (_, k) => Array.from({ length: 32 }, (_, j) => ((k * 5 + j * 3) % 120) - 60));
+            const run = systolicMatmul(A, B, { gridSize: 8, clockMHz: 700, vdd: 0.8 });
+            const cmp = compareArchitectures({ M: 32, N: 32, K: 32 });
+            const pick = state.soc.arch === 'unified' ? cmp.unifiedInt8 : cmp.discreteInt8;
+            physicsClient.setTilePower(Math.min(180, run.dynamicPowerW * 8));
+            worldRef.current?.bay3.setBusActivity([0.9, 0.8, 0.85, 0.7, 0.6]);
+            dispatch({ soc: { ...state.soc, result: {
+              cycles: run.cycles, utilization: run.utilization, macOps: run.macOps, dynamicPowerW: run.dynamicPowerW,
+              archCycles: pick.totalCycles, bandwidthGBps: pick.bandwidthGBps, energyPerOpPJ: pick.energyPerOpPJ,
+              hotspotC: pick.hotspotC, badge: cmp.badge, radix: state.soc.radix, arch: state.soc.arch } } });
+            flashToast('SoC workload executed — tiles heating via the Fourier solver');
+          }}>Run quantized workload</button>
+          {state.soc.result && (
+            <div style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
+              <div>TPU cycles {String(state.soc.result.cycles)} · util {Number(state.soc.result.utilization).toFixed(3)}</div>
+              <div>MAC ops {String(state.soc.result.macOps)} · P = {Number(state.soc.result.dynamicPowerW).toFixed(2)} W</div>
+              <div>{String(state.soc.result.arch)} · {String(state.soc.result.radix)}: {String(state.soc.result.archCycles)} cycles · {Number(state.soc.result.bandwidthGBps).toFixed(1)} GB/s</div>
+              <div>E/op {Number(state.soc.result.energyPerOpPJ).toFixed(1)} pJ · hotspot {Number(state.soc.result.hotspotC).toFixed(0)} °C</div>
+            </div>
+          )}
+          <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 10, marginBottom: 4 }}>RV32IM core</div>
+          <button style={btnStyle(false, '#62d0ff')} onClick={async () => {
+            const { createRV32, asm } = await chipEngine();
+            const cpu = createRV32({ pcStart: 0 });
+            cpu.load([asm.opImm(0, 5, 0, 0), asm.opImm(0, 6, 0, 10), asm.R(0, 6, 5, 0, 5, 0x33), asm.opImm(0, 6, 6, -1), asm.B(-8, 0, 6, 1, 0x63), asm.halt()]);
+            cpu.run(200);
+            dispatch({ soc: { ...state.soc, rv32: { pc: cpu.pc, x5: cpu.regs[5], x6: cpu.regs[6], x7: cpu.regs[7], cycles: cpu.cycles, halted: cpu.halted } } });
+            flashToast('RV32IM sum-1..10 executed — x5 = 55');
+          }}>Run program</button>
+          {state.soc.rv32 && (
+            <div style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
+              PC {String(state.soc.rv32.pc)} · x5 {String(state.soc.rv32.x5)} · x6 {String(state.soc.rv32.x6)} · cycles {String(state.soc.rv32.cycles)}{state.soc.rv32.halted ? ' · HALTED' : ''}
+            </div>
+          )}
+        </div>
+        <div style={sectionStyle}>
           <div style={labelStyle}>TILE POWER MODEL (05 REFERENCE · P = C·V²·f)</div>
-          <div style={{ color: '#cfe2f7', fontSize: 12, lineHeight: 1.7 }}>
+          <div style={{ color: '#eceff4', fontSize: 12, lineHeight: 1.7 }}>
             <div>CPU Cluster — {((REFERENCE.architecture.parameters.riscv_rv32im.power_mw_at_100mhz_130nm / 1000) * 8).toFixed(2)} W idle model</div>
             <div>Systolic TPU 8×8 — {(REFERENCE.architecture.parameters.systolic_array_tpu.power_w.tpu_v1 * 0.08).toFixed(1)} W idle model</div>
             <div>SIMT GPU — {(REFERENCE.architecture.parameters.simt_gpu.power_w.intel_iris_xe_155u_tdp * 0.35).toFixed(1)} W idle model</div>
@@ -410,7 +558,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
       <div>
         <div style={sectionStyle}>
           <div style={labelStyle}>SOA BREAKDOWN BENCH</div>
-          <div style={{ color: '#cfe2f7', fontSize: 12.5, lineHeight: 1.7 }}>
+          <div style={{ color: '#eceff4', fontSize: 12.5, lineHeight: 1.7 }}>
             SKY130 gate-oxide TDDB ceiling: <b style={{ color: '#ff9d7a' }}>V_gs = 1.95 V</b> (E-model γ ≈ 300 dec/V).
             Push Bay 2's VDD slider past the ceiling — the vault records the failure, opens the Forensic Autopsy, and
             shows the slow-motion replay.
@@ -441,7 +589,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>ELECTRO-THERMAL ENGINE</div>
-          <div style={{ color: '#6f8aa8', fontSize: 11.5, lineHeight: 1.6 }}>
+          <div style={{ color: '#8fa0b4', fontSize: 11.5, lineHeight: 1.6 }}>
             MNA (Shichman–Hodges + CLM, numeric Jacobian, source stepping) + 2D FTCS Fourier heat diffusion +
             threshold set from 06_failure_physics_thresholds.json. 240 Hz in a Web Worker.
           </div>
@@ -455,7 +603,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
       <div>
         <div style={sectionStyle}>
           <div style={labelStyle}>OFFLINE PHYSICS LIBRARY</div>
-          <div style={{ color: '#cfe2f7', fontSize: 12.5, marginBottom: 8 }}>
+          <div style={{ color: '#eceff4', fontSize: 12.5, marginBottom: 8 }}>
             {state.integrity.done
               ? state.integrity.allVerified
                 ? `All ${state.integrity.verified}/${state.integrity.total} datasets SHA-256 verified ✓`
@@ -471,7 +619,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>PROVENANCE</div>
-          <div style={{ color: '#6f8aa8', fontSize: 11, lineHeight: 1.6, fontFamily: 'monospace' }}>
+          <div style={{ color: '#8fa0b4', fontSize: 11, lineHeight: 1.6, fontFamily: 'monospace' }}>
             manifest {REFERENCE.manifest.format}
             <br />
             generated {REFERENCE.manifest.generatedAt.slice(0, 10)}
@@ -482,7 +630,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
   }
 
   return (
-    <div style={{ color: '#8ea1b8', fontSize: 12.5, lineHeight: 1.7 }}>
+    <div style={{ color: '#aeb9c8', fontSize: 12.5, lineHeight: 1.7 }}>
       Select a bay (1–5) or click a glowing pedestal. The Inspector Drawer opens per bay; Esc returns to the overview.
     </div>
   );

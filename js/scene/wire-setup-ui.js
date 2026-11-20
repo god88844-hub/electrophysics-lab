@@ -1,4 +1,5 @@
 // Accessible material setup keyed by canonical wire IDs, not visual pixels.
+import {attachPanelClose} from '../ui/panel-close.mjs';
 import {evaluatePhysicalWire,setPhysicalWireAssumption,physicalWireAssumptions} from './physical-wire.js';
 const field=(d,caption,type,value,attributes={})=>{
  const wrapper=d.createElement('label');wrapper.className='scene3d-wire-field';
@@ -70,6 +71,7 @@ export function attachPhysicalWireEditor(parent,controls,diagramAccessor,onChang
   panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));
   if(!panel.hidden)sync();
  });
+ attachPanelClose({panel,toggle,label:'Close wire setup panel'});
  select.addEventListener('change',load);
  apply.addEventListener('click',()=>{
   const diagram=diagramAccessor(),id=select.value;

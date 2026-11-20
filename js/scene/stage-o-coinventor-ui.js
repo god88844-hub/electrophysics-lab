@@ -1,5 +1,6 @@
 // Phase 84–88 interactive panel, explicitly controlled by a human.
 // Tool calls are structured JSON only: there is no remote AI provider.
+import {attachPanelClose} from '../ui/panel-close.mjs';
 import {COINVENTOR_TOOLS,inspectCanonicalScene,planGoal,generateIdealAdderReference,
  proposeCoInventorEdits} from './stage-o-agent-tools.js';
 import {generateTopologyCandidates,exploreTopologies}
@@ -48,6 +49,7 @@ export function attachStageOCoInventor(viewer,onDesignChange=()=>{}){
  function clearProposal(){proposal=null;approve.disabled=true;}
  toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;
   toggle.setAttribute('aria-expanded',String(!panel.hidden));});
+ attachPanelClose({panel,toggle,label:'Close co-inventor panel'});
  goalButton.addEventListener('click',()=>{try{show(planGoal(goal.value));}
   catch(e){show('Objective refused: '+e.message);}});
  generate.addEventListener('click',()=>{try{show(generateIdealAdderReference(goal.value));}

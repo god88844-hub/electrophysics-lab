@@ -38,8 +38,8 @@ export function createRenderer(container: HTMLElement): RendererBundle {
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x070a10);
-  scene.fog = new THREE.Fog(0x070a10, 26, 70);
+  scene.background = new THREE.Color(0x0c0e11);
+  scene.fog = new THREE.Fog(0x0c0e11, 26, 70);
 
   const camera = new THREE.PerspectiveCamera(
     55,
@@ -54,13 +54,13 @@ export function createRenderer(container: HTMLElement): RendererBundle {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envTexture = pmrem.fromScene(new RoomEnvironment(), 0.035).texture;
   scene.environment = envTexture;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.42;
   pmrem.dispose();
 
   // Lighting: one shadowed key, cool fill, warm rim — all cheap.
-  const ambient = new THREE.AmbientLight(0x3a4358, 0.55);
+  const ambient = new THREE.AmbientLight(0xdfe3ea, 0.5);
   scene.add(ambient);
-  const keyLight = new THREE.DirectionalLight(0xf4f6ff, 2.2);
+  const keyLight = new THREE.DirectionalLight(0xf6f7f4, 2.1); // neutral 5600 K studio key
   keyLight.position.set(7, 12, 8);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(1024, 1024);
@@ -71,10 +71,10 @@ export function createRenderer(container: HTMLElement): RendererBundle {
   keyLight.shadow.camera.far = 40;
   keyLight.shadow.bias = -0.0004;
   scene.add(keyLight);
-  const fillLight = new THREE.DirectionalLight(0x6fb8ff, 0.5);
+  const fillLight = new THREE.DirectionalLight(0xdde4ee, 0.45); // soft neutral fill
   fillLight.position.set(-8, 4, 6);
   scene.add(fillLight);
-  const rimLight = new THREE.DirectionalLight(0xffb37a, 0.35);
+  const rimLight = new THREE.DirectionalLight(0xcfd6e0, 0.3);
   rimLight.position.set(-4, 6, -9);
   scene.add(rimLight);
 

@@ -107,3 +107,15 @@ validation claims are made or unlocked; the Phase 3 measurement gates (G1–G7) 
 the only path to `physicalValidation`, and no real-measurement dataset exists in this
 repository. Level-1 `INSUFFICIENT_MODEL_DATA` / Level-2 `UNQUALIFIED_NO_GO` discipline
 applies to all hardware claims.
+
+## v2.1 (M8–M10) verification update
+
+| Suite | Result |
+| --- | --- |
+| `npm test` (incl. panel-close 4, sandbox-netlist 7, chip-engine 7) | **1054 pass / 0 fail / 1 skip** |
+| Playwright: v2 smoke (M7) + close-UX (M8, incl. Phase 0 legacy panels via serve.mjs harness) | 7 pass / 0 fail |
+
+New engines are simulation models and carry their badges: the SoC
+architecture comparison is `SIMULATED_ARCHITECTURAL_MODEL`; failure physics
+still cite 06_failure_physics_thresholds.json exactly (1.95 V / 1085 °C /
+260 °C / 12 mW); no physical-validation claims anywhere.

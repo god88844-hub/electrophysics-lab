@@ -10,3 +10,4 @@ export { RingBuffer } from './ringbuffer.mjs';
 export { evaluateThresholds, proposeFix } from './thresholds.mjs';
 export { buildForensicReport, reportToMarkdown } from './forensics.mjs';
 export { createCryoStage } from './cryo.mjs';
+export { compileSandbox, starterCircuit, traceResistance, SANDBOX_COMPONENT_TYPES } from './sandbox.mjs';

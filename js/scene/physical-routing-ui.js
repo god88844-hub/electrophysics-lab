@@ -1,5 +1,6 @@
 // Physical anchors and harness editor. Every saved coordinate is explicitly
 // user-entered in millimetres, never taken from the schematic 3D canvas.
+import {attachPanelClose} from '../ui/panel-close.mjs';
 import {portsOf} from '../core/block.js';
 import {setPhysicalTerminal,setPhysicalHarness,inspectPhysicalHarnesses} from './physical-routing.js';
 const field=(doc,title,value)=>{
@@ -96,6 +97,7 @@ export function attachPhysicalRoutingEditor(root,controls,diagramAccessor,onChan
   panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));
   if(!panel.hidden)sync();
  });
+ attachPanelClose({panel,toggle,label:'Close physical routing panel'});
  blocks.addEventListener('change',syncPorts);
  ports.addEventListener('change',showPort);
  wires.addEventListener('change',showRoute);

@@ -42,7 +42,29 @@ export interface QuantumExperiment {
   finalError: number | null;
 }
 
+export interface SandboxComponent {
+  id: string;
+  kind: string;
+  params?: Record<string, unknown>;
+  nodes: string[];
+  position: [number, number];
+  label?: string;
+}
+
+export interface SocExec {
+  arch: 'discrete' | 'unified';
+  radix: 'int8' | 'q4';
+  result: Record<string, number | string> | null;
+  rv32: { pc: number; x5: number; x6: number; x7: number; cycles: number; halted: boolean } | null;
+  playing: boolean;
+  speed: number;
+}
+
 export interface LabState {
+  soc: SocExec;
+  sandboxOpen: boolean;
+  sandboxComponents: SandboxComponent[];
+  sandboxLoaded: boolean;
   activeBay: BayId;
   inspectorOpen: boolean;
   bay1Mode: Bay1Mode;
@@ -90,6 +112,10 @@ const initial: LabState = {
   quantumExp: { running: false, k: 0, total: 110, history: [], bundle: null, finalError: null },
   qecCurve: null,
   pulseParams: { amplitude: 25, sigmaNs: 7.5, beta: 0 },
+  sandboxOpen: false,
+  sandboxComponents: [],
+  sandboxLoaded: false,
+  soc: { arch: 'unified', radix: 'int8', result: null, rv32: null, playing: false, speed: 3 },
 };
 
 type Listener = () => void;
