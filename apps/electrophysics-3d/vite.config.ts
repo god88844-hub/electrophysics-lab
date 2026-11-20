@@ -16,6 +16,7 @@ export default defineConfig({
       '@reflib': path.join(repoRoot, 'data', 'reference-library'),
       '@physics': path.join(repoRoot, 'packages', 'physics-engine', 'src'),
       '@quantum': path.join(repoRoot, 'packages', 'quantum-engine', 'src'),
+      '@chip': path.join(repoRoot, 'packages', 'chip-engine', 'src'),
     },
   },
   worker: { format: 'es' },

@@ -97,6 +97,11 @@ class PhysicsClient {
     this.ensure().postMessage({ type: 'clearNetlist' });
   }
 
+  /** Live SoC power → thermal coupling (watts scale for the tile heat grid). */
+  setTilePower(wattsPerTile: number): void {
+    this.ensure().postMessage({ type: 'setTilePower', wattsPerTile });
+  }
+
   setParams(patch: Record<string, unknown>): void {
     this.ensure().postMessage({ type: 'params', patch });
   }

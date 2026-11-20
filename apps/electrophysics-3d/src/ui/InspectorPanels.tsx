@@ -1,5 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import type { SandboxComponent } from '../state/store.js';
+
+/** Live-execution hooks for the Bay 3 SoC twin (lazy import keeps boot light). */
+async function chipEngine() {
+  return import('@chip/index.mjs');
+}
 import type { LabState } from '../state/store.js';
 import { Q4_PRIMITIVES, REFERENCE, TRANSMON } from '../data/reference.js';
 import { physicsClient } from '../physics/physicsClient.js';
@@ -485,6 +490,55 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
             }}
             style={{ width: '100%', accentColor: '#26c6da' }}
           />
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>LIVE EXECUTION — SOC DIGITAL TWIN</div>
+          <div style={{ color: '#aeb9c8', fontSize: 10.5, fontFamily: 'monospace', marginBottom: 6 }}>
+            badge: SIMULATED_ARCHITECTURAL_MODEL
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button style={btnStyle(state.soc.arch === 'discrete', '#26c6da')} onClick={() => dispatch({ soc: { ...state.soc, arch: 'discrete' } })}>Discrete PCIe</button>
+            <button style={btnStyle(state.soc.arch === 'unified', '#26c6da')} onClick={() => dispatch({ soc: { ...state.soc, arch: 'unified' } })}>Unified memory</button>
+            <button style={btnStyle(state.soc.radix === 'int8', '#b08cff')} onClick={() => dispatch({ soc: { ...state.soc, radix: 'int8' } })}>INT8 NPU</button>
+            <button style={btnStyle(state.soc.radix === 'q4', '#b08cff')} onClick={() => dispatch({ soc: { ...state.soc, radix: 'q4' } })}>Q4 NPU</button>
+          </div>
+          <button style={{ ...btnStyle(false, '#8ef0b2'), marginTop: 8 }} onClick={async () => {
+            const { compareArchitectures, systolicMatmul } = await chipEngine();
+            const A = Array.from({ length: 32 }, (_, i) => Array.from({ length: 32 }, (_, k) => ((i * 7 + k * 13) % 120) - 60));
+            const B = Array.from({ length: 32 }, (_, k) => Array.from({ length: 32 }, (_, j) => ((k * 5 + j * 3) % 120) - 60));
+            const run = systolicMatmul(A, B, { gridSize: 8, clockMHz: 700, vdd: 0.8 });
+            const cmp = compareArchitectures({ M: 32, N: 32, K: 32 });
+            const pick = state.soc.arch === 'unified' ? cmp.unifiedInt8 : cmp.discreteInt8;
+            physicsClient.setTilePower(Math.min(180, run.dynamicPowerW * 8));
+            worldRef.current?.bay3.setBusActivity([0.9, 0.8, 0.85, 0.7, 0.6]);
+            dispatch({ soc: { ...state.soc, result: {
+              cycles: run.cycles, utilization: run.utilization, macOps: run.macOps, dynamicPowerW: run.dynamicPowerW,
+              archCycles: pick.totalCycles, bandwidthGBps: pick.bandwidthGBps, energyPerOpPJ: pick.energyPerOpPJ,
+              hotspotC: pick.hotspotC, badge: cmp.badge, radix: state.soc.radix, arch: state.soc.arch } } });
+            flashToast('SoC workload executed — tiles heating via the Fourier solver');
+          }}>Run quantized workload</button>
+          {state.soc.result && (
+            <div style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
+              <div>TPU cycles {String(state.soc.result.cycles)} · util {Number(state.soc.result.utilization).toFixed(3)}</div>
+              <div>MAC ops {String(state.soc.result.macOps)} · P = {Number(state.soc.result.dynamicPowerW).toFixed(2)} W</div>
+              <div>{String(state.soc.result.arch)} · {String(state.soc.result.radix)}: {String(state.soc.result.archCycles)} cycles · {Number(state.soc.result.bandwidthGBps).toFixed(1)} GB/s</div>
+              <div>E/op {Number(state.soc.result.energyPerOpPJ).toFixed(1)} pJ · hotspot {Number(state.soc.result.hotspotC).toFixed(0)} °C</div>
+            </div>
+          )}
+          <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 10, marginBottom: 4 }}>RV32IM core</div>
+          <button style={btnStyle(false, '#62d0ff')} onClick={async () => {
+            const { createRV32, asm } = await chipEngine();
+            const cpu = createRV32({ pcStart: 0 });
+            cpu.load([asm.opImm(0, 5, 0, 0), asm.opImm(0, 6, 0, 10), asm.R(0, 6, 5, 0, 5, 0x33), asm.opImm(0, 6, 6, -1), asm.B(-8, 0, 6, 1, 0x63), asm.halt()]);
+            cpu.run(200);
+            dispatch({ soc: { ...state.soc, rv32: { pc: cpu.pc, x5: cpu.regs[5], x6: cpu.regs[6], x7: cpu.regs[7], cycles: cpu.cycles, halted: cpu.halted } } });
+            flashToast('RV32IM sum-1..10 executed — x5 = 55');
+          }}>Run program</button>
+          {state.soc.rv32 && (
+            <div style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
+              PC {String(state.soc.rv32.pc)} · x5 {String(state.soc.rv32.x5)} · x6 {String(state.soc.rv32.x6)} · cycles {String(state.soc.rv32.cycles)}{state.soc.rv32.halted ? ' · HALTED' : ''}
+            </div>
+          )}
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>TILE POWER MODEL (05 REFERENCE · P = C·V²·f)</div>

@@ -51,7 +51,17 @@ export interface SandboxComponent {
   label?: string;
 }
 
+export interface SocExec {
+  arch: 'discrete' | 'unified';
+  radix: 'int8' | 'q4';
+  result: Record<string, number | string> | null;
+  rv32: { pc: number; x5: number; x6: number; x7: number; cycles: number; halted: boolean } | null;
+  playing: boolean;
+  speed: number;
+}
+
 export interface LabState {
+  soc: SocExec;
   sandboxOpen: boolean;
   sandboxComponents: SandboxComponent[];
   sandboxLoaded: boolean;

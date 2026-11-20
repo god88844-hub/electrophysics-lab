@@ -104,3 +104,14 @@ User interactions             ←── keyboard + pointer ──→ camera fly-
 - physicalValidation stage remains unlocked only by real-measurement datasets
   (Phase 3 gate G1–G7); none exist in this repo.
 - Every displayed number cites `data/reference-library/*.json` (SHA-256 verified in-browser).
+
+## v2.1 milestone status (M8–M10, branch `feature/v2-digital-twin-and-chips`)
+
+| Milestone | Deliverable | State |
+| --- | --- | --- |
+| M8 | Photorealistic digital-twin materials + universal × close UX (v2 3D AND all 7 Phase 0 scene panels) + instrument palette + bay-switcher contrast fix | ✅ |
+| M9 | Bay 2 interactive multi-radix sandbox: user-placed components → live MNA + thermal compile, 4 starter circuits, real failure thresholds preserved | ✅ |
+| M10 | `packages/chip-engine`: RV32IM interpreter, Forth core, INT8/QDQ systolic TPU (05-JSON cycle model), SIMT warp kernel with divergence, unified-memory vs discrete PCIe + Q4-NPU comparison (`SIMULATED_ARCHITECTURAL_MODEL`); Bay 3 live-execution panel with real Fourier thermal coupling | ✅ |
+
+Verification totals after M10: **1054 pass / 0 fail / 1 skip** (`npm test`),
+3D build clean, Playwright smoke suite green (M7 4/4 + M8 close-UX 3/3).

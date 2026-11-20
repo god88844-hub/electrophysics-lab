@@ -1,0 +1,13 @@
+{
+  "name": "@invention-lab/chip-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bay 3 execution engines: compact RV32IM interpreter, stack-based Forth core, weight-stationary INT8/QDQ systolic TPU, SIMT warp kernel with divergence, and unified-memory vs discrete SoC architecture comparison (SIMULATED_ARCHITECTURAL_MODEL).",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./rv32": "./src/rv32.mjs",
+    "./forth": "./src/forth.mjs",
+    "./accelerators": "./src/accelerators.mjs"
+  }
+}

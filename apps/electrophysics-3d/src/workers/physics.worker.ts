@@ -464,6 +464,10 @@ self.onmessage = (e: MessageEvent) => {
     failureLatch.clear();
     resetFaults();
     postMessage({ type: 'netlistLoaded', warnings: ['default bench restored'], nodeNames: [] });
+  } else if (msg.type === 'setTilePower') {
+    // wattsPerTile → per-tile dissipation scale (real Fourier heat coupling).
+    const wpt = Math.max(0, Math.min(200, msg.wattsPerTile ?? 0));
+    params.tilePowerScale = wpt / 9.8; // 9.8 W = GPU idle-model reference
   } else if (msg.type === 'getState') {
     postMessage({ type: 'state', params: { ...params }, simT, paused });
   }
