@@ -2,3 +2,9 @@ node_modules/
 *.log
 .DS_Store
 AUDIT_SOURCE.txt
+apps/electrophysics-3d/dist/
+benchmarks/evidence/phase69-test/
+benchmarks/evidence/phase69-rogue-test/
+benchmarks/evidence/phase72/package/
+apps/electrophysics-3d/test-results/
+apps/electrophysics-3d/playwright-report/
