@@ -1,0 +1,39 @@
+{
+  "format": "invention-lab/phase26-replayed-two-device-variation-and-reliability-gaps/1",
+  "accepted": true,
+  "sourceCommit": "7cdb9f3ac38ce3c4e8717bcda56dceafd754d043",
+  "originalResistorDevices": 2,
+  "observedTotalResistorSweepReadings": 102,
+  "observedConductanceS": [
+    {
+      "id": "specimen-6208-1-2",
+      "conductanceS": 0.002078646199095022
+    },
+    {
+      "id": "specimen-6208-1-3",
+      "conductanceS": 0.0018800202443438902
+    }
+  ],
+  "observedDescriptiveConductanceDifferenceS": 0.0001986259547511319,
+  "observedDescriptiveFractionalConductanceDifference": 0.10034993227597352,
+  "heldoutCurrentRMSEA": 0.000029313365840320957,
+  "targetFailureModesUnverified": 12,
+  "actualALUHardwareSpecimens": 0,
+  "actualALUHardwareMeasurements": 0,
+  "realLifetimeEstimates": null,
+  "realYieldEstimate": null,
+  "validProcessVariationSigma": null,
+  "siliconUncertaintyInterval": null,
+  "instrumentCalibrationVerified": false,
+  "foundryQualification": false,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null,
+  "nextRequiredEvidence": [
+    "fabricated design/mask-matched ALU and authenticated wafer/lot/package provenance",
+    "independent calibrated instrument exports and signed measurement provenance",
+    "predeclared stress, wearout, power and thermal conditions",
+    "independent die/wafer/lot and temporal holdout groups",
+    "out-of-sample failure-time, timing and functional measurements"
+  ]
+}

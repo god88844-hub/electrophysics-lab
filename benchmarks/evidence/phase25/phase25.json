@@ -1,0 +1,103 @@
+{
+  "format": "invention-lab/phase25-recorded-original-source-calibration/1",
+  "sourceCommit": "7cdb9f3ac38ce3c4e8717bcda56dceafd754d043",
+  "manifestSha256": "8b85288e82bcb59c5daea3d94d02bd97bbc05378f551dcb9422a7951c9a873b9",
+  "inputs": {
+    "phase23README": "e29c7fa8961b9638872ecb60be63bcb1c0ed4a23db44b025152eff83ec619efd",
+    "trainingMDM": "8661a7a54edf089eee9c976963abd97e3fa95aa9ff4ec7155061a0e3693bfe82",
+    "holdoutMDM": "aef6ae6ebf8202bf93e8a33458c81e2c56b0697a52d6aae4fc8a178a87172e8e",
+    "phase23Evidence": "2a93c23bdc42c7ad93c7faf4b69864ed55ab6f50f4a194ed4966f07c744d5c03",
+    "phase23Summary": "ad9b16819ca8d72691c9de6ef64af04056f2777d865311f0df4f7ac0571e824e",
+    "phase24Readiness": "0d8c3306dfaaafeb7c20d332c2cea67c7b1ce2b227860ffbf7e4666b859a071c",
+    "phase24EmptyCapture": "c9a008a7fe7691540fdbe3da6ef60c591e5bb418ef179f4af522a08baa74afb1"
+  },
+  "comparison": {
+    "format": "invention-lab/phase25-real-resistor-holdout-diagnostics/1",
+    "upstreamSourceCommit": "1f7214f2f81a0629303947a07e1ec00a28ae8a33",
+    "specimenRoles": [
+      {
+        "id": "specimen-6208-1-2",
+        "purpose": "training-only",
+        "sha256": "8661a7a54edf089eee9c976963abd97e3fa95aa9ff4ec7155061a0e3693bfe82"
+      },
+      {
+        "id": "specimen-6208-1-3",
+        "purpose": "held-out-validation-only",
+        "sha256": "aef6ae6ebf8202bf93e8a33458c81e2c56b0697a52d6aae4fc8a178a87172e8e"
+      }
+    ],
+    "fit": {
+      "trainingReadings": 51,
+      "independentSpecimensUsedForFitting": 1,
+      "conductanceS": 0.002078646199095022,
+      "resistanceOhm": 481.08235082784597,
+      "model": "I1(SI-ampere)=G(SI-siemens)*V1(volt), intercept fixed to zero"
+    },
+    "holdout": {
+      "independentDeviceIds": 1,
+      "readings": 51,
+      "voltageEnvelopeV": [
+        -0.25,
+        0.25
+      ],
+      "residualDefinition": "model_I1_minus_measured_I1",
+      "signedError": {
+        "count": 51,
+        "mean": -0.0000010278558627451081,
+        "meanAbs": 0.00002590009692387538,
+        "rms": 0.000029313365840320957,
+        "maxAbs": 0.000047621549773755516
+      },
+      "fractionOfPeakCurrentRMSE": 0.06155166689131731,
+      "withinSpecimenSweepReadingsCorrelated": true,
+      "statisticallyIndependentErrorSamples": 1,
+      "sourceMeasurementCurrentAStats": {
+        "count": 51,
+        "mean": 0.0000010278558627450848,
+        "meanAbs": 0.00023902981664705882,
+        "rms": 0.0002767395709877187,
+        "maxAbs": 0.00047624
+      }
+    },
+    "currentBalance": {
+      "definition": "observed_I1_plus_observed_I2",
+      "training": {
+        "count": 51,
+        "mean": 3.704572549019182e-8,
+        "meanAbs": 8.122878431372376e-8,
+        "rms": 1.0454661988740636e-7,
+        "maxAbs": 2.7999999999996344e-7
+      },
+      "holdout": {
+        "count": 51,
+        "mean": 5.536301960784238e-8,
+        "meanAbs": 8.683305882352958e-8,
+        "rms": 1.122598732455098e-7,
+        "maxAbs": 2.3999999999998415e-7
+      },
+      "interpretation": "diagnostic-only: two instrument channels should approximately cancel, not a calibration certificate"
+    },
+    "uncertainty": {
+      "instrumentCalibrationChainVerified": false,
+      "waferLotMembershipKnown": false,
+      "independentInstrumentAttestationVerified": false,
+      "populationPredictiveInterval": null,
+      "expandedMeasurementUncertaintyA": null,
+      "statisticalConfidenceLevel": null,
+      "estimatedProcessVariation": null,
+      "reason": "Only two measured devices and unqualified raw instruments; 51 within-device sweep points cannot become 51 independent devices"
+    },
+    "intendedALU": {
+      "hardwareMeasurements": 0,
+      "calibrationPerformed": false,
+      "uncertaintyQuantified": false,
+      "physicalValidation": "none",
+      "physicalVerdict": "unknown",
+      "realWorldBuildSuccessPercent": null
+    },
+    "conclusion": "real published resistor I-V model discrepancy characterized only; no general device uncertainty or ALU-silicon equivalence"
+  },
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

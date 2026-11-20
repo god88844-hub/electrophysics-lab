@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 
+export interface RigCameraSource {
+  activeCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  useOrtho: boolean;
+}
+
 /**
  * Damped glide camera: click-to-glide between bays, left-drag orbit, wheel
  * zoom, WASD ground-plane panning, Q/E height. All motion is exponentially
@@ -14,6 +19,7 @@ export class CameraRig {
   goalAzimuth = Math.PI * 0.06;
   elevation = 0.42; // radians above ground plane
   goalElevation = 0.42;
+  upHint = new THREE.Vector3(0, 1, 0);
 
   /** Set by LabWorld: returns a bay id if the pointer hits a pedestal. */
   pickHandler: ((ndcX: number, ndcY: number) => number | null) | null = null;
@@ -28,7 +34,7 @@ export class CameraRig {
   };
   private keyUp = (e: KeyboardEvent): void => this.keys.delete(e.key.toLowerCase());
 
-  constructor(private camera: THREE.PerspectiveCamera, private dom: HTMLElement) {
+  constructor(public cameraSource: RigCameraSource, private dom: HTMLElement) {
     dom.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
       if (this.pickHandler) {
@@ -80,6 +86,14 @@ export class CameraRig {
     this.goalRadius = radius;
   }
 
+  /** Snap the orbit to a preset view direction (ViewCube). */
+  setPresetView(dir: THREE.Vector3, up: THREE.Vector3): void {
+    const d = dir.clone().normalize();
+    this.goalAzimuth = Math.atan2(d.x, d.z);
+    this.goalElevation = THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)), -1.35, 1.5);
+    this.upHint = up.clone();
+  }
+
   update(dt: number): void {
     // WASD/QE pan relative to current azimuth.
     const speed = 6 * dt;
@@ -100,12 +114,30 @@ export class CameraRig {
     this.azimuth += (this.goalAzimuth - this.azimuth) * k;
     this.elevation += (this.goalElevation - this.elevation) * k;
 
-    const pos = new THREE.Vector3(
-      this.target.x + this.radius * Math.sin(this.azimuth) * Math.cos(this.elevation),
-      this.target.y + this.radius * Math.sin(this.elevation),
-      this.target.z + this.radius * Math.cos(this.azimuth) * Math.cos(this.elevation)
-    );
-    this.camera.position.copy(pos);
-    this.camera.lookAt(this.target);
+    const cam = this.cameraSource.activeCamera;
+    if (this.cameraSource.useOrtho) {
+      const ortho = cam as THREE.OrthographicCamera;
+      // Ortho zoom tracks the orbit radius (base radius 16 → zoom 1).
+      const zoom = Math.max(0.2, 16 / this.radius);
+      ortho.zoom = zoom;
+      ortho.position.set(
+        this.target.x + Math.sin(this.azimuth) * 20 * Math.cos(this.elevation),
+        this.target.y + 20 * Math.sin(this.elevation) || 8,
+        this.target.z + Math.cos(this.azimuth) * 20 * Math.cos(this.elevation)
+      );
+      ortho.up.copy(this.upHint);
+      ortho.lookAt(this.target);
+      ortho.updateProjectionMatrix();
+    } else {
+      const pos = new THREE.Vector3(
+        this.target.x + this.radius * Math.sin(this.azimuth) * Math.cos(this.elevation),
+        this.target.y + this.radius * Math.sin(this.elevation),
+        this.target.z + this.radius * Math.cos(this.azimuth) * Math.cos(this.elevation)
+      );
+      const persp = cam as THREE.PerspectiveCamera;
+      persp.up.copy(this.upHint);
+      persp.position.copy(pos);
+      persp.lookAt(this.target);
+    }
   }
 }

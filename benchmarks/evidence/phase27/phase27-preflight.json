@@ -1,0 +1,20 @@
+{
+  "status": "awaiting-real-hardware",
+  "errors": [],
+  "plannedPhysicalDies": 8,
+  "plannedSessions": 48,
+  "plannedMeasurements": 49152,
+  "sourceFilesMatched": 0,
+  "completeSessions": 0,
+  "observedVectors": 0,
+  "claimedDigitalDisagreements": null,
+  "exploratoryDelayOverLimit": null,
+  "invalidDelays": null,
+  "modeledPerVectorDelayErrorS": null,
+  "verifiedUncertaintyCoverage": null,
+  "independentFabAndInstrumentAttestationEstablished": false,
+  "perfectSelfReportedCaptureIsNotPhysicalProof": true,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

@@ -1,0 +1,155 @@
+{
+  "format": "invention-lab/phase29-source-scoped-atlas/1",
+  "sourceCommit": "7cdb9f3ac38ce3c4e8717bcda56dceafd754d043",
+  "referenceSourceCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b",
+  "catalogFormat": "invention-lab/phase29-reference-atlas/1",
+  "referenceCount": 12,
+  "domains": [
+    {
+      "labId": "logic",
+      "referenceIds": [
+        "logic-mapped-sat"
+      ],
+      "referenceCount": 1,
+      "status": "computational-model-only",
+      "physicalVerdict": "unknown"
+    },
+    {
+      "labId": "chip",
+      "referenceIds": [
+        "logic-mapped-sat",
+        "chip-postroute-pvt",
+        "chip-open-drc",
+        "device-published-iv",
+        "chip-nogo"
+      ],
+      "referenceCount": 5,
+      "status": "computational-model-only",
+      "physicalVerdict": "unknown"
+    },
+    {
+      "labId": "cpu",
+      "referenceIds": [
+        "cpu-architecture"
+      ],
+      "referenceCount": 1,
+      "status": "computational-model-only",
+      "physicalVerdict": "unknown"
+    },
+    {
+      "labId": "rv32i",
+      "referenceIds": [
+        "rv32-qemu"
+      ],
+      "referenceCount": 1,
+      "status": "computational-model-only",
+      "physicalVerdict": "unknown"
+    },
+    {
+      "labId": "ai",
+      "referenceIds": [
+        "ai-onnx",
+        "ai-quant-conv",
+        "ai-iris"
+      ],
+      "referenceCount": 3,
+      "status": "computational-model-only",
+      "physicalVerdict": "unknown"
+    },
+    {
+      "labId": "quantum",
+      "referenceIds": [
+        "quant-numerical"
+      ],
+      "referenceCount": 1,
+      "status": "computational-model-only",
+      "physicalVerdict": "unknown"
+    },
+    {
+      "labId": "optics",
+      "referenceIds": [],
+      "referenceCount": 0,
+      "status": "computational-model-only",
+      "physicalVerdict": "unknown"
+    },
+    {
+      "labId": "crosslab",
+      "referenceIds": [
+        "cross-adapters"
+      ],
+      "referenceCount": 1,
+      "status": "no-single-current-design",
+      "physicalVerdict": "unknown"
+    }
+  ],
+  "sourceFiles": {
+    "logic-mapped-sat": {
+      "source": "docs/PHASE22-FEOL-POSTGDS-FORMAL.md",
+      "sourceGitObjectId": "072e77d423207812c5157e84621e915be398dd57",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "chip-postroute-pvt": {
+      "source": "docs/PHASE20-POSTROUTE-PVT.md",
+      "sourceGitObjectId": "5a0c0bc20e4a207906ba4aa6ec935f032cf1a59a",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "chip-open-drc": {
+      "source": "docs/PHASE21-OPEN-LAYOUT-AUDIT.md",
+      "sourceGitObjectId": "77fb6bf48ca0d0fa1182bd3ab9489ead81f2f866",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "device-published-iv": {
+      "source": "docs/PHASE25-BOUNDED-CALIBRATION.md",
+      "sourceGitObjectId": "88aed17bfd6e4b7c84ac6fe47d8cf2dddef418b7",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "chip-nogo": {
+      "source": "docs/PHASE28-ENGINEERING-GO-NOGO.md",
+      "sourceGitObjectId": "8da2f708cc3a67fba008ec3556bf90fafbe4b35f",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "rv32-qemu": {
+      "source": "docs/PHASE8-RV32M-VALIDATION.md",
+      "sourceGitObjectId": "f8077d549113f375b617c156f2b1713210324bda",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "cpu-architecture": {
+      "source": "js/labs/cpu/cpu.js",
+      "sourceGitObjectId": "bd5de793f896f624bb7edcec7083af5b7254ce12",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "ai-onnx": {
+      "source": "docs/PHASE9-ONNX-INFERENCE.md",
+      "sourceGitObjectId": "31fa441cd54ff186c0cf61bdeb767e4540de914b",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "ai-quant-conv": {
+      "source": "docs/PHASE11-CONV-AND-PER-AXIS.md",
+      "sourceGitObjectId": "a9acc153710800e60c23938d8c1eafeb2579b823",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "ai-iris": {
+      "source": "docs/PHASE12-IRIS-MODEL-VALIDATION.md",
+      "sourceGitObjectId": "d42527b7874bb16d4f92680da8165803d7042b76",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "quant-numerical": {
+      "source": "benchmarks/evidence/latest-quantum.json",
+      "sourceGitObjectId": "5ad3cc488413291bc6de371d6491036b320a4055",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    },
+    "cross-adapters": {
+      "source": "js/examples/crosslab.js",
+      "sourceGitObjectId": "61911c37a85ed66154ca8050eb7733620831c33e",
+      "pinnedCommit": "6cd73819573f419d79f9fb19af58b932f87aff4b"
+    }
+  },
+  "sourceModuleSha256": "3d30d28a8816b6ea5763953dbf14d12bdb1292fc23f656334eddd88cd226f652",
+  "appModuleSha256": "96c052ff55563ddf15cba295899486279b8acae1c59b44e95faf2005649851b1",
+  "browserSmokeSha256": "3207d997a309b2e4ab7a1db27208f20f9c221dcfe7861c0ea7d81ff18ac9fe96",
+  "activeDiagramOriginalPhysicalMeasurements": 0,
+  "referenceCasesLinkedToActiveDesigns": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

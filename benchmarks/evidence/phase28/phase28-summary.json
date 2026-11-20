@@ -1,0 +1,20 @@
+{
+  "format": "invention-lab/phase28-replayed-safe-no-go-decision/1",
+  "sourceCommit": "7cdb9f3ac38ce3c4e8717bcda56dceafd754d043",
+  "sourceRTLBlob": "3a41d0163a473a00b17a7c4b1893169961519f54",
+  "acceptedComputationalEvidenceReplay": true,
+  "physicalCriteriaGatesRequired": 6,
+  "physicalCriteriaGatesSatisfied": 0,
+  "realFabAndDUTsObserved": 0,
+  "actualPhysicalALUTestVectors": 0,
+  "publicUnrelatedDeviceMeasurements": 102,
+  "futureALUTestVectorsPlanned": 49152,
+  "physicalGoNoGoDecision": "BLOCKED_NEEDS_REAL_HARDWARE",
+  "manufacturingReleaseDecision": "NO_GO_MISSING_INDEPENDENT_SILICON_EVIDENCE",
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "evidenceBasedBuildSuccessProbability": null,
+  "confidenceInterval": null,
+  "realWorldBuildSuccessPercent": null,
+  "conclusion": "HOLD: no independent actual ALU silicon. Design-rule checks, synthetic perfect packets and measured OTHER resistor devices cannot establish physical equivalence."
+}

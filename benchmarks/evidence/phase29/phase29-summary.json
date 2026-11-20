@@ -1,0 +1,13 @@
+{
+  "format": "invention-lab/phase29-independent-atlas-audit/1",
+  "accepted": true,
+  "sourceCommit": "7cdb9f3ac38ce3c4e8717bcda56dceafd754d043",
+  "registeredLabContexts": 8,
+  "originalSourceVerifiedHistoricalReferences": 12,
+  "activePhysicalMeasurementCount": 0,
+  "referenceCasesLinkedToCurrentDesign": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null,
+  "next": "Phase30 integration and release hardening, real hardware still required"
+}

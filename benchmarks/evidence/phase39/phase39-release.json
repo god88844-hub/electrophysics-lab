@@ -1,0 +1,17 @@
+{
+  "format": "invention-lab/phase39-verified-source-release/1",
+  "sourceCommit": "7cdb9f3ac38ce3c4e8717bcda56dceafd754d043",
+  "sourceTree": "a86ee5d3ab6808de612e0dd60467c2859ef0bfae",
+  "archiveName": "invention-lab-phase39-source.zip",
+  "archiveBytes": 1812132,
+  "archiveSHA256": "e1a43bd640173f58f7b7fa7af42f063fdd209810c4eaa0c29039bf0b08539f4d",
+  "sourceManifestSHA256": "b3c19969e395b3ce2bca8fb4f2d311ae9df064dab4fe0690d0c6f29e7136ed23",
+  "scopeSHA256": "a9f9110dc98f433c48c83517ee60d03c97588a14b2733eb83483754ad3fd99f2",
+  "trackedFilesVerified": 888,
+  "deterministicBuild": true,
+  "independentlyCertifiedHardware": false,
+  "mergedToMain": true,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null
+}

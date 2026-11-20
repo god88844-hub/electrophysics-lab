@@ -60,7 +60,17 @@ export interface SocExec {
   speed: number;
 }
 
+export type CadTool = 'select' | 'place' | 'wire' | 'probe';
+
 export interface LabState {
+  activeTool: CadTool;
+  dockOpen: boolean;
+  dockTab: 'scope' | 'autopsy' | 'ai' | 'bloch';
+  playing: boolean;
+  ortho: boolean;
+  hover: { name: string; meta: string; x: number; y: number } | null;
+  cursor: { x: number; y: number; z: number } | null;
+  workspace: 'quantum' | 'silicon' | 'soc' | 'library';
   soc: SocExec;
   sandboxOpen: boolean;
   sandboxComponents: SandboxComponent[];
@@ -112,6 +122,14 @@ const initial: LabState = {
   quantumExp: { running: false, k: 0, total: 110, history: [], bundle: null, finalError: null },
   qecCurve: null,
   pulseParams: { amplitude: 25, sigmaNs: 7.5, beta: 0 },
+  activeTool: 'select',
+  dockOpen: false,
+  dockTab: 'scope',
+  playing: true,
+  ortho: false,
+  hover: null,
+  cursor: null,
+  workspace: 'quantum',
   sandboxOpen: false,
   sandboxComponents: [],
   sandboxLoaded: false,

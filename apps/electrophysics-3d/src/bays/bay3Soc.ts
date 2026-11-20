@@ -44,9 +44,6 @@ export class Bay3Soc {
 
   private buildBoard(): void {
     // Silkscreen legend + ENIG gold bond pads + BGA solder balls (real PCB).
-    const silkscreen = makeTextSprite('EL-LAB SOC REV C · J1 · U1-U5', { scale: 1.6, color: '#dfe5ec', background: 'none', fontSize: 26 });
-    silkscreen.position.set(-3.4, 0.63, 3.2);
-    this.group.add(silkscreen);
     const enigMat = MAT.enigGold;
     const pads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.012, 0.12), enigMat, 40);
     const ballMat = MAT.bgaSolder;
@@ -82,13 +79,6 @@ export class Bay3Soc {
     );
     siliconInterposer.position.y = 0.66;
     this.group.add(siliconInterposer);
-    // FR-4 delamination threshold marker etched on the board edge.
-    const marker = makeTextSprite(
-      `FR-4 Tg ${REFERENCE.semiconductor.material_properties.fr4_pcb.glass_transition_c} °C · delam ${REFERENCE.semiconductor.material_properties.fr4_pcb.delamination_c} °C`,
-      { scale: 0.9, color: '#7fd4a0', fontSize: 30 }
-    );
-    marker.position.set(0, 0.72, 3.72);
-    this.group.add(marker);
   }
 
   private makeChiplet(
@@ -208,9 +198,6 @@ export class Bay3Soc {
   }
 
   private buildLabels(): void {
-    const title = makeTextSprite('Unified-Memory SoC · chiplet package', { scale: 1.25, color: '#bfe3ff' });
-    title.position.set(0, 2.35, 0);
-    this.group.add(title);
   }
 
   /** Optional multi-radix NPU swap. */

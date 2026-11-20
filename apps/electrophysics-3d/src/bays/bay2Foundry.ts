@@ -41,7 +41,7 @@ interface LayerRecord {
 export class Bay2Foundry {
   readonly group = new THREE.Group();
   private layers: LayerRecord[] = [];
-  private primitiveCells: Array<{ cell: THREE.Group; label: THREE.Sprite }> = [];
+  private primitiveCells: Array<{ cell: THREE.Group; label: THREE.Sprite | null }> = [];
   private peelT = 0; // animated parameter 0..1 toward goal
   private peelGoal = 0;
   private crossDepthGoal = SKY130_LAYERS.length; // 0 = met3 only … 11 = everything
@@ -69,12 +69,6 @@ export class Bay2Foundry {
     const notch = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, 0.3), MAT.plasticDark);
     notch.position.set(-2.56, 0.62, 0);
     this.group.add(notch);
-    const label = makeTextSprite(`SKY130A wafer · VDD ${SKY130.VDD_NOMINAL_V} V · SOA ${SKY130.VGS_SOA_MAX_V} V`, {
-      scale: 1.1,
-      color: '#a8bfff',
-    });
-    label.position.set(0, 1.05, -2.1);
-    this.group.add(label);
   }
 
   private materialForLayer(key: LayerKey): { mat: THREE.MeshStandardMaterial; kind: 'slab' | 'vias' } {
@@ -160,11 +154,7 @@ export class Bay2Foundry {
       viasBelow++;
     }
     const stackTop = y;
-    // Stack layer name labels along the right edge.
     for (const layer of this.layers) {
-      const sprite = makeTextSprite(layer.name, { scale: 0.42, color: '#d5e2f4', fontSize: 34 });
-      sprite.position.set(dieW / 2 + 0.42, 0, dieD / 2 - 0.2);
-      layer.group.add(sprite);
     }
     this.stackTopY = stackTop;
     // Supply rails on met2 (VDD) and met3 (GND return) — real current paths.
@@ -192,6 +182,14 @@ export class Bay2Foundry {
       );
       tube.castShadow = true;
       host.group.add(tube);
+    }
+  }
+
+  /** KLayout-style per-layer visibility toggle (M13 layer panel). */
+  setLayerVisibility(visible: Record<string, boolean>): void {
+    for (const layer of this.layers) {
+      const show = visible[layer.key] ?? true;
+      layer.group.visible = show;
     }
   }
 
@@ -247,15 +245,9 @@ export class Bay2Foundry {
       cell.position.set(cx, zTop + 0.04, cz);
       met3.group.add(cell);
 
-      const label = makeTextSprite(cells[i].name, { scale: 0.52, color: isQ4 ? '#ffd98a' : '#9fd0ff' });
-      label.position.set(cx, zTop + 0.4, cz);
-      met3.group.add(label);
-      this.primitiveCells.push({ cell, label });
+      this.primitiveCells.push({ cell, label: null as unknown as THREE.Sprite });
     }
     // Verified badge.
-    const badge = makeTextSprite('DRC=0 · LVS ✓ · PEX ✓ · Phase 0 verified', { scale: 0.85, color: '#8ef0b2' });
-    badge.position.set(0, zTop + 1.15, 1.45);
-    met3.group.add(badge);
   }
 
   /** Silicon transistors visible at the diffusion/poly level (fin array). */

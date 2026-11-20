@@ -16,7 +16,7 @@ export class Bay4Forensics {
   dutAnchor = new THREE.Vector3(0, 1.62, 0);
   private dutMat: THREE.MeshStandardMaterial;
   private charDecal: THREE.Mesh;
-  private statusSprite: THREE.Sprite;
+
   private arcLight: THREE.PointLight;
   private faultLamp: THREE.Mesh;
   private arcLine: THREE.Line;
@@ -92,9 +92,6 @@ export class Bay4Forensics {
     );
     this.faultLamp.position.set(1.6, 1.25, -0.8);
     this.group.add(this.faultLamp);
-    this.statusSprite = makeTextSprite('SOA bench · nominal (VDD ≤ 1.80 V)', { scale: 0.95, color: '#9fd8ff' });
-    this.statusSprite.position.set(0, 1.9, 0);
-    this.group.add(this.statusSprite);
 
     this.arcLight = new THREE.PointLight(0xbfdcff, 0, 7, 2);
     this.arcLight.position.copy(this.dutAnchor).add(new THREE.Vector3(0, 0.35, 0));
@@ -145,13 +142,9 @@ export class Bay4Forensics {
   }
 
   /** Set the live VDD readout on the bench label (real slider value). */
+  /** Live bench readout moved to the CAD status bar; only the lamp remains. */
   setStatus(text: string, fault: boolean): void {
-    const spriteMat = this.statusSprite.material as THREE.SpriteMaterial;
-    // Rebuild canvas via label helper each time (cheap, only on change).
-    const fresh = makeTextSprite(text, { scale: 0.95, color: fault ? '#ff9d7a' : '#9fd8ff' });
-    this.statusSprite.material.map?.dispose();
-    this.statusSprite.material = fresh.material;
-    void spriteMat;
+    void text;
     const lampMat = this.faultLamp.material as THREE.MeshStandardMaterial;
     if (fault) {
       lampMat.emissive.setHex(0xff2010);

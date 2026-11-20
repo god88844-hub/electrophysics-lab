@@ -1,0 +1,27 @@
+{
+  "format": "invention-lab/phase25-strict-real-resistor-discrepancy-no-alu-calibration/1",
+  "accepted": true,
+  "sourceCommit": "7cdb9f3ac38ce3c4e8717bcda56dceafd754d043",
+  "sourceRepository": "google/skywater-pdk-sky130-raw-data",
+  "originalMeasuredResistorDevices": 2,
+  "measuredResistorReadings": 102,
+  "trainingDevices": 1,
+  "unseenHoldoutDevices": 1,
+  "heldoutCurrentRMSEA": 0.000029313365840320957,
+  "heldoutCurrentBiasA": -0.0000010278558627451081,
+  "heldoutMaxAbsErrorA": 0.000047621549773755516,
+  "currentBalanceHoldoutMaxAbsA": 2.3999999999998415e-7,
+  "hypotheticalStatisticalInterval": null,
+  "crediblePopulationCoverage": null,
+  "calibratedALUTiming": false,
+  "independentALUMeasurements": 0,
+  "physicalValidation": "none",
+  "physicalVerdict": "unknown",
+  "realWorldBuildSuccessPercent": null,
+  "blockers": [
+    "No independent fabricated ALU measurements or source instrument files",
+    "Only one unseen resistor specimen; sweep points share one physical device and are correlated",
+    "No instrument uncertainty budgets, traceable calibration or signed review",
+    "Unverified lot/wafer independence and no prospective chip timing acceptance threshold"
+  ]
+}
