@@ -34,6 +34,8 @@ export class Bay3Soc {
   private explodeT = 0;
   private chipletGroups: THREE.Group[] = [];
   private busMeshes: THREE.Mesh[] = [];
+  private tpuTiles?: THREE.InstancedMesh;
+  private tpuTileActivity: number[] = [];
 
   constructor() {
     this.buildBoard();
@@ -175,7 +177,49 @@ export class Bay3Soc {
     this.group.add(lid);
   }
 
+  /**
+   * 8×8 = 64 individually addressable MAC tiles. Per-tile emissive color is
+   * driven by computed switching activity from packages/chip-engine (INT8/QDQ
+   * or Q4 matmul) — real per-tile dynamic power visualization.
+   */
+  private buildTpuTileMatrix(): void {
+    const tpu = this.tiles.find((t) => t.id === 'tpu');
+    if (!tpu) return;
+    const mat = new THREE.MeshStandardMaterial({ color: 0x4a5464, emissive: 0x000000, metalness: 0.5, roughness: 0.35 });
+    this.tpuTiles = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.06, 0.22), mat, 64);
+    this.tpuTileActivity = new Array(64).fill(0);
+    const dummy = new THREE.Object3D();
+    const originX = tpu.group.position.x;
+    const originZ = tpu.group.position.z;
+    let i = 0;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        dummy.position.set(originX - 0.77 + c * 0.22, 0.34, originZ - 0.77 + r * 0.22);
+        dummy.updateMatrix();
+        this.tpuTiles.setMatrixAt(i, dummy.matrix);
+        this.tpuTiles.setColorAt(i, new THREE.Color(0x4a5464));
+        i++;
+      }
+    }
+    this.tpuTiles.instanceColor!.needsUpdate = true;
+    this.group.add(this.tpuTiles);
+  }
+
+  /** Per-tile switching activity 0..1 (64 entries) → emissive heat color. */
+  setTpuTileActivity(activity: number[]): void {
+    if (!this.tpuTiles) return;
+    const color = new THREE.Color();
+    for (let i = 0; i < 64; i++) {
+      const a = Math.max(0, Math.min(1, activity[i] ?? 0));
+      // Cool grey → amber → crimson (switching intensity).
+      color.setRGB(0.29 + a * 0.65, 0.33 + a * 0.18, 0.39 - a * 0.22);
+      this.tpuTiles.setColorAt(i, color);
+    }
+    if (this.tpuTiles.instanceColor) this.tpuTiles.instanceColor.needsUpdate = true;
+  }
+
   private buildBusFabric(): void {
+    this.buildTpuTileMatrix();
     // Glowing bus routes: memory fabric ↔ CPU/TPU/GPU (unified memory topology).
     const routes: Array<[THREE.Vector3, THREE.Vector3]> = [
       [new THREE.Vector3(-1.4, 0.86, 1.2), new THREE.Vector3(-2.0, 0.86, -0.3)], // mem→cpu

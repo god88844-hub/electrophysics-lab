@@ -71,6 +71,7 @@ export interface LabState {
   hover: { name: string; meta: string; x: number; y: number } | null;
   cursor: { x: number; y: number; z: number } | null;
   workspace: 'quantum' | 'silicon' | 'soc' | 'library';
+  blochOverlay: boolean;
   soc: SocExec;
   sandboxOpen: boolean;
   sandboxComponents: SandboxComponent[];
@@ -130,6 +131,7 @@ const initial: LabState = {
   hover: null,
   cursor: null,
   workspace: 'quantum',
+  blochOverlay: false,
   sandboxOpen: false,
   sandboxComponents: [],
   sandboxLoaded: false,

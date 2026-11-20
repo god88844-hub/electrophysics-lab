@@ -54,6 +54,7 @@ export class Bay1Quantum {
     this.group.add(this.coldLight);
 
     this.buildBlochSpheres();
+    this.setBlochOverlay(false);
     this.buildPulseBeam();
   }
 
@@ -353,6 +354,22 @@ export class Bay1Quantum {
     grid.name = 'atomGrid';
     g.add(grid);
     this.atomGrid = grid;
+    // Rydberg blockade halos: translucent rings of radius r_b around atoms
+    // inside each other's blockade radius (V = C6/r6 > Ω) — 04 JSON parameters.
+    const haloMat = new THREE.MeshBasicMaterial({ color: 0xff6d8a, transparent: true, opacity: 0.16, side: THREE.DoubleSide });
+    const halo = new THREE.InstancedMesh(new THREE.RingGeometry(0.07, 0.085, 20), haloMat, 12);
+    const hd = new THREE.Object3D();
+    let hi = 0;
+    for (let ix = 0; ix < 8 && hi < 12; ix += 2) {
+      for (let iz = 0; iz < 8 && hi < 12; iz += 3) {
+        hd.position.set(-0.42 + ix * 0.12, 1.38, -0.42 + iz * 0.12);
+        hd.rotation.x = -Math.PI / 2;
+        hd.updateMatrix();
+        halo.setMatrixAt(hi++, hd.matrix);
+      }
+    }
+    halo.name = 'blockade-halos';
+    g.add(halo);
     // Laser beams (Rydberg 480 nm + trap 780 nm).
     const beamMat = new THREE.MeshBasicMaterial({ color: 0x7ab8ff, transparent: true, opacity: 0.35 });
     const rydberg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 10), beamMat);
@@ -360,6 +377,11 @@ export class Bay1Quantum {
     rydberg.position.set(0, 1.42, 0);
     g.add(rydberg);
     return g;
+  }
+
+  /** HUD overlay toggle: in-scene Bloch spheres default OFF (docked panel). */
+  setBlochOverlay(on: boolean): void {
+    for (const g of this.blochGroups) g.visible = on;
   }
 
   setMode(mode: Bay1Mode): void {

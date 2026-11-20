@@ -185,6 +185,16 @@ export class Bay2Foundry {
     }
   }
 
+  /** KLayout-style per-layer opacity (0..1) for the layer panel. */
+  setLayerOpacity(key: string, opacity: number): void {
+    const layer = this.layers.find((l) => l.key === key);
+    if (!layer) return;
+    for (const mat of layer.materials) {
+      mat.transparent = true;
+      mat.opacity = Math.max(0.05, Math.min(1, opacity));
+    }
+  }
+
   /** KLayout-style per-layer visibility toggle (M13 layer panel). */
   setLayerVisibility(visible: Record<string, boolean>): void {
     for (const layer of this.layers) {
@@ -204,6 +214,8 @@ export class Bay2Foundry {
   /** 4 verified Q4 primitives + binary comparison cells on met3 (ride the peel). */
   private buildPrimitives(): void {
     const met3 = this.layers.find((l) => l.key === 'met3')!;
+    const polyFingersGroup = new THREE.Group();
+    met3.group.add(polyFingersGroup);
     const met3Base = met3.baseY;
     const zTop = this.stackTopY + 0.08 - met3Base; // local to met3 group
     const cells = [
@@ -245,6 +257,38 @@ export class Bay2Foundry {
       cell.position.set(cx, zTop + 0.04, cz);
       met3.group.add(cell);
 
+      // Cell-detail geometry: brick-red poly gate fingers, tungsten li1 stubs,
+      // met1 pads — routed to the cell's verified gate_count from Phase 0.
+      const fingers = new THREE.InstancedMesh(
+        new THREE.BoxGeometry(0.06, 0.055, 0.5),
+        new THREE.MeshStandardMaterial({ color: 0x8a3f38, metalness: 0.3, roughness: 0.5 }),
+        Math.min(8, gateCount)
+      );
+      const liStub = new THREE.InstancedMesh(
+        new THREE.BoxGeometry(0.1, 0.045, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x8f949c, metalness: 0.8, roughness: 0.35 }),
+        Math.min(8, gateCount)
+      );
+      const pad = new THREE.InstancedMesh(
+        new THREE.BoxGeometry(0.12, 0.02, 0.12),
+        new THREE.MeshStandardMaterial({ color: 0x3d6a8a, metalness: 0.8, roughness: 0.3 }),
+        Math.min(8, gateCount)
+      );
+      const fd = new THREE.Object3D();
+      for (let f = 0; f < Math.min(8, gateCount); f++) {
+        const fx = -0.36 + f * 0.12;
+        fd.position.set(fx, 0.055, 0);
+        fd.rotation.set(0, 0, 0);
+        fd.updateMatrix();
+        fingers.setMatrixAt(f, fd.matrix);
+        fd.position.set(fx, 0.085, 0.2);
+        fd.updateMatrix();
+        liStub.setMatrixAt(f, fd.matrix);
+        fd.position.set(fx, 0.105, -0.18);
+        fd.updateMatrix();
+        pad.setMatrixAt(f, fd.matrix);
+      }
+      polyFingersGroup.add(fingers, liStub, pad);
       this.primitiveCells.push({ cell, label: null as unknown as THREE.Sprite });
     }
     // Verified badge.

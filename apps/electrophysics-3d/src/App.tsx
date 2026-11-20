@@ -158,7 +158,8 @@ export function App() {
     b.world.setLayerPeel(state.peelMode === 'exploded', state.peelDepth);
     b.world.setNpuAttached(state.npuAttached);
     b.world.setSandboxComponents(state.sandboxComponents);
-  }, [state.bay1Mode, state.peelMode, state.peelDepth, state.npuAttached, state.sandboxComponents]);
+    b.world.bay1.setBlochOverlay(state.blochOverlay);
+  }, [state.bay1Mode, state.peelMode, state.peelDepth, state.npuAttached, state.sandboxComponents, state.blochOverlay]);
 
   // Workspace switching → single-workspace mounting.
   useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useSyncExternalStore } from 'react';
 import { store } from '../../state/store.js';
 import { physicsClient, type ForensicReport, type PhysicsSnapshot, type ProposedFix } from '../../physics/physicsClient.js';
 import { worldRef } from '../../worldRef.js';
+import { BlochPanel } from './BlochPanel.js';
 import { flashToast } from '../../state/store.js';
 
 const getStore = () => store.get();
@@ -210,11 +211,7 @@ export function BottomDock(): React.ReactElement | null {
           AI Co-Inventor convergence plot lives in the Quantum workspace inspector (Run AI Discovery Experiment). The docked panel mirrors it once an experiment has run.
         </div>
       )}
-      {tab === 'bloch' && (
-        <div style={{ color: '#6f8aa8', fontSize: 12.5, marginTop: 12 }}>
-          Quantum Bloch instrument panel — M13 docks the live spheres here with the optional HUD overlay.
-        </div>
-      )}
+      {tab === 'bloch' && <BlochPanel />}
     </div>
   );
 }

@@ -12,6 +12,11 @@ import { quantumClient, type BreakthroughBundle } from '../physics/quantumClient
 import { worldRef } from '../worldRef.js';
 import { flashToast } from '../state/store.js';
 
+const layerVisible: Record<string, boolean> = {};
+const layerOpacity: Record<string, number> = {};
+const setLayerVisible = (v: Record<string, boolean>) => { Object.assign(layerVisible, v); };
+const setLayerOpacity = (v: Record<string, number>) => { Object.assign(layerOpacity, v); };
+
 /** Live convergence chart for the AI Co-Inventor (canvas 2D). */
 function ConvergenceChart({ history }: { history: Array<{ k: number; error: number }> }): React.ReactElement {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -138,6 +143,15 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
               )}
             </div>
           )}
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>QUANTUM VIEW</div>
+          <button
+            style={btnStyle(state.blochOverlay, '#62d0ff')}
+            onClick={() => dispatch({ blochOverlay: !state.blochOverlay })}
+          >
+            {state.blochOverlay ? 'Bloch HUD overlay ON' : 'Bloch HUD overlay OFF (docked in bottom panel)'}
+          </button>
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>PULSE EDITOR (DRAG, 25 ns GATE)</div>
@@ -424,6 +438,36 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
               )}
             </div>
           )}
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>LAYER VISIBILITY (KLayout-STYLE)</div>
+          {(['met3', 'met2', 'met1', 'via', 'li1', 'poly', 'diffusion', 'nwell', 'psub', 'substrate'] as const).map((k) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <button
+                style={btnStyle(layerVisible[k] !== false, '#ffc107')}
+                onClick={() => {
+                  const next = { ...layerVisible, [k]: layerVisible[k] === false ? true : false };
+                  setLayerVisible(next);
+                  worldRef.current?.setLayerVisibility(next);
+                }}
+              >
+                {k}
+              </button>
+              <input
+                type="range"
+                min={10}
+                max={100}
+                value={layerOpacity[k] ?? 100}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value) / 100;
+                  const next = { ...layerOpacity, [k]: v };
+                  setLayerOpacity(next);
+                  worldRef.current?.bay2.setLayerOpacity(k, v);
+                }}
+                style={{ width: 110, accentColor: '#ffc107' }}
+              />
+            </div>
+          ))}
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>LAYER-PEEL SLICER (L)</div>
