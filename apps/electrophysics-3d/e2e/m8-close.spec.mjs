@@ -106,8 +106,11 @@ test.describe('M8 universal × close buttons', () => {
       // writes its own result; we only need the panel chrome.
       await page.waitForFunction(() => document.querySelector('[data-action="engineering-cad"]') !== null, null, { timeout: 120_000 });
       const cadToggle = page.locator('[data-action="engineering-cad"]');
-      await cadToggle.click();
       const cadPanel = page.locator('section[aria-label="Dimensioned CAD and thermal engineering workspace"]');
+      // The harness may have left the panel either state — drive it deterministically.
+      const initiallyHidden = await cadPanel.evaluate((el) => el.hidden);
+      if (!initiallyHidden) await cadToggle.click();
+      await cadToggle.click();
       await expect(cadPanel).toBeVisible();
       const closeBtn = cadPanel.locator('button.panel-close');
       await expect(closeBtn).toBeVisible();
