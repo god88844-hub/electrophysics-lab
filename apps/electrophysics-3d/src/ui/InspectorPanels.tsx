@@ -1,10 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import type { SandboxComponent } from '../state/store.js';
 
-/** Live-execution hooks for the Bay 3 SoC twin (lazy import keeps boot light). */
-async function chipEngine() {
-  return import('@chip/index.mjs');
-}
+import * as chipEngine from '@chip/index.mjs';
+const { compareArchitectures, systolicMatmul, createRV32, asm } = chipEngine;
 import type { LabState } from '../state/store.js';
 import { Q4_PRIMITIVES, REFERENCE, TRANSMON } from '../data/reference.js';
 import { physicsClient } from '../physics/physicsClient.js';
@@ -547,12 +545,24 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
             <button style={btnStyle(state.soc.radix === 'q4', '#b08cff')} onClick={() => dispatch({ soc: { ...state.soc, radix: 'q4' } })}>Q4 NPU</button>
           </div>
           <button style={{ ...btnStyle(false, '#8ef0b2'), marginTop: 8 }} onClick={async () => {
-            const { compareArchitectures, systolicMatmul } = await chipEngine();
             const A = Array.from({ length: 32 }, (_, i) => Array.from({ length: 32 }, (_, k) => ((i * 7 + k * 13) % 120) - 60));
             const B = Array.from({ length: 32 }, (_, k) => Array.from({ length: 32 }, (_, j) => ((k * 5 + j * 3) % 120) - 60));
             const run = systolicMatmul(A, B, { gridSize: 8, clockMHz: 700, vdd: 0.8 });
             const cmp = compareArchitectures({ M: 32, N: 32, K: 32 });
             const pick = state.soc.arch === 'unified' ? cmp.unifiedInt8 : cmp.discreteInt8;
+            // Per-tile switching activity: tile (r,c) owns outputs
+            // [4r..4r+3)x[4c..4c+3) in the weight-stationary dataflow —
+            // activity = normalized mean |C| magnitude over that sub-block.
+            const C = run.C;
+            let maxTile = 1e-9;
+            const act = Array.from({ length: 64 }, (_, t) => {
+              const r = Math.floor(t / 8), c = t % 8;
+              let sum = 0;
+              for (let i = r * 4; i < r * 4 + 4; i++) for (let j = c * 4; j < c * 4 + 4; j++) sum += Math.abs(C[i]?.[j] ?? 0);
+              maxTile = Math.max(maxTile, sum);
+              return sum;
+            }).map((v) => v / maxTile);
+            worldRef.current?.bay3.setTpuTileActivity(act);
             physicsClient.setTilePower(Math.min(180, run.dynamicPowerW * 8));
             worldRef.current?.bay3.setBusActivity([0.9, 0.8, 0.85, 0.7, 0.6]);
             dispatch({ soc: { ...state.soc, result: {
@@ -571,7 +581,6 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
           )}
           <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 10, marginBottom: 4 }}>RV32IM core</div>
           <button style={btnStyle(false, '#62d0ff')} onClick={async () => {
-            const { createRV32, asm } = await chipEngine();
             const cpu = createRV32({ pcStart: 0 });
             cpu.load([asm.opImm(0, 5, 0, 0), asm.opImm(0, 6, 0, 10), asm.R(0, 6, 5, 0, 5, 0x33), asm.opImm(0, 6, 6, -1), asm.B(-8, 0, 6, 1, 0x63), asm.halt()]);
             cpu.run(200);

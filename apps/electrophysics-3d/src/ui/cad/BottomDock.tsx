@@ -78,6 +78,60 @@ function download(name: string, content: string, mime: string): void {
 
 export type DockTab = 'scope' | 'autopsy' | 'ai' | 'bloch';
 
+/** Multi-channel live probe waveform chart fed by the 3D probe pins (P tool). */
+function ProbeScope(): React.ReactElement {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const state = useSyncExternalStore(subscribeStore, getStore);
+  const probes = state.probes;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    const timer = setInterval(() => {
+      const samples = (window as unknown as { __probeSamples?: Map<number, Array<{ t: number; value: number }>> }).__probeSamples;
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.fillStyle = '#0a0f16';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#1c2836';
+      for (let g = 1; g < 4; g++) {
+        ctx.beginPath();
+        ctx.moveTo(0, (H * g) / 4);
+        ctx.lineTo(W, (H * g) / 4);
+        ctx.stroke();
+      }
+      let maxV = 1e-6;
+      for (const p of probes) {
+        for (const s of samples?.get(p.id) ?? []) maxV = Math.max(maxV, Math.abs(s.value));
+      }
+      for (const p of probes) {
+        const arr = samples?.get(p.id) ?? [];
+        if (arr.length < 2) continue;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        arr.forEach((s, i) => {
+          const x = (i / (arr.length - 1)) * W;
+          const y = H / 2 - (s.value / maxV) * (H / 2 - 14);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+      ctx.font = '11px monospace';
+      probes.forEach((p, i) => {
+        ctx.fillStyle = p.color;
+        ctx.fillText(`ch${i + 1} ${p.targetId}`, 8 + i * 140, 14);
+      });
+    }, 120);
+    return () => clearInterval(timer);
+  }, [probes]);
+  if (probes.length === 0) {
+    return <div style={{ color: '#6f8aa8', fontSize: 12.5, marginTop: 12 }}>No probes pinned. Use the <b>P</b> tool and click a placed component in Silicon CAD.</div>;
+  }
+  return <canvas ref={canvasRef} width={720} height={170} style={{ width: '100%', borderRadius: 6, border: '1px solid #3a4250' }} />;
+}
+
 /**
  * Collapsible bottom instrument dock (starts collapsed; ≤32 % height on
  * auto-open). Houses the oscilloscope, forensic autopsy, AI convergence and
@@ -201,11 +255,7 @@ export function BottomDock(): React.ReactElement | null {
           No forensic capture recorded. Drive a real failure (Vgs &gt; 1.95 V, trace fusing, cryo quench) to open the autopsy.
         </div>
       )}
-      {tab === 'scope' && (
-        <div style={{ color: '#6f8aa8', fontSize: 12.5, marginTop: 12 }}>
-          Multi-channel oscilloscope — plant probes with the <b>P</b> tool (M14 direct 3D probing). Live channel data appears here.
-        </div>
-      )}
+      {tab === 'scope' && <ProbeScope />}
       {tab === 'ai' && (
         <div style={{ color: '#6f8aa8', fontSize: 12.5, marginTop: 12 }}>
           AI Co-Inventor convergence plot lives in the Quantum workspace inspector (Run AI Discovery Experiment). The docked panel mirrors it once an experiment has run.

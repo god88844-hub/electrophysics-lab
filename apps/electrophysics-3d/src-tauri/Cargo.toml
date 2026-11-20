@@ -1,0 +1,25 @@
+[package]
+name = "electrophysics-lab"
+version = "3.0.0"
+description = "Electrophysics Lab — industrial CAD/EDA engineering workbench (digital twin)"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# This template is inert by default — the desktop binary is an OPTIONAL build
+# target. The web app (npm run dev / vite preview) remains the primary product
+# and CI path. Building the .exe requires Rust stable + the Tauri CLI:
+#   cargo install tauri-cli --version ^2
+#   npx tauri build
+default = []
+
+[profile.release]
+opt-level = 3
+lto = true

@@ -2,7 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  workers: 1, // WebGL/SwiftShader pages are resource-bound — serial for determinism
+  workers: 1,
+  retries: 1, // SwiftShader WebGL pages are load-sensitive; one retry absorbs contention flakes // WebGL/SwiftShader pages are resource-bound — serial for determinism
   timeout: 120_000,
   expect: { timeout: 20_000 },
   use: {

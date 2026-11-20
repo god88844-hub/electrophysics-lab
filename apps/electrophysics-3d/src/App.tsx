@@ -37,13 +37,36 @@ export function App() {
     const rig = new CameraRig(renderer, renderer.renderer.domElement);
     bundleRef.current = { renderer, rig, world };
     worldRef.current = world;
+    if (typeof window !== 'undefined' && window.__lab) {
+      window.__lab.worldRef.current = world;
+      window.__lab.physicsClient = physicsClient;
+      window.__lab.projectToScreen = (obj: THREE.Object3D) => {
+        const cam = renderer.activeCamera;
+        const v = new THREE.Vector3();
+        obj.getWorldPosition(v);
+        v.project(cam);
+        const rect = container.getBoundingClientRect();
+        return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
+      };
+    }
 
     physicsClient.ensure();
+    const probeNodes = new Map<number, string>();
+    const probeSamples = new Map<number, Array<{ t: number; value: number }>>();
+    (window as unknown as { __probeNodes?: Map<number, string> }).__probeNodes = probeNodes;
+    (window as unknown as { __probeSamples?: Map<number, Array<{ t: number; value: number }>> }).__probeSamples = probeSamples;
     physicsClient.onSnapshot((s: PhysicsSnapshot) => {
       world.applyPhysicsSnapshot(s);
       const now = performance.now();
       if (now - lastHudPush > 100) {
         lastHudPush = now;
+        for (const [pid, node] of probeNodes) {
+          const value = s.nodes[node] ?? 0;
+          const arr = probeSamples.get(pid) ?? [];
+          arr.push({ t: s.t, value });
+          if (arr.length > 240) arr.shift();
+          probeSamples.set(pid, arr);
+        }
         store.set({
           physics: {
             vdd: s.vdd,
@@ -117,6 +140,14 @@ export function App() {
         const hitPoint = hit ? hitPointOf(p.x, p.y, renderer.activeCamera) : null;
         store.set({ hover: hit ? { ...hit, x: p.clientX, y: p.clientY } : null });
         if (hitPoint) store.set({ cursor: { x: hitPoint.x, y: hitPoint.y, z: hitPoint.z } });
+        // Place-tool ghost preview (grid-snapped bench position).
+        if (store.get().activeTool === 'place' && store.get().workspace === 'silicon' && hitPoint) {
+          const benchX = (hitPoint.x + 2) / 1.4;
+          const benchZ = (hitPoint.z + 1.4) / 1.2;
+          world.setGhost(store.get().placingKind, [benchX, benchZ]);
+        } else {
+          world.setGhost(null, null);
+        }
       }
       frames++;
       const now = performance.now();
@@ -127,6 +158,93 @@ export function App() {
       }
     }
     loop();
+
+    // Direct 3D CAD interaction: place (C) / route wire (W) / probe (P).
+    function benchHitOf(e: PointerEvent): { bench: [number, number]; meshName: string | null } | null {
+      const rect = container.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(new THREE.Vector2(nx, ny), renderer.activeCamera);
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      const out = new THREE.Vector3();
+      if (!ray.ray.intersectPlane(plane, out)) return null;
+      const bench: [number, number] = [(out.x + 2) / 1.4, (out.z + 1.4) / 1.2];
+      // Component pick: sandbox meshes + traces.
+      const sandboxGroup = world.bay2.group.getObjectByName('sandbox-group');
+      let meshName: string | null = null;
+      if (sandboxGroup) {
+        const hits = ray.intersectObjects(sandboxGroup.children, true);
+        if (hits.length > 0) {
+          let o: THREE.Object3D | null = hits[0].object;
+          while (o && !o.name.startsWith('sandbox-') && !o.name.startsWith('trace-')) o = o.parent;
+          if (o) meshName = o.name;
+        }
+      }
+      return { bench, meshName };
+    }
+    function compileSandboxSpec(components: Array<{ id: string; kind: string; params?: Record<string, unknown>; nodes: string[]; position: [number, number] }>) {
+      return { components, wires: [], rails: { vdd: store.get().vddSlider } };
+    }
+    async function sendNetlist(components: Array<{ id: string; kind: string; params?: Record<string, unknown>; nodes: string[]; position: [number, number] }>) {
+      const { compileSandbox } = await import('@physics/index.mjs');
+      compileSandbox(compileSandboxSpec(components)); // compile-check (throws on invalid)
+      physicsClient.setNetlist(compileSandboxSpec(components));
+    }
+    const onViewportClick = (e: PointerEvent) => {
+      const tool = store.get().activeTool;
+      if (tool !== 'place' && tool !== 'wire' && tool !== 'probe') return;
+      if (store.get().workspace !== 'silicon') return;
+      const hit = benchHitOf(e);
+      if (!hit) return;
+      const comps = store.get().sandboxComponents;
+      if (tool === 'place') {
+        const id = store.get().placingKind + '_' + comps.length;
+        const nodes = store.get().placingKind === 'nmos' ? ['gate', 'drain', 'gnd']
+          : store.get().placingKind === 'pmos' ? ['gate', 'drain', 'vdd']
+          : store.get().placingKind === 'rail' ? ['vdd']
+          : store.get().placingKind === 'resistor' ? ['drain', 'gnd']
+          : ['in', 'drain', 'vdd'];
+        const next = [
+          ...comps,
+          { id, kind: store.get().placingKind, params: {}, nodes, position: [hit.bench[0], hit.bench[1]] as [number, number] },
+        ];
+        store.set({ sandboxComponents: next });
+        void sendNetlist(next);
+        flashToast('Placed ' + id + ' — netlist recompiled');
+      } else if (tool === 'wire') {
+        const target = hit.meshName?.replace('sandbox-', '') ?? null;
+        if (!target) {
+          flashToast('Wire tool: click a placed component');
+          return;
+        }
+        const pending = store.get().pendingWireFrom;
+        if (!pending) {
+          store.set({ pendingWireFrom: target });
+          flashToast('Wire from ' + target + ' — click destination');
+        } else if (pending !== target) {
+          world.addManhattanTrace(pending, target);
+          store.set({ pendingWireFrom: null });
+          void sendNetlist(comps);
+          flashToast('Copper trace routed ' + pending + ' → ' + target + ' — netlist recompiled');
+        }
+      } else if (tool === 'probe') {
+        const target = hit.meshName?.replace('sandbox-', '') ?? null;
+        if (!target) {
+          flashToast('Probe tool: click a placed component');
+          return;
+        }
+        const comp = comps.find((c) => c.id === target);
+        const node = comp?.nodes?.[1] ?? 'drain';
+        const colors = ['#62d0ff', '#ffd98a', '#ff9d7a', '#8ef0b2'];
+        const probeId = Date.now() % 100000;
+        store.set({ probes: [...store.get().probes, { id: probeId, targetId: target, color: colors[store.get().probes.length % 4], samples: [] }].slice(-4) });
+        probeNodes.set(probeId, node);
+        store.set({ dockOpen: true, dockTab: 'scope' });
+        flashToast('Probe pinned on ' + target + ' (node ' + node + ') — live waveform in dock');
+      }
+    };
+    container.addEventListener('pointerdown', onViewportClick);
 
     const onPointerMove = (e: PointerEvent) => {
       const rect = container.getBoundingClientRect();
@@ -141,6 +259,7 @@ export function App() {
 
     return () => {
       cancelAnimationFrame(frameId);
+      container.removeEventListener('pointerdown', onViewportClick);
       window.removeEventListener('pointermove', onPointerMove);
       world.dispose();
       renderer.dispose();
@@ -309,7 +428,7 @@ export function App() {
       </div>
 
       {/* 3D viewport — full remaining height (80 %+ unobstructed) */}
-      <div ref={mountRef} style={{ position: 'absolute', top: TOOLBAR_H, left: 0, right: 0, bottom: STATUS_H }} />
+      <div ref={mountRef} data-testid="cad-viewport" style={{ position: 'absolute', top: TOOLBAR_H, left: 0, right: 0, bottom: STATUS_H }} />
 
       {/* ViewCube gizmo (top-right of viewport) */}
       <ViewCube

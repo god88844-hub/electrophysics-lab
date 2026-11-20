@@ -321,6 +321,54 @@ export class LabWorld {
     return { name: name || obj.type, meta: parts.join(' · ') };
   }
 
+  private ghost?: THREE.Mesh;
+
+  /** Grid-snapped ghost preview for the Place tool (C). */
+  setGhost(kind: string | null, position: [number, number] | null): void {
+    if (!kind || !position) {
+      if (this.ghost) this.ghost.visible = false;
+      return;
+    }
+    if (!this.ghost) {
+      this.ghost = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.16, 0.34),
+        new THREE.MeshStandardMaterial({ color: 0x8ef0b2, transparent: true, opacity: 0.45 })
+      );
+      this.bay2.group.add(this.ghost);
+    }
+    const [sx, sz] = position;
+    const snap = (v: number) => Math.round(v / 0.35) * 0.35;
+    this.ghost.position.set(-2 + snap(sx), this.bay2.layerY('met3') + 0.35, -1.4 + snap(sz));
+    this.ghost.visible = true;
+  }
+
+  /** Manhattan orthogonal copper trace between two placed components. */
+  addManhattanTrace(fromId: string, toId: string): void {
+    const group = this.bay2.group.getObjectByName('sandbox-group');
+    if (!group) return;
+    const a = group.getObjectByName('sandbox-' + fromId);
+    const b = group.getObjectByName('sandbox-' + toId);
+    if (!a || !b) return;
+    const y = this.bay2.layerY('met2') + 0.12;
+    const ax = a.position.x, az = a.position.z;
+    const bx = b.position.x, bz = b.position.z;
+    // Manhattan: X leg → Z leg → X leg.
+    const pts = [
+      new THREE.Vector3(ax, y, az),
+      new THREE.Vector3((ax + bx) / 2, y, az),
+      new THREE.Vector3((ax + bx) / 2, y, bz),
+      new THREE.Vector3(bx, y, bz),
+    ];
+    const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0);
+    const tube = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 24, 0.035, 8, false),
+      new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: 0.92, roughness: 0.26 })
+    );
+    tube.name = 'trace-' + fromId + '-' + toId;
+    group.add(tube);
+    this.flow.addPath({ curve, color: new THREE.Color(0xb87333), nominalCurrent: 0.36 });
+  }
+
   /** Render user-placed sandbox components on the silicon bench (real meshes). */
   setSandboxComponents(components: Array<{ id: string; kind: string; position: [number, number] }>): void {
     if (!this.bay2.group.parent) return;

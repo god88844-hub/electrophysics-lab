@@ -62,7 +62,17 @@ export interface SocExec {
 
 export type CadTool = 'select' | 'place' | 'wire' | 'probe';
 
+export interface Probe {
+  id: number;
+  targetId: string;
+  color: string;
+  samples: Array<{ t: number; value: number }>;
+}
+
 export interface LabState {
+  placingKind: string;
+  pendingWireFrom: string | null;
+  probes: Probe[];
   activeTool: CadTool;
   dockOpen: boolean;
   dockTab: 'scope' | 'autopsy' | 'ai' | 'bloch';
@@ -132,6 +142,9 @@ const initial: LabState = {
   cursor: null,
   workspace: 'quantum',
   blochOverlay: false,
+  placingKind: 'nmos',
+  pendingWireFrom: null,
+  probes: [],
   sandboxOpen: false,
   sandboxComponents: [],
   sandboxLoaded: false,
@@ -160,6 +173,21 @@ class Store {
 }
 
 export const store = new Store();
+
+// Read/write hook for the Playwright e2e suite (deterministic CAD-state access).
+declare global {
+  interface Window {
+    __lab?: {
+      store: Store;
+      worldRef: { current: unknown };
+      physicsClient?: { setParams(patch: Record<string, unknown>): void };
+      projectToScreen?: (obj: unknown) => { x: number; y: number };
+    };
+  }
+}
+if (typeof window !== 'undefined') {
+  window.__lab = { store, worldRef: { current: null } };
+}
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 export function flashToast(msg: string): void {
