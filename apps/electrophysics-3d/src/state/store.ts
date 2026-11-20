@@ -42,7 +42,19 @@ export interface QuantumExperiment {
   finalError: number | null;
 }
 
+export interface SandboxComponent {
+  id: string;
+  kind: string;
+  params?: Record<string, unknown>;
+  nodes: string[];
+  position: [number, number];
+  label?: string;
+}
+
 export interface LabState {
+  sandboxOpen: boolean;
+  sandboxComponents: SandboxComponent[];
+  sandboxLoaded: boolean;
   activeBay: BayId;
   inspectorOpen: boolean;
   bay1Mode: Bay1Mode;

@@ -41,6 +41,7 @@ type FxFn = (fx: FaultFx) => void;
 
 class PhysicsClient {
   private worker: Worker | null = null;
+  private netlistFns = new Set<NetlistFn>();
   private snapshotFns = new Set<SnapshotFn>();
   private failureFns = new Set<FailureFn>();
   private fxFns = new Set<FxFn>();
@@ -60,6 +61,8 @@ class PhysicsClient {
           for (const fn of this.failureFns) fn(msg.report, msg.replay, msg.fix);
         } else if (msg.type === 'faultFx') {
           for (const fn of this.fxFns) fn(msg.fx);
+        } else if (msg.type === 'netlistLoaded') {
+          for (const fn of this.netlistFns) fn({ warnings: msg.warnings, nodeNames: msg.nodeNames });
         }
       };
     }
@@ -79,6 +82,19 @@ class PhysicsClient {
   onFx(fn: FxFn): () => void {
     this.fxFns.add(fn);
     return () => this.fxFns.delete(fn);
+  }
+
+  onNetlist(fn: NetlistFn): () => void {
+    this.netlistFns.add(fn);
+    return () => this.netlistFns.delete(fn);
+  }
+
+  setNetlist(spec: Record<string, unknown>): void {
+    this.ensure().postMessage({ type: 'setNetlist', spec });
+  }
+
+  clearNetlist(): void {
+    this.ensure().postMessage({ type: 'clearNetlist' });
   }
 
   setParams(patch: Record<string, unknown>): void {

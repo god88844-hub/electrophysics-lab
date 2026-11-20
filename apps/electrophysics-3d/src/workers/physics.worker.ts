@@ -14,6 +14,7 @@
 import {
   createNetlist,
   solveDC,
+  compileSandbox,
   createHeatGrid,
   resistanceAtTemp,
   tempToRGBf,
@@ -187,7 +188,86 @@ interface Snapshot {
   temps: Record<string, number>;
 }
 
+// ------------------------------------------------------------- sandbox ----
+let sandbox: ReturnType<typeof compileSandbox> | null = null;
+
+function solveSandbox(dt: number): { snapshot: Snapshot; events: ReturnType<typeof evaluateThresholds>; sol: ReturnType<typeof solveDC> } | null {
+  if (!sandbox) return null;
+  const sol = solveDC(sandbox.netlist, { maxNewtonSteps: 40 });
+  if (!sol.converged) return null;
+  // Heat injection at the compiled anchors: trace I²R and device dissipation.
+  diePower.fill(0);
+  for (const anchor of sandbox.heatAnchors) {
+    if (anchor.kind === 'trace') {
+      const i = Math.abs(sol.deviceCurrents[labelOfTrace(sandbox, anchor.id)] ?? 0);
+      const p = i * i * (anchor.R ?? 1);
+      dieGrid.addPowerAt((anchor.position[0] % 1 + 1) % 1, 0.4, p, diePower);
+    } else if (anchor.kind === 'device' || anchor.kind === 'cell') {
+      const labels = Object.keys(sol.devicePower).filter((k) => !k.includes('.') && sol.devicePower[k] > 0 && k.startsWith(anchor.id ?? ''));
+      const p = labels.reduce((s, k) => s + sol.devicePower[k], 0);
+      dieGrid.addPowerAt((anchor.position[0] % 1 + 1) % 1, 0.6, p, diePower);
+    }
+  }
+  dieGrid.step(dt, diePower);
+  pcbGrid.step(dt, pcbPower);
+  cryo.step(dt, params.drivePowerW);
+
+  const traceK = dieGrid.tempAt(0.5, 0.4);
+  const traceC = traceK - 273.15;
+  const junctionK = dieGrid.tempAt(0.6, 0.6);
+  const pcbC = pcbGrid.maxT - 273.15;
+  let vgsMax = 0;
+  let vgsMaxNode: string | null = null;
+  for (const [k, v] of Object.entries(sol.devicePower)) {
+    if (k.endsWith('.vgs') && Math.abs(v) > Math.abs(vgsMax)) {
+      vgsMax = v;
+      vgsMaxNode = k.slice(0, -4);
+    }
+  }
+  const iMax = Math.max(0, ...Object.values(sol.deviceCurrents).map((v) => Math.abs(v)));
+  const nodes: Record<string, number> = {};
+  sandbox.nodeNames.forEach((n, idx) => {
+    nodes[n] = sol.nodeVoltages[idx];
+  });
+  const snapshot: Snapshot = {
+    t: simT,
+    vdd: params.vdd,
+    vgsMax,
+    vgsMaxNode,
+    iMax,
+    tempMaxC: Math.max(traceC, pcbC, junctionK - 273.15),
+    nodes,
+    currents: { ...sol.deviceCurrents },
+    temps: {
+      traceC,
+      pcbC,
+      junctionC: junctionK - 273.15,
+      cryoK: cryo.tempK,
+      tiles: Object.fromEntries(TILES.map((tl) => [tl.id, pcbGrid.tempAt(tl.x, tl.y) - 273.15])),
+    },
+  };
+  ring.push(snapshot);
+  const events = evaluateThresholds(
+    {
+      vgsMaxV: vgsMax,
+      vgsMaxNode,
+      traceTempC: traceC,
+      pcbTempC: pcbC,
+      junctionTempC: junctionK - 273.15,
+      driveLoadW: params.drivePowerW,
+    },
+    TH
+  );
+  return { snapshot, events, sol };
+}
+
+function labelOfTrace(sb: NonNullable<typeof sandbox>, id: string): string {
+  const trace = sb.netlist.elements.find((e) => e.kind === 'R' && e.label?.startsWith('TRACE'));
+  return trace?.label ?? '';
+}
+
 function physicsTick(dt: number): { snapshot: Snapshot; events: ReturnType<typeof evaluateThresholds>; sol: ReturnType<typeof solveDC> } | null {
+  if (sandbox) return solveSandbox(dt);
   simT += dt;
   binClock = Math.floor(simT * 2) % 2 === 0 ? 0 : SKY.nominal_vdd_v; // 1 Hz binary gate clock
   updateNetlist();
@@ -371,6 +451,19 @@ self.onmessage = (e: MessageEvent) => {
     if (patch.convectionScale !== undefined) params.thermalConvectionScale = patch.convectionScale;
     resetFaults();
     postMessage({ type: 'fixed', applied: patch });
+  } else if (msg.type === 'setNetlist') {
+    try {
+      sandbox = compileSandbox(msg.spec);
+      failureLatch.clear();
+      postMessage({ type: 'netlistLoaded', warnings: sandbox.warnings, nodeNames: sandbox.nodeNames });
+    } catch (err) {
+      postMessage({ type: 'error', error: String(err) });
+    }
+  } else if (msg.type === 'clearNetlist') {
+    sandbox = null;
+    failureLatch.clear();
+    resetFaults();
+    postMessage({ type: 'netlistLoaded', warnings: ['default bench restored'], nodeNames: [] });
   } else if (msg.type === 'getState') {
     postMessage({ type: 'state', params: { ...params }, simT, paused });
   }

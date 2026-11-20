@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import type { SandboxComponent } from '../state/store.js';
 import type { LabState } from '../state/store.js';
 import { Q4_PRIMITIVES, REFERENCE, TRANSMON } from '../data/reference.js';
 import { physicsClient } from '../physics/physicsClient.js';
@@ -325,6 +326,99 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
               {r >= 1e6 ? '1 MΩ' : `${r / 1000} kΩ`}
             </button>
           ))}
+        </div>
+        <div style={sectionStyle}>
+          <div style={labelStyle}>SANDBOX WORKBENCH — BUILD &amp; STRESS REAL NETLISTS</div>
+          <button
+            style={btnStyle(state.sandboxOpen, '#ffc107')}
+            onClick={() => dispatch({ sandboxOpen: !state.sandboxOpen })}
+          >
+            {state.sandboxOpen ? 'Hide component palette' : 'Open component palette (starts closed)'}
+          </button>
+          {state.sandboxOpen && (
+            <div>
+              <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 6, marginBottom: 4 }}>
+                Place components on the bench; wires connect declared node names. Live compile → MNA + thermal solver.
+              </div>
+              {(['nmos', 'pmos', 'trace', 'resistor', 'rail', 'gnd', 'q4_inv', 'q4_half_adder', 'cmos_inv', 'binary_half_adder', 'probe'] as const).map((kind) => (
+                <button
+                  key={kind}
+                  style={btnStyle(false, '#ffc107')}
+                  onClick={() => {
+                    const n = state.sandboxComponents.length;
+                    const comp: SandboxComponent = {
+                      id: kind + '_' + n,
+                      kind,
+                      params: kind === 'trace' ? { widthUm: 10, lengthUm: 500 } : kind === 'rail' ? { V: state.vddSlider } : undefined,
+                      nodes: kind === 'nmos' ? ['gate', 'drain', 'gnd']
+                        : kind === 'pmos' ? ['gate', 'drain', 'vdd']
+                        : kind === 'rail' ? ['vdd']
+                        : kind === 'gnd' ? ['gnd']
+                        : kind === 'probe' ? ['drain']
+                        : ['in', 'drain', 'vdd'],
+                      position: [n % 4, Math.floor(n / 4) % 3],
+                    };
+                    dispatch({ sandboxComponents: [...state.sandboxComponents, comp] });
+                  }}
+                >
+                  + {kind}
+                </button>
+              ))}
+              <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>One-click starter circuits (real thresholds preserved)</div>
+              {(['q4-half-adder', 'noise-margin-shootout', 'oxide-breakdown', 'trace-fusing'] as const).map((name) => (
+                <button
+                  key={name}
+                  style={btnStyle(false, '#8ef0b2')}
+                  onClick={async () => {
+                    const { starterCircuit } = await import('@physics/index.mjs');
+                    const spec = starterCircuit(name);
+                    const comps = (spec.components ?? []).map((c: { id: string; kind: string; position?: number[] }, i: number) => ({
+                      id: c.id, kind: c.kind, params: (c as { params?: Record<string, unknown> }).params,
+                      nodes: (c as { nodes?: string[] }).nodes ?? [],
+                      position: [c.position?.[0] ?? i % 4, c.position?.[1] ?? Math.floor(i / 4)] as [number, number],
+                    }));
+                    dispatch({ sandboxComponents: comps, sandboxLoaded: true });
+                    physicsClient.setNetlist(spec);
+                    flashToast('Starter circuit compiled into the live MNA solver');
+                  }}
+                >
+                  {name}
+                </button>
+              ))}
+              <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 8, marginBottom: 4 }}>
+                Placed: {state.sandboxComponents.length}
+              </div>
+              {state.sandboxComponents.map((c) => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'monospace', color: '#eceff4' }}>
+                  <span>{c.id} · {c.kind}</span>
+                  <button
+                    style={{ background: 'none', border: '1px solid #4a3028', color: '#c9a29a', borderRadius: 5, cursor: 'pointer', fontSize: 10 }}
+                    onClick={() => {
+                      const rest = state.sandboxComponents.filter((x) => x.id !== c.id);
+                      dispatch({ sandboxComponents: rest });
+                      if (rest.length === 0) physicsClient.clearNetlist();
+                    }}
+                  >
+                    delete
+                  </button>
+                </div>
+              ))}
+              {state.sandboxComponents.length > 0 && (
+                <button
+                  style={{ ...btnStyle(false, '#8ef0b2'), marginTop: 8 }}
+                  onClick={async () => {
+                    const { compileSandbox } = await import('@physics/index.mjs');
+                    compileSandbox({ components: state.sandboxComponents, wires: [], rails: { vdd: state.vddSlider } }); // compile-check
+                    physicsClient.setNetlist({ components: state.sandboxComponents, wires: [], rails: { vdd: state.vddSlider } });
+                    dispatch({ sandboxLoaded: true });
+                    flashToast('Sandbox netlist compiled into the live solver');
+                  }}
+                >
+                  Compile &amp; run netlist
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>LAYER-PEEL SLICER (L)</div>

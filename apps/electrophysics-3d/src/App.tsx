@@ -139,7 +139,8 @@ export function App() {
     b.world.setBay1Mode(state.bay1Mode);
     b.world.setLayerPeel(state.peelMode === 'exploded', state.peelDepth);
     b.world.setNpuAttached(state.npuAttached);
-  }, [state.bay1Mode, state.peelMode, state.peelDepth, state.npuAttached]);
+    b.world.setSandboxComponents(state.sandboxComponents);
+  }, [state.bay1Mode, state.peelMode, state.peelDepth, state.npuAttached, state.sandboxComponents]);
 
   // Keyboard shortcuts: 1–5 bays · L layer peel · Tab inspector · Esc overview · 5 also library.
   useEffect(() => {
