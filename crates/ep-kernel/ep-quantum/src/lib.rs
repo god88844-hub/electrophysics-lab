@@ -1,4 +1,5 @@
-//! `ep-quantum` — Lindblad/Kraus density-matrix kernel (WP-5.1).
+//! `ep-quantum` — Lindblad/Kraus density-matrix kernel (WP-5.1) + Pauli-frame
+//! stabilizer QEC kernel (WP-5.2).
 //!
 //! Operator-splitting exact solver for 1–6 interactive qubits (strictly
 //! admission-gated through **ep-core**: `n > 6` is refused interactively with
@@ -9,10 +10,13 @@
 //! `data/reference-library/04_quantum_hardware_modalities.json` (embedded
 //! byte-exactly for wasm; no invented constants).
 //!
-//! Parity: the ESM engine `packages/quantum-engine/src/lindblad.mjs` is the
-//! CI oracle (03_PHYSICS_MATH_FUNDAMENTALS.md §4) — trace/positivity/T1/T2
-//! oracles ±0.02 and embedded same-arithmetic parity values are asserted in
-//! `tests/parity_oracle.rs`.
+//! WP-5.2 adds the bit-packed Pauli-frame QEC kernel ([`qec`]): 50–500+
+//! qubit frames, repetition/bit-flip codes and the rotated surface code
+//! (`d = 3, 5, 7`) with lookup / MWPM / union-find decoders, badged
+//! `SIMULATED_NOISY_QUANTUM`. Parity: the ESM engine
+//! `packages/quantum-engine/src/stabilizer.mjs` is the CI frame-semantics
+//! oracle (03_PHYSICS_MATH_FUNDAMENTALS.md §4 QEC bullet, §5 QEC-sweep
+//! row) — asserted in `tests/qec_oracle.rs`.
 //!
 //! No unsafe; no I/O; wasm32-compatible.
 
@@ -21,6 +25,7 @@
 pub mod admission;
 pub mod devices;
 pub mod lindblad;
+pub mod qec;
 
 pub use admission::{admit_offline, dense_working_set_bytes, offline_max_qubits};
 pub use devices::{
@@ -31,6 +36,12 @@ pub use lindblad::ops;
 pub use lindblad::{
     average_gate_fidelity, rotation, Axis, DensityMatrix, Drive, InitialState, LindbladSim,
     Mulberry32, NoiseModel, Op2, ZzPair, DENSITY_MATRIX_MAX_QUBITS,
+};
+pub use qec::{
+    admit_qec_frame, bench_frame_layers, esm_bit_flip_logical_error_rate, esm_run_bit_flip_trial,
+    esm_run_surface_trial, esm_surface_logical_error_rate, qec_frame_working_set_bytes,
+    DecoderKind, PauliFrame, PauliSector, RepetitionCode, RepetitionTrial, RotatedSurfaceCode,
+    SurfaceTrial, QEC_PROVENANCE,
 };
 
 #[cfg(test)]
