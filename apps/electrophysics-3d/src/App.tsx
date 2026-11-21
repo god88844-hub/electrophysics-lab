@@ -24,6 +24,7 @@ import { verifyReferenceIntegrity, REFERENCE } from './data/reference.js';
 import { physicsClient, type PhysicsSnapshot, type ForensicReport, type ProposedFix, type FaultFx } from './physics/physicsClient.js';
 import { quantumClient, type BlochState, type BreakthroughBundle } from './physics/quantumClient.js';
 import { LibraryOverlay } from './ui/LibraryOverlay.js';
+import { historyManager, makePlaceComponent, makeRouteWire, makeSetParam, committedHeadSnapshot } from './state/history.js';
 import { InspectorPanels } from './ui/InspectorPanels.js';
 import { BottomDock } from './ui/cad/BottomDock.js';
 import { ViewCube } from './ui/cad/ViewCube.js';
@@ -87,6 +88,7 @@ export function App() {
   const bundleRef = useRef<{ renderer: RendererBundle; rig: CameraRig; world: LabWorld } | null>(null);
   const state = useLabState();
   const pointerNdc = useRef({ x: -2, y: -2, clientX: 0, clientY: 0 });
+  const suppressHistoryRef = useRef(false);
 
   // ---- WP-1.3 — .eplab project persistence (Save / Open / Auto-save) ----
   // Reference-library snapshot every seal is bound to (MANIFEST generatedAt).
@@ -172,6 +174,38 @@ export function App() {
     if (typeof window !== 'undefined' && window.__lab) {
       window.__lab.worldRef.current = world;
       window.__lab.physicsClient = physicsClient;
+      // WP-1.4 — history manager + mutation surface for the command pattern.
+      window.__lab.history = historyManager;
+      window.__lab.historyCtx = {
+        workspace: () => store.get().workspace,
+        getComponents: () => store.get().sandboxComponents,
+        setComponents: (components: Array<Record<string, unknown>>) => {
+          store.set({ sandboxComponents: components as unknown as LabState['sandboxComponents'] });
+          world.setSandboxComponents(components as Array<{ id: string; kind: string; position: [number, number] }>);
+        },
+        getWires: () => store.get().wires ?? [],
+        setWires: () => {
+          /* wires are mesh-tracked: cadTraces registry + snapshotFromState reads the group */
+        },
+        addTraceMesh: (fromId: string, toId: string) => world.addManhattanTrace(fromId, toId),
+        removeTraceMesh: (fromId: string, toId: string) => {
+          const group = world.bay2.group.getObjectByName('sandbox-group');
+          if (!group) return;
+          const prefix = 'trace-' + fromId + '-' + toId;
+          for (const child of [...group.children]) {
+            if (child.name.startsWith(prefix)) group.remove(child);
+          }
+        },
+        addTraceMeshDual: (f: string, t: string) => {
+          world.addManhattanTrace(f, t);
+          cadTraces.push({ from: f, to: t });
+        },
+        setParam: (key: string, value: unknown) => {
+          store.set({ [key]: value } as unknown as Partial<LabState>);
+          if (key === 'vddSlider') physicsClient.setParams({ vdd: value as number });
+        },
+        snapshot: () => snapshotFromState(store.get(), wiresFromSandboxGroup(worldRef.current?.bay2.group ?? null)),
+      };
       window.__lab.projectToScreen = (obj: THREE.Object3D) => {
         const cam = renderer.activeCamera;
         const v = new THREE.Vector3();
@@ -181,6 +215,46 @@ export function App() {
         return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
       };
     }
+
+    // WP-1.4 — history recording + committed-head contract. Palette edits
+    // route through the store (InspectorPanels is file-isolated), so a store
+    // subscription diffs component/param changes into commands. Undo/redo
+    // suppress the recorder (the command's own revert mutates the store).
+    const cadTraces: Array<{ from: string; to: string }> = [];
+    let prevComponents = store.get().sandboxComponents.map((c) => ({ ...c }));
+    let prevVddSlider = store.get().vddSlider;
+    store.subscribe(() => {
+      const s = store.get();
+      const next = s.sandboxComponents.map((c) => ({ ...c }));
+      if (suppressHistoryRef.current || !historyManager.recording) {
+        prevComponents = next;
+        prevVddSlider = s.vddSlider;
+        return;
+      }
+      const workspace = s.workspace;
+      for (const c of next) {
+        if (!prevComponents.some((p) => p.id === c.id)) {
+          historyManager.stackFor(workspace).record(makePlaceComponent(workspace, c));
+        }
+      }
+      for (const c of prevComponents) {
+        if (!next.some((p) => p.id === c.id)) {
+          historyManager.stackFor(workspace).record(makeDeleteComponent(workspace, c));
+        }
+      }
+      if (s.vddSlider !== prevVddSlider) {
+        historyManager.stackFor(workspace).record(makeSetParam(workspace, 'vddSlider', prevVddSlider, s.vddSlider));
+        prevVddSlider = s.vddSlider;
+      }
+      prevComponents = next;
+      // Component re-renders wipe trace meshes — restore them from the
+      // committed registry (deferred so the re-render lands first).
+      if (cadTraces.length > 0) {
+        setTimeout(() => {
+          for (const t of cadTraces) world.addManhattanTrace(t.from, t.to);
+        }, 0);
+      }
+    });
 
     physicsClient.ensure();
     const probeNodes = new Map<number, string>();
@@ -355,7 +429,27 @@ export function App() {
           store.set({ pendingWireFrom: target });
           flashToast('Wire from ' + target + ' — click destination');
         } else if (pending !== target) {
-          world.addManhattanTrace(pending, target);
+          historyManager.push(
+            makeRouteWire('silicon', { from: pending, to: target }),
+            {
+              setWires: (wires) => store.set({ wires } as unknown as Partial<LabState>),
+              addTraceMesh: (f: string, t: string) => {
+                world.addManhattanTrace(f, t);
+                cadTraces.push({ from: f, to: t });
+              },
+              removeTraceMesh: (f: string, t: string) => {
+                const group = world.bay2.group.getObjectByName('sandbox-group');
+                if (group) {
+                  const prefix = 'trace-' + f + '-' + t;
+                  for (const child of [...group.children]) {
+                    if (child.name.startsWith(prefix)) group.remove(child);
+                  }
+                }
+                const i = cadTraces.findIndex((w) => w.from === f && w.to === t);
+                if (i >= 0) cadTraces.splice(i, 1);
+              },
+            },
+          );
           store.set({ pendingWireFrom: null });
           void sendNetlist(comps);
           flashToast('Copper trace routed ' + pending + ' → ' + target + ' — netlist recompiled');
@@ -463,6 +557,30 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // WP-1.4 — Undo/Redo chords (guarded before tool hotkeys: Ctrl+Z must
+      // never double-fire the 'z' tool path, and tool hotkeys stay Ctrl-free).
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          suppressHistoryRef.current = true;
+          const workspace = store.get().workspace;
+          const undone = historyManager.undo(workspace, (window as unknown as { __lab: { historyCtx: unknown } }).__lab.historyCtx as never);
+          suppressHistoryRef.current = false;
+          flashToast(undone ? 'Undo: ' + undone.label : 'Nothing to undo');
+          return;
+        }
+        if (k === 'y' || (k === 'z' && e.shiftKey)) {
+          e.preventDefault();
+          suppressHistoryRef.current = true;
+          const workspace = store.get().workspace;
+          const redone = historyManager.redo(workspace, (window as unknown as { __lab: { historyCtx: unknown } }).__lab.historyCtx as never);
+          suppressHistoryRef.current = false;
+          flashToast(redone ? 'Redo: ' + redone.label : 'Nothing to redo');
+          return;
+        }
+        return; // other chords are not tool hotkeys
+      }
       const num = parseInt(e.key);
       if (num >= 1 && num <= 4) {
         const ids: WorkspaceId[] = ['quantum', 'silicon', 'soc', 'library'];
