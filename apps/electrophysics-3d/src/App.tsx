@@ -27,6 +27,10 @@ import { LibraryOverlay } from './ui/LibraryOverlay.js';
 import { InspectorPanels } from './ui/InspectorPanels.js';
 import { BottomDock } from './ui/cad/BottomDock.js';
 import { ViewCube } from './ui/cad/ViewCube.js';
+import { AdmissionBanner } from './ui/cad/AdmissionBanner.js';
+import { admitAndSurface, ADMISSION_BUDGETS, admissionSurfaceApi } from './ui/cad/admissionSurface.mjs';
+import { createTelemetryHistory, sampleFrameStore, TELEMETRY_SAMPLE_MS } from './ui/cad/telemetryScope.mjs';
+import { logicSurfaceApi } from './ui/cad/logicStream.mjs';
 
 function useLabState() {
   return useSyncExternalStore(
@@ -38,7 +42,47 @@ function useLabState() {
 const TOOLBAR_H = 40;
 const STATUS_H = 24;
 
+/**
+ * WP-1.6 — instrument-dock mount hook: starts the zero-allocation
+ * solver-frame telemetry sampler, routes real over-budget workloads to the
+ * admission-refusal surface (frame boundary + quantum stream), and exposes
+ * the typed WP-1.6 surfaces on `window.__lab` for the e2e suite (same
+ * pattern as `window.__lab.physicsClient`).
+ */
+function useWP16Instruments(): void {
+  useEffect(() => {
+    const telemetry = createTelemetryHistory();
+    const sampler = setInterval(() => sampleFrameStore(telemetry), TELEMETRY_SAMPLE_MS);
+    // Frame-boundary admission checks: a snapshot whose node/voltage-source
+    // tables exceed the §2.3 interactive budgets is being refused at the
+    // frame boundary — surface it honestly (never silently dropped).
+    const unsubSnap = physicsClient.onSnapshot((s) => {
+      const nodes = Object.keys(s.nodes ?? {}).length;
+      if (nodes > ADMISSION_BUDGETS.mnaMaxNodes) {
+        admitAndSurface({ domain: 'mna', nodes });
+      }
+    });
+    const unsubQuantum = quantumClient.onState(({ bloch }) => {
+      if (Array.isArray(bloch) && bloch.length > ADMISSION_BUDGETS.quantumMaxQubits) {
+        admitAndSurface({ domain: 'quantum', qubits: bloch.length });
+      }
+    });
+    const lab = (window as unknown as { __lab?: Record<string, unknown> }).__lab;
+    if (lab) {
+      lab.telemetry = telemetry;
+      lab.admission = admissionSurfaceApi;
+      lab.logic = logicSurfaceApi;
+    }
+    return () => {
+      clearInterval(sampler);
+      unsubSnap();
+      unsubQuantum();
+    };
+  }, []);
+}
+
 export function App() {
+  useWP16Instruments();
   const mountRef = useRef<HTMLDivElement>(null);
   const bundleRef = useRef<{ renderer: RendererBundle; rig: CameraRig; world: LabWorld } | null>(null);
   const state = useLabState();
@@ -668,6 +712,8 @@ export function App() {
           </>
         )}
         <div style={{ flex: 1 }} />
+        {/* WP-1.6 — admission refusals surface in the status bar too. */}
+        <AdmissionBanner compact />
         <span>{WORKSPACES.find((w) => w.id === state.workspace)?.name}</span>
       </div>
     </div>

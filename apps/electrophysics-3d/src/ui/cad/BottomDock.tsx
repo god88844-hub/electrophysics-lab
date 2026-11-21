@@ -1,9 +1,13 @@
-import React, { useEffect, useRef, useSyncExternalStore } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { store } from '../../state/store.js';
 import { physicsClient, type ForensicReport, type PhysicsSnapshot, type ProposedFix } from '../../physics/physicsClient.js';
 import { worldRef } from '../../worldRef.js';
 import { BlochPanel } from './BlochPanel.js';
 import { flashToast } from '../../state/store.js';
+import { SolverScope } from './SolverScope.js';
+import { LogicAnalyzer } from './LogicAnalyzer.js';
+import { AdmissionBanner } from './AdmissionBanner.js';
+import { createTelemetryHistory, sampleFrameStore, TELEMETRY_SAMPLE_MS } from './telemetryScope.mjs';
 
 const getStore = () => store.get();
 const subscribeStore = (fn: () => void) => store.subscribe(fn);
@@ -134,19 +138,38 @@ function ProbeScope(): React.ReactElement {
 
 /**
  * Collapsible bottom instrument dock (starts collapsed; ≤32 % height on
- * auto-open). Houses the oscilloscope, forensic autopsy, AI convergence and
- * Bloch instruments. The 3D viewport is NEVER squeezed by side panels.
+ * auto-open). Houses the oscilloscope (solver-frame channels + probe pins),
+ * forensic autopsy, AI convergence, Bloch instruments and the WP-1.6 Logic
+ * Analyzer. The 3D viewport is NEVER squeezed by side panels.
+ *
+ * WP-1.6: the dock owns the admission-refusal strip (AdmissionBanner) and
+ * the Logic Analyzer tab via local tab state (the store's `dockTab` union
+ * is untouched); store tabs clear the local selection.
  */
 export function BottomDock(): React.ReactElement | null {
   const state = useSyncExternalStore(subscribeStore, getStore);
   const forensic = state.forensic;
   const open = state.dockOpen;
+  const [wp16Tab, setWp16Tab] = useState<'logic' | null>(null);
+  // WP-1.6 telemetry history: allocated exactly once per dock mount; the
+  // sampler writes the ring on the solver-frame cadence (zero-alloc).
+  const [telemetry] = useState(() => createTelemetryHistory());
+  useEffect(() => {
+    if (!open) return; // dock collapsed → no sampling (honest gap, not fabricated data)
+    const timer = setInterval(() => sampleFrameStore(telemetry), TELEMETRY_SAMPLE_MS);
+    return () => clearInterval(timer);
+  }, [open, telemetry]);
   if (!open) return null;
   const report = forensic?.report as ForensicReport | undefined;
   const replay = (forensic?.replay ?? []) as Array<PhysicsSnapshot>;
   const fix = forensic?.fix as ProposedFix | null;
   const scrub = state.replayIndex;
   const tab = state.dockTab;
+
+  const selectStoreTab = (id: DockTab) => {
+    setWp16Tab(null);
+    store.set({ dockTab: id });
+  };
 
   return (
     <div
@@ -169,21 +192,37 @@ export function BottomDock(): React.ReactElement | null {
           {([['scope', 'Oscilloscope'], ['autopsy', report ? `Forensic Autopsy — ${report.failure.type}` : 'Forensic Autopsy'], ['ai', 'AI Co-Inventor'], ['bloch', 'Bloch Instruments']] as Array<[DockTab, string]>).map(([id, label]) => (
             <button
               key={id}
-              onClick={() => store.set({ dockTab: id })}
+              onClick={() => selectStoreTab(id)}
               style={{
-                background: tab === id ? '#d8a03a' : 'rgba(26,32,41,0.9)',
-                color: tab === id ? '#14171c' : '#eceff4',
+                background: wp16Tab === null && tab === id ? '#d8a03a' : 'rgba(26,32,41,0.9)',
+                color: wp16Tab === null && tab === id ? '#14171c' : '#eceff4',
                 border: '1px solid #3a4250',
                 borderRadius: 8,
                 padding: '3px 12px',
                 cursor: 'pointer',
                 fontSize: 12.5,
-                fontWeight: tab === id ? 700 : 400,
+                fontWeight: wp16Tab === null && tab === id ? 700 : 400,
               }}
             >
               {label}
             </button>
           ))}
+          <button
+            data-testid="wp16-logic-tab"
+            onClick={() => setWp16Tab('logic')}
+            style={{
+              background: wp16Tab === 'logic' ? '#d8a03a' : 'rgba(26,32,41,0.9)',
+              color: wp16Tab === 'logic' ? '#14171c' : '#eceff4',
+              border: '1px solid #3a4250',
+              borderRadius: 8,
+              padding: '3px 12px',
+              cursor: 'pointer',
+              fontSize: 12.5,
+              fontWeight: wp16Tab === 'logic' ? 700 : 400,
+            }}
+          >
+            Logic Analyzer
+          </button>
         </div>
         <button
           onClick={() => store.set({ dockOpen: false })}
@@ -194,7 +233,12 @@ export function BottomDock(): React.ReactElement | null {
         </button>
       </div>
 
-      {tab === 'autopsy' && report && (
+      {/* WP-1.6 — admission-refusal strip: every { admitted:false, reason }
+          payload is surfaced here verbatim (fail-closed, never hidden). */}
+      <AdmissionBanner />
+
+      {wp16Tab === 'logic' && <LogicAnalyzer />}
+      {wp16Tab === null && tab === 'autopsy' && report && (
         <div style={{ marginTop: 10 }}>
           <div style={{ color: '#c9a29a', fontSize: 12.5, lineHeight: 1.55 }}>
             <b>Triggered:</b> {report.failure.value} vs threshold {report.failure.threshold}
@@ -250,18 +294,25 @@ export function BottomDock(): React.ReactElement | null {
           </div>
         </div>
       )}
-      {tab === 'autopsy' && !report && (
+      {wp16Tab === null && tab === 'autopsy' && !report && (
         <div style={{ color: '#6f8aa8', fontSize: 12.5, marginTop: 12 }}>
           No forensic capture recorded. Drive a real failure (Vgs &gt; 1.95 V, trace fusing, cryo quench) to open the autopsy.
         </div>
       )}
-      {tab === 'scope' && <ProbeScope />}
-      {tab === 'ai' && (
+      {wp16Tab === null && tab === 'scope' && (
+        <div>
+          {/* WP-1.6 — solver-frame-driven channels (strict typed-array source). */}
+          <SolverScope history={telemetry} />
+          <div style={{ color: '#54677d', fontSize: 11, margin: '4px 0 2px' }}>probe-pin channels (P tool):</div>
+          <ProbeScope />
+        </div>
+      )}
+      {wp16Tab === null && tab === 'ai' && (
         <div style={{ color: '#6f8aa8', fontSize: 12.5, marginTop: 12 }}>
           AI Co-Inventor convergence plot lives in the Quantum workspace inspector (Run AI Discovery Experiment). The docked panel mirrors it once an experiment has run.
         </div>
       )}
-      {tab === 'bloch' && <BlochPanel />}
+      {wp16Tab === null && tab === 'bloch' && <BlochPanel />}
     </div>
   );
 }
