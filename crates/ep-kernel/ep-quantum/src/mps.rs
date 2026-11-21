@@ -819,8 +819,7 @@ impl MpsSim {
         let mat = op2_to_mat(op);
         let mut env = vec![C64::ONE];
         let mut dl_pair = 1usize;
-        for j in 0..self.n {
-            let t = &self.tensors[j];
+        for (j, t) in self.tensors.iter().enumerate().take(self.n) {
             let dr = t.dr;
             let mut next = vec![C64::ZERO; dr * dr];
             for l in 0..t.dl {
