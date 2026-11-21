@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+# Dual-target kernel workspace (WP-1.2):
+#   - crates/ep-kernel           native kernel entry (Tauri IPC / typed-array buffers)
+#   - crates/ep-kernel/ep-core   units, SHA-256-verified reference data, schema mirrors, admission
+#   - crates/ep-kernel-wasm      wasm-bindgen exports for browser dev preview + CI
+# Future members (Phase 2+ per docs/master-plan/02_SYSTEM_ARCHITECTURE.md):
+#   ep-circuit, ep-thermal, ep-logic, ep-chip, ep-quantum
+members = [
+    "crates/ep-kernel",
+    "crates/ep-kernel/ep-core",
+    "crates/ep-kernel-wasm",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[profile.release]
+opt-level = 3
+lto = true

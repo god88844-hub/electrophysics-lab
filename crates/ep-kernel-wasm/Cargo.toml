@@ -1,0 +1,15 @@
+[package]
+name = "ep-kernel-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "wasm-bindgen exports of the ep-core admission controller + reference verification for browser dev preview and CI"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ep-core = { path = "../ep-kernel/ep-core" }
+wasm-bindgen = "0.2"
+serde = { workspace = true }
+serde_json = { workspace = true }

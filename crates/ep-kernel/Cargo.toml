@@ -1,0 +1,11 @@
+[package]
+name = "ep-kernel"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native kernel entry: re-exports ep-core (units, verified reference data, admission) behind the Tauri IPC boundary"
+
+[dependencies]
+ep-core = { path = "ep-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
