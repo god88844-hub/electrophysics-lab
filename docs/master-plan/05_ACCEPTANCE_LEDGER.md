@@ -15,7 +15,7 @@ its `verification` command passing on the current branch. One WP per PR
 | WP-1.4 | Command-Pattern Undo/Redo across CAD edits | NOT_STARTED | WP-1.3 | unit test (edit stack parity) + Playwright | — |
 | WP-1.5 | 60 FPS CAD viewport + ViewCube + hover telemetry (kernel-frame fed) | NOT_STARTED | WP-1.2 | Playwright FPS trend + frame-schema validation | — |
 | WP-1.6 | Multi-channel oscilloscope & logic analyzer dock + admission controller UI | NOT_STARTED | WP-1.5 | unit tests (admission refusals) + Playwright dock test | — |
-| WP-2.1 | `ep-circuit`: Rust MNA + numeric-Jacobian Newton (parity with ESM) | NOT_STARTED | WP-1.2 | `cargo test -p ep-circuit` (divider/inverter oracles) | — |
+| WP-2.1 | `ep-circuit`: Rust MNA + numeric-Jacobian Newton (parity with ESM) | VERIFIED | WP-1.2 | `cargo test -p ep-circuit` (divider/inverter oracles) | PR (wp/2.1-ep-circuit): ep-circuit 7/7 — divider exact ±1e-9 + KCL <1e-9 + power conservation <1e-9, inverter sweep vs ESM oracles ±1e-6 (5-point), symmetric MOSFET role-swap exact, shorted-gate fault, admission refusal (65 nodes/33 V-src fail-closed), source-stepping + gmin escalation with continuation re-solve; clippy -D warnings + fmt clean; wasm32 ep-core/ep-kernel-wasm check+build PASS; npm test 1085/0; Phase 30/39 clean-tree PASS |
 | WP-2.2 | BSIM-calibrated SKY130A MOSFET levels (tables from public models) | NOT_STARTED | WP-2.1 | ngspice differential ±5 % | — |
 | WP-2.3 | Implicit-stable 2D/3D Fourier thermal PDE (BE/CN) in `ep-thermal` | NOT_STARTED | WP-2.1 | analytic steady-state ±2 % + unconditional-stability test | — |
 | WP-2.4 | ngspice CI differential verification harness (kernel vs oracle) | NOT_STARTED | WP-2.1 | `node scripts/phase2x-diff.mjs` ngspice suite | — |
