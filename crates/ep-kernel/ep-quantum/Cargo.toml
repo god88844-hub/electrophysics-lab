@@ -1,0 +1,11 @@
+[package]
+name = "ep-quantum"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Lindblad/Kraus density-matrix kernel (WP-5.1): operator-splitting integrator, DRAG/ZZ/leakage, SOI MZI, Rydberg blockade — admission-gated via ep-core, parity-oracled against packages/quantum-engine"
+
+[dependencies]
+ep-core = { path = "../ep-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }

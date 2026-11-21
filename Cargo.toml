@@ -5,10 +5,11 @@ resolver = "2"
 #   - crates/ep-kernel/ep-core   units, SHA-256-verified reference data, schema mirrors, admission
 #   - crates/ep-kernel-wasm      wasm-bindgen exports for browser dev preview + CI
 # Future members (Phase 2+ per docs/master-plan/02_SYSTEM_ARCHITECTURE.md):
-#   ep-circuit, ep-thermal, ep-logic, ep-chip, ep-quantum
+#   ep-circuit, ep-thermal, ep-logic, ep-chip
 members = [
     "crates/ep-kernel",
     "crates/ep-kernel/ep-core",
+    "crates/ep-kernel/ep-quantum",
     "crates/ep-kernel-wasm",
 ]
 
