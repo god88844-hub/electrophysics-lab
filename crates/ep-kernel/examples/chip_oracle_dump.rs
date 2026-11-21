@@ -7,9 +7,10 @@
 //! 1. **RV32IM strict core** (`ep-chip::cpu::Cpu`) executing the frozen
 //!    Phase 8 RV32M program (from the WP-4.1 parity fixture — the same
 //!    program `ep-chip/tests/qemu_differential.rs` differentiates against
-//!    `qemu-riscv32`): the minimal RV32 ELF image, the CPU's 12 result words
-//!    read back from memory, the syscall registers, the full register file
-//!    and the stop reason. The QEMU harness packs the ELF, runs
+//!    `qemu-riscv32`): the program words, the CPU's 12 result words read
+//!    back from memory, the syscall registers, the full register file and
+//!    the stop reason. The QEMU harness assembles these exact words with the
+//!    GNU RISC-V toolchain (the phase8-identical pipeline), runs
 //!    `qemu-riscv32` user-mode and asserts QEMU's real `write(1, …)` output
 //!    bit-exact against this dump.
 //! 2. **INT8/per-axis QDQ systolic TPU** (`ep-chip::tpu::SystolicTpu`, WP-4.3)
@@ -36,50 +37,13 @@ use serde_json::{json, Value};
 /// ELF header 52 B + one PT_LOAD program header 32 B; text at vaddr 0x10000).
 const BASE: u32 = 0x1_0054;
 
-/// Pack the frozen program into the minimal RV32 ELF (same builder as
-/// `ep-chip/tests/qemu_differential.rs::build_elf` — kept bit-identical here;
-/// the ELF layout is pinned by that test's layout guard).
-fn build_elf(words: &[u32], data_bytes: usize) -> Vec<u8> {
-    let mut elf = Vec::with_capacity(84);
-    // e_ident
-    elf.extend_from_slice(&[0x7f, b'E', b'L', b'F', 1, 1, 1, 0]);
-    elf.extend_from_slice(&[0_u8; 8]);
-    // e_type=ET_EXEC(2), e_machine=EM_RISCV(243) — both HALFWORD in ELF32.
-    elf.extend_from_slice(&2_u16.to_le_bytes());
-    elf.extend_from_slice(&243_u16.to_le_bytes());
-    elf.extend_from_slice(&1_u32.to_le_bytes()); // e_version
-    elf.extend_from_slice(&(0x1_0000_u32 + 84).to_le_bytes()); // e_entry
-    elf.extend_from_slice(&52_u32.to_le_bytes()); // e_phoff
-    elf.extend_from_slice(&0_u32.to_le_bytes()); // e_shoff
-    elf.extend_from_slice(&0_u32.to_le_bytes()); // e_flags (int ABI)
-    elf.extend_from_slice(&52_u16.to_le_bytes()); // e_ehsize
-    elf.extend_from_slice(&32_u16.to_le_bytes()); // e_phentsize
-    elf.extend_from_slice(&1_u16.to_le_bytes()); // e_phnum
-    elf.extend_from_slice(&40_u16.to_le_bytes()); // e_shentsize
-    elf.extend_from_slice(&0_u16.to_le_bytes()); // e_shnum
-    elf.extend_from_slice(&0_u16.to_le_bytes()); // e_shstrndx
-                                                 // One PT_LOAD covering the whole file from p_offset 0 at vaddr 0x10000.
-                                                 // file_len must include the EHDR (52) AND this PT_LOAD header (32) — the
-                                                 // WP-4.6 live QEMU oracle caught the missing PHDR bytes as a SIGSEGV: the
-                                                 // result_words tail fell outside the mapped segment (p_filesz 256 < 288).
-    const PHDR_SIZE: usize = 32;
-    let file_len = (elf.len() + PHDR_SIZE + words.len() * 4 + data_bytes) as u32;
-    let mut ph = Vec::with_capacity(32);
-    ph.extend_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
-    ph.extend_from_slice(&0_u32.to_le_bytes()); // p_offset
-    ph.extend_from_slice(&0x1_0000_u32.to_le_bytes()); // p_vaddr
-    ph.extend_from_slice(&0x1_0000_u32.to_le_bytes()); // p_paddr
-    ph.extend_from_slice(&file_len.to_le_bytes()); // p_filesz
-    ph.extend_from_slice(&file_len.to_le_bytes()); // p_memsz
-    ph.extend_from_slice(&7_u32.to_le_bytes()); // PF_X | PF_W | PF_R
-    ph.extend_from_slice(&0x1000_u32.to_le_bytes()); // p_align
-    let mut image = elf;
-    image.extend_from_slice(&ph);
-    for w in words {
-        image.extend_from_slice(&w.to_le_bytes());
+// One PT_LOAD covering the whole file from p_offset 0 at vaddr 0x10000.
+fn hex_encode(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        s.push_str(&format!("{b:02x}"));
     }
-    image.extend(std::iter::repeat_n(0_u8, data_bytes));
-    image
+    s
 }
 
 /// Deterministic mulberry32 workload generator — identical stream semantics
@@ -185,10 +149,6 @@ fn rv32_section() -> Value {
     let off = ptr - BASE as usize;
     let result_words: Vec<u32> = (0..12).map(|i| cpu.mem_word(off + i * 4)).collect();
 
-    // The ELF the QEMU oracle executes (48 data bytes for the write dump).
-    let elf = build_elf(&words, 48);
-    let elf_b64: String = base64_encode(&elf);
-
     json!({
         "badge": "SIMULATED_ARCHITECTURAL_MODEL",
         "program": {
@@ -196,7 +156,6 @@ fn rv32_section() -> Value {
             "base": BASE,
             "fixture": "crates/ep-kernel/ep-chip/tests/data/parity_vectors.json :: qemuProgram (frozen Phase 8 RV32M program)",
         },
-        "elfBase64": elf_b64,
         "frozenExpectedWords": expected,
         "rustResultWords": result_words,
         "registers": {
@@ -211,39 +170,6 @@ fn rv32_section() -> Value {
         "memoryWindowHex": hex_encode(&cpu.mem()[off..off + 48]),
         "protocol": "write(1, a1, 48) at the ECALL — QEMU's stdout must equal the 48 memory bytes bit-exactly",
     })
-}
-
-fn hex_encode(bytes: &[u8]) -> String {
-    let mut s = String::with_capacity(bytes.len() * 2);
-    for b in bytes {
-        s.push_str(&format!("{b:02x}"));
-    }
-    s
-}
-
-/// Minimal base64 (standard alphabet, padded) — avoids adding a dependency.
-fn base64_encode(data: &[u8]) -> String {
-    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
-    for chunk in data.chunks(3) {
-        let b0 = chunk[0] as u32;
-        let b1 = *chunk.get(1).unwrap_or(&0) as u32;
-        let b2 = *chunk.get(2).unwrap_or(&0) as u32;
-        let n = (b0 << 16) | (b1 << 8) | b2;
-        out.push(TABLE[(n >> 18) as usize & 63] as char);
-        out.push(TABLE[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 {
-            TABLE[(n >> 6) as usize & 63] as char
-        } else {
-            '='
-        });
-        out.push(if chunk.len() > 2 {
-            TABLE[n as usize & 63] as char
-        } else {
-            '='
-        });
-    }
-    out
 }
 
 fn main() {

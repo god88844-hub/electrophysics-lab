@@ -82,9 +82,6 @@ export function assertDumpProtocol(dump) {
     if (!Array.isArray(rv.program?.words) || rv.program.words.length === 0) {
       errors.push('rv32.program.words missing/empty');
     }
-    if (typeof rv.elfBase64 !== 'string' || rv.elfBase64.length === 0) {
-      errors.push('rv32.elfBase64 missing');
-    }
     if (!Array.isArray(rv.frozenExpectedWords) || rv.frozenExpectedWords.length === 0) {
       errors.push('rv32.frozenExpectedWords missing/empty');
     }
@@ -109,11 +106,6 @@ export function assertDumpProtocol(dump) {
     if (tp.badge !== 'SIMULATED_ARCHITECTURAL_MODEL') errors.push('tpu badge missing');
   }
   return errors;
-}
-
-/** Decode base64 (node Buffer). */
-export function decodeBase64(b64) {
-  return Uint8Array.from(Buffer.from(b64, 'base64'));
 }
 
 /** Cross-platform PATH probe for an oracle tool. */

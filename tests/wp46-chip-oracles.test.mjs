@@ -27,7 +27,6 @@ import {
   RELATIVE_TOLERANCE,
   assertDumpProtocol,
   compareWordSequences,
-  decodeBase64,
   leWordsFromBytes,
   maxRelativeError,
   toolOnPath,
@@ -94,7 +93,6 @@ function validDump() {
     provenance: 'SIMULATED_ARCHITECTURAL_MODEL',
     rv32: {
       program: { words: [1, 2, 3], base: 65620 },
-      elfBase64: 'AAAA',
       frozenExpectedWords: [7],
       rustResultWords: [7],
       stopReason: 'ecall',
@@ -129,21 +127,12 @@ test('WP-4.6: dump protocol accepts the canonical shape and refuses tampering', 
   assert.ok(assertDumpProtocol(forged).length > 0, 'forged provenance refused');
 });
 
-test('WP-4.6: base64 round-trip matches the dump ELF bytes', () => {
-  const bytes = new Uint8Array(84);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 37 + 11) & 0xff;
-  const b64 = Buffer.from(bytes).toString('base64');
-  assert.deepEqual([...decodeBase64(b64)], [...bytes]);
-});
-
 // ---------------------------------------------------------------------------
 // 3. Loud-skip / require-live exit contract (live subprocess behavior)
 // ---------------------------------------------------------------------------
 
 function makeSyntheticDump(dest) {
   const dump = validDump();
-  // Materialize a plausible ELF-sized blob (the skip path never boots it).
-  dump.rv32.elfBase64 = Buffer.alloc(256).toString('base64');
   writeFileSync(dest, JSON.stringify(dump));
 }
 
@@ -196,10 +185,10 @@ test('WP-4.6: harness fails loudly on a forged/tampered dump (before any oracle 
 test('WP-4.6: the workflow runs BOTH oracles live with --require-live and pinned tools', () => {
   const yml = readFileSync(join(ROOT, '.github', 'workflows', 'v4-chip-oracles.yml'), 'utf8');
   // Both harnesses, both in CI mode — a skip is structurally impossible.
-  assert.match(yml, /node scripts\/v4-oracles\/qemu-differential\.mjs "\$DUMP" --require-live/);
-  assert.match(yml, /python3 scripts\/v4-oracles\/onnx-tpu-differential\.py "\$DUMP" --require-live/);
+  assert.match(yml, /node scripts\/v4-oracles\/qemu-differential\.mjs "\$RUNNER_TEMP\/wp46-oracles\/chip_oracle_dump\.json" --require-live/);
+  assert.match(yml, /python3 scripts\/v4-oracles\/onnx-tpu-differential\.py "\$RUNNER_TEMP\/wp46-oracles\/chip_oracle_dump\.json" --require-live/);
   // Real tools installed, loudly asserted.
-  assert.match(yml, /apt-get install -y qemu-user/);
+  assert.match(yml, /apt-get install -y qemu-user binutils-riscv64-unknown-elf/);
   assert.match(yml, /command -v qemu-riscv32/);
   assert.match(yml, /onnxruntime==1\.32\.0/, 'pinned ONNX Runtime (Phase 10 convention)');
   assert.match(yml, /onnx==1\.23\.2/);

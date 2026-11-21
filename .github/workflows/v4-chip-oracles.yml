@@ -32,11 +32,13 @@ jobs:
         with:
           python-version: '3.12'
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install real QEMU user-mode (loud, fail-closed)
+      - name: Install real QEMU user-mode + GNU RISC-V toolchain (loud, fail-closed)
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user
+          sudo apt-get install -y qemu-user binutils-riscv64-unknown-elf
           command -v qemu-riscv32
+          command -v riscv64-unknown-elf-as
+          command -v riscv64-unknown-elf-ld
           qemu-riscv32 --version
       - name: Install pinned real ONNX Runtime CPU + onnx (loud, fail-closed)
         run: |

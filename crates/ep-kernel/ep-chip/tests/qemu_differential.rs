@@ -21,53 +21,76 @@ use ep_chip::cpu::{Cpu, CpuIsa};
 use ep_chip::isa::encode;
 use serde_json::Value;
 
-const BASE: u32 = 0x1_0054; // ELF header (52) + one program header (32); vaddr 0x10000 + 84
+const BASE: u32 = 0x1_0054; // strict-core flat mapping: program at 0x10054 (fixture `base`)
 
 fn fixture() -> Value {
     serde_json::from_str(include_str!("data/parity_vectors.json")).expect("fixture parses")
 }
 
-/// Pack the hand-assembled program into the minimal RV32 ELF image:
-/// ELF header (52 bytes) + one PT_LOAD program header (32) + text + data.
+/// Pack the hand-assembled program into the GNU-ld-equivalent RV32 ELF image
+/// (the layout GNU `ld -m elf32lriscv -Ttext=0x10000 -e _start --no-relax`
+/// emits for the phase8 protocol, verified byte-for-byte against it):
+///   LOAD1  R E: file offset 0 → vaddr 0xF000, covering the headers (at
+///          0xF000..0xF074) and the text (at vaddr 0x10000, file offset
+///          0x1000 — the page-aligned congruence trick ld uses);
+///   LOAD2  RW : the result_words block at vaddr 0x1109C (file offset
+///          0x109C — congruent mod 0x1000), writable so the `sw` stores
+///          succeed under qemu-riscv32.
+/// The first single-RWE-LOAD attempt placed the stores in a segment whose
+/// tail was unmapped — caught live by the WP-4.6 QEMU oracle (SIGSEGV).
 fn build_elf(words: &[u32], data_bytes: usize) -> Vec<u8> {
-    let mut image: Vec<u8> = Vec::new();
-    let mut elf = Vec::with_capacity(84);
-    // e_ident
-    elf.extend_from_slice(&[0x7f, b'E', b'L', b'F', 1, 1, 1, 0]);
-    elf.extend_from_slice(&[0_u8; 8]);
-    // e_type=ET_EXEC(2), e_machine=EM_RISCV(243) — both HALFWORD in ELF32.
-    elf.extend_from_slice(&2_u16.to_le_bytes());
-    elf.extend_from_slice(&243_u16.to_le_bytes());
-    elf.extend_from_slice(&1_u32.to_le_bytes()); // e_version
-                                                 // e_entry = 0x10000 + 84 (first instruction, header covered by PT_LOAD)
-    elf.extend_from_slice(&(0x1_0000_u32 + 84).to_le_bytes());
-    elf.extend_from_slice(&52_u32.to_le_bytes()); // e_phoff
-    elf.extend_from_slice(&0_u32.to_le_bytes()); // e_shoff
-    elf.extend_from_slice(&0_u32.to_le_bytes()); // e_flags (int ABI)
-    elf.extend_from_slice(&52_u16.to_le_bytes()); // e_ehsize
-    elf.extend_from_slice(&32_u16.to_le_bytes()); // e_phentsize
-    elf.extend_from_slice(&1_u16.to_le_bytes()); // e_phnum
-    elf.extend_from_slice(&40_u16.to_le_bytes()); // e_shentsize
-    elf.extend_from_slice(&0_u16.to_le_bytes()); // e_shnum
-    elf.extend_from_slice(&0_u16.to_le_bytes()); // e_shstrndx
-                                                 // One PT_LOAD covering the whole file from p_offset 0 at vaddr 0x10000.
-                                                 // WP-4.6 (live QEMU oracle) caught the missing PHDR bytes here: p_filesz
-                                                 // must include the EHDR (52) and this PT_LOAD header (32) — otherwise the
-                                                 // result_words tail falls outside the mapped segment and the stores
-                                                 // SIGSEGV under qemu-riscv32.
     const PHDR_SIZE: usize = 32;
-    let file_len = (elf.len() + PHDR_SIZE + words.len() * 4 + data_bytes) as u32;
-    let mut ph = Vec::with_capacity(32);
-    ph.extend_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
-    ph.extend_from_slice(&0_u32.to_le_bytes()); // p_offset
-    ph.extend_from_slice(&0x1_0000_u32.to_le_bytes()); // p_vaddr
-    ph.extend_from_slice(&0x1_0000_u32.to_le_bytes()); // p_paddr
-    ph.extend_from_slice(&file_len.to_le_bytes()); // p_filesz
-    ph.extend_from_slice(&file_len.to_le_bytes()); // p_memsz
-    ph.extend_from_slice(&7_u32.to_le_bytes()); // PF_X | PF_W | PF_R
-    ph.extend_from_slice(&0x1000_u32.to_le_bytes()); // p_align
-    image.extend_from_slice(&elf);
-    image.extend_from_slice(&ph);
+    let phnum = 2_u16;
+    let header_bytes = 52 + PHDR_SIZE * phnum as usize; // 116
+    let text_file_offset = 0x1000; // ld's page-congruent placement: 0xF000 + 0x1000 = 0x10000
+    let text_bytes = words.len() * 4;
+    let data_file_offset = text_file_offset + text_bytes;
+    let text_vaddr = 0x1_0000_u32;
+    let data_vaddr = text_vaddr + data_file_offset as u32; // 0x1109C for 39 words
+
+    let mut image: Vec<u8> = Vec::new();
+    let mut eh = Vec::with_capacity(52);
+    // e_ident
+    eh.extend_from_slice(&[0x7f, b'E', b'L', b'F', 1, 1, 1, 0]);
+    eh.extend_from_slice(&[0_u8; 8]);
+    // e_type=ET_EXEC(2), e_machine=EM_RISCV(243) — both HALFWORD in ELF32.
+    eh.extend_from_slice(&2_u16.to_le_bytes());
+    eh.extend_from_slice(&243_u16.to_le_bytes());
+    eh.extend_from_slice(&1_u32.to_le_bytes()); // e_version
+    eh.extend_from_slice(&text_vaddr.to_le_bytes()); // e_entry = _start = 0x10000
+    eh.extend_from_slice(&52_u32.to_le_bytes()); // e_phoff
+    eh.extend_from_slice(&0_u32.to_le_bytes()); // e_shoff
+    eh.extend_from_slice(&0_u32.to_le_bytes()); // e_flags (int ABI)
+    eh.extend_from_slice(&52_u16.to_le_bytes()); // e_ehsize
+    eh.extend_from_slice(&32_u16.to_le_bytes()); // e_phentsize
+    eh.extend_from_slice(&phnum.to_le_bytes()); // e_phnum = 2
+    eh.extend_from_slice(&40_u16.to_le_bytes()); // e_shentsize
+    eh.extend_from_slice(&0_u16.to_le_bytes()); // e_shnum
+    eh.extend_from_slice(&0_u16.to_le_bytes()); // e_shstrndx
+    image.extend_from_slice(&eh);
+
+    // PHDR1 — R E: headers at 0xF000, text at 0x10000.
+    let text_end_vaddr = text_vaddr + text_bytes as u32;
+    image.extend_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
+    image.extend_from_slice(&0_u32.to_le_bytes()); // p_offset
+    image.extend_from_slice(&0xF000_u32.to_le_bytes()); // p_vaddr (0xF000 + 0x1000 = 0x10000)
+    image.extend_from_slice(&0xF000_u32.to_le_bytes()); // p_paddr
+    image.extend_from_slice(&(text_end_vaddr - 0xF000).to_le_bytes()); // p_filesz
+    image.extend_from_slice(&(text_end_vaddr - 0xF000).to_le_bytes()); // p_memsz
+    image.extend_from_slice(&5_u32.to_le_bytes()); // PF_R | PF_X
+    image.extend_from_slice(&0x1000_u32.to_le_bytes()); // p_align
+                                                        // PHDR2 — RW: result_words block.
+    image.extend_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
+    image.extend_from_slice(&(data_file_offset as u32).to_le_bytes()); // p_offset
+    image.extend_from_slice(&data_vaddr.to_le_bytes()); // p_vaddr
+    image.extend_from_slice(&data_vaddr.to_le_bytes()); // p_paddr
+    image.extend_from_slice(&(data_bytes as u32).to_le_bytes()); // p_filesz
+    image.extend_from_slice(&(data_bytes as u32).to_le_bytes()); // p_memsz
+    image.extend_from_slice(&6_u32.to_le_bytes()); // PF_R | PF_W
+    image.extend_from_slice(&0x1000_u32.to_le_bytes()); // p_align
+
+    // Headers at file offset 0, padding up to the page-congruent text offset.
+    image.extend(std::iter::repeat_n(0_u8, text_file_offset - header_bytes));
     for w in words {
         image.extend_from_slice(&w.to_le_bytes());
     }
@@ -201,13 +224,33 @@ fn qemu_user_mode_differential_when_available() {
 }
 
 /// The ELF image must carry the program at the documented offsets (guard
-/// against silent layout drift between `build_elf` and `BASE`).
+/// against silent layout drift between `build_elf` and the GNU-ld-equivalent
+/// two-segment layout the live QEMU oracle verified).
 #[test]
 fn elf_layout_matches_documented_base() {
     let elf = build_elf(&[encode::ebreak()], 0);
-    assert_eq!(elf.len(), 52 + 32 + 4);
-    // First instruction sits at file offset 84 = BASE - 0x10000.
+    // EHDR (52) + 2 PHDRs (64) + page padding up to 0x1000 + one text word.
+    assert_eq!(elf.len(), 0x1000 + 4);
+    // First instruction sits at vaddr 0x10000 (file offset 0x1000).
     let entry = u32::from_le_bytes(elf[24..28].try_into().expect("e_entry"));
-    assert_eq!(entry, BASE, "e_entry must equal the documented base");
-    assert_eq!(&elf[84..88], &encode::ebreak().to_le_bytes());
+    assert_eq!(entry, 0x1_0000, "e_entry must equal the GNU text base");
+    assert_eq!(&elf[0x1000..0x1004], &encode::ebreak().to_le_bytes());
+    // LOAD1 is R E covering headers+text; LOAD2 is the writable data block.
+    let (f1, f2) = (
+        u32::from_le_bytes(elf[52 + 24..52 + 28].try_into().expect("flags1")),
+        u32::from_le_bytes(elf[84 + 24..84 + 28].try_into().expect("flags2")),
+    );
+    assert_eq!((f1, f2), (5, 6), "R E text / RW data segments");
+    let (v2, sz2) = (
+        u32::from_le_bytes(elf[84 + 8..84 + 12].try_into().expect("vaddr2")),
+        u32::from_le_bytes(elf[84 + 16..84 + 20].try_into().expect("memsz2")),
+    );
+    // result_words block vaddr follows the GNU congruence rule: text base +
+    // (file offset mod 0x1000) — for one text word: 0x10000 + 0x1004.
+    assert_eq!(
+        v2,
+        0x1_0000 + 0x1000 + 4,
+        "data vaddr at the GNU congruent address"
+    );
+    assert_eq!(sz2, 0, "no data bytes for the ebreak-only probe");
 }
