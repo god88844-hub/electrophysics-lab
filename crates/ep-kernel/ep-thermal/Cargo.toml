@@ -1,0 +1,11 @@
+[package]
+name = "ep-thermal"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Implicit (Backward-Euler / Crank-Nicolson) 2D/3D Fourier heat PDE kernel (WP-2.3): unconditionally stable, Joule R(T) TCR coupling, failure-threshold detectors, forensic ring buffer + autopsy builder — admission-gated via ep-core, constants byte-verified from 02/06 JSON"
+
+[dependencies]
+ep-core = { path = "../ep-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }

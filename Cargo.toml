@@ -1,11 +1,14 @@
 [workspace]
 resolver = "2"
 # Dual-target kernel workspace (WP-1.2):
-#   - crates/ep-kernel           native kernel entry (Tauri IPC / typed-array buffers)
-#   - crates/ep-kernel/ep-core   units, SHA-256-verified reference data, schema mirrors, admission
-#   - crates/ep-kernel-wasm      wasm-bindgen exports for browser dev preview + CI
-# Phase 2+/3 members (docs/master-plan/02_SYSTEM_ARCHITECTURE.md):
-#   ep-circuit, ep-thermal, ep-logic, ep-chip
+#   - crates/ep-kernel             native kernel entry (Tauri IPC / typed-array buffers)
+#   - crates/ep-kernel/ep-core     units, SHA-256-verified reference data, schema mirrors, admission
+#   - crates/ep-kernel/ep-circuit  MNA DC solver (WP-2.1)
+#   - crates/ep-kernel/ep-thermal  implicit (BE/CN) Fourier heat PDE + forensics (WP-2.3)
+#   - crates/ep-kernel/ep-chip     cycle-accurate RV32IM/Custom-ISA CPU + TPU (WP-4.1/4.3)
+#   - crates/ep-kernel/ep-quantum  Lindblad/Kraus + Pauli-frame QEC (WP-5.1/5.2)
+#   - crates/ep-kernel/ep-logic    event-driven multi-radix logic simulator (WP-3.1)
+#   - crates/ep-kernel-wasm        wasm-bindgen exports for browser dev preview + CI
 members = [
     "crates/ep-kernel",
     "crates/ep-kernel/ep-core",
@@ -13,6 +16,7 @@ members = [
     "crates/ep-kernel/ep-chip",
     "crates/ep-kernel/ep-quantum",
     "crates/ep-kernel/ep-logic",
+    "crates/ep-kernel/ep-thermal",
     "crates/ep-kernel-wasm",
 ]
 
