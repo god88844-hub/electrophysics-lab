@@ -1,0 +1,330 @@
+{
+ "generatedBy": "crates/ep-kernel/ep-logic/tests/generate_fixtures.mjs — Phase 0 js/labs/logic engine (oracle, 03_PHYSICS §5)",
+ "engineSourceCommit": "5b1f47137bc442817c4c451b428525a213256023",
+ "oracle": "js/labs/logic/engine.js + js/core/events.js (EventQueue (time, seq) order)",
+ "bench": "q4_cells_bench",
+ "diagram": {
+  "radix": 4,
+  "blocks": [
+   {
+    "id": "SEL",
+    "type": "logic.IN",
+    "params": {
+     "value": 1,
+     "name": "SEL"
+    }
+   },
+   {
+    "id": "D0",
+    "type": "logic.CONST",
+    "params": {
+     "value": 0
+    }
+   },
+   {
+    "id": "D1",
+    "type": "logic.IN",
+    "params": {
+     "value": 2,
+     "name": "D1"
+    }
+   },
+   {
+    "id": "D2",
+    "type": "logic.CONST",
+    "params": {
+     "value": 0
+    }
+   },
+   {
+    "id": "D3",
+    "type": "logic.CONST",
+    "params": {
+     "value": 0
+    }
+   },
+   {
+    "id": "X",
+    "type": "logic.IN",
+    "params": {
+     "value": 1,
+     "name": "X"
+    }
+   },
+   {
+    "id": "TD",
+    "type": "logic.IN",
+    "params": {
+     "value": 2,
+     "name": "TD"
+    }
+   },
+   {
+    "id": "MUX4",
+    "type": "kernel.q4_mux4",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "INV",
+    "type": "kernel.q4_inv",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "DET",
+    "type": "kernel.q4_thresh_det",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "PMUX4",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "MUX4"
+    }
+   },
+   {
+    "id": "PINV",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "INV"
+    }
+   },
+   {
+    "id": "PDET",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "DET"
+    }
+   }
+  ],
+  "wires": [
+   {
+    "from": {
+     "block": "SEL",
+     "port": "out"
+    },
+    "to": {
+     "block": "MUX4",
+     "port": "sel"
+    }
+   },
+   {
+    "from": {
+     "block": "D0",
+     "port": "out"
+    },
+    "to": {
+     "block": "MUX4",
+     "port": "d0"
+    }
+   },
+   {
+    "from": {
+     "block": "D1",
+     "port": "out"
+    },
+    "to": {
+     "block": "MUX4",
+     "port": "d1"
+    }
+   },
+   {
+    "from": {
+     "block": "D2",
+     "port": "out"
+    },
+    "to": {
+     "block": "MUX4",
+     "port": "d2"
+    }
+   },
+   {
+    "from": {
+     "block": "D3",
+     "port": "out"
+    },
+    "to": {
+     "block": "MUX4",
+     "port": "d3"
+    }
+   },
+   {
+    "from": {
+     "block": "X",
+     "port": "out"
+    },
+    "to": {
+     "block": "INV",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "TD",
+     "port": "out"
+    },
+    "to": {
+     "block": "DET",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "MUX4",
+     "port": "y"
+    },
+    "to": {
+     "block": "PMUX4",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "INV",
+     "port": "y"
+    },
+    "to": {
+     "block": "PINV",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "DET",
+     "port": "y"
+    },
+    "to": {
+     "block": "PDET",
+     "port": "in"
+    }
+   }
+  ]
+ },
+ "options": {
+  "maxEvents": 250000,
+  "maxTicks": 4000
+ },
+ "expected": {
+  "ok": true,
+  "problems": [],
+  "warnings": [],
+  "probes": {
+   "PMUX4": {
+    "times": [
+     10
+    ],
+    "values": [
+     2
+    ],
+    "label": "MUX4"
+   },
+   "PINV": {
+    "times": [
+     10
+    ],
+    "values": [
+     2
+    ],
+    "label": "INV"
+   },
+   "PDET": {
+    "times": [
+     10
+    ],
+    "values": [
+     2
+    ],
+    "label": "DET"
+   }
+  },
+  "stats": {
+   "events": 11,
+   "maxTime": 10,
+   "radix": 4
+  },
+  "eventOrder": [
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "MUX4",
+    "portId": "sel",
+    "value": 1
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "MUX4",
+    "portId": "d0",
+    "value": 0
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "MUX4",
+    "portId": "d1",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "MUX4",
+    "portId": "d2",
+    "value": 0
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "MUX4",
+    "portId": "d3",
+    "value": 0
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "INV",
+    "portId": "a",
+    "value": 1
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "DET",
+    "portId": "a",
+    "value": 2
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PMUX4",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PMUX4",
+    "portId": "in",
+    "value": 2
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PINV",
+    "portId": "in",
+    "value": 2
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PDET",
+    "portId": "in",
+    "value": 2
+   }
+  ]
+ }
+}

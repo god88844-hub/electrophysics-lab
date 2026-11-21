@@ -99,6 +99,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ep-logic"
+version = "0.1.0"
+dependencies = [
+ "ep-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ep-quantum"
 version = "0.1.0"
 dependencies = [

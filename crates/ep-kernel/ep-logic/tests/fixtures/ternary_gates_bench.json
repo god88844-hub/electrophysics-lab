@@ -1,0 +1,525 @@
+{
+ "generatedBy": "crates/ep-kernel/ep-logic/tests/generate_fixtures.mjs — Phase 0 js/labs/logic engine (oracle, 03_PHYSICS §5)",
+ "engineSourceCommit": "5b1f47137bc442817c4c451b428525a213256023",
+ "oracle": "js/labs/logic/engine.js + js/core/events.js (EventQueue (time, seq) order)",
+ "bench": "ternary_gates_bench",
+ "diagram": {
+  "radix": 3,
+  "blocks": [
+   {
+    "id": "A",
+    "type": "logic.IN",
+    "params": {
+     "value": 2,
+     "name": "A"
+    }
+   },
+   {
+    "id": "B",
+    "type": "logic.IN",
+    "params": {
+     "value": 1,
+     "name": "B"
+    }
+   },
+   {
+    "id": "AND",
+    "type": "logic.AND",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "OR",
+    "type": "logic.OR",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "XOR",
+    "type": "logic.XOR",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "NOTA",
+    "type": "logic.NOT",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "THA",
+    "type": "kernel.ternary_half_adder",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "TINV",
+    "type": "kernel.ternary_inv",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "PAND",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "AND"
+    }
+   },
+   {
+    "id": "POR",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "OR"
+    }
+   },
+   {
+    "id": "PXOR",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "XOR"
+    }
+   },
+   {
+    "id": "PNOTA",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "NOTA"
+    }
+   },
+   {
+    "id": "PTHA_S",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "THA_SUM"
+    }
+   },
+   {
+    "id": "PTHA_C",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "THA_CARRY"
+    }
+   },
+   {
+    "id": "PTINV",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "TINV"
+    }
+   }
+  ],
+  "wires": [
+   {
+    "from": {
+     "block": "A",
+     "port": "out"
+    },
+    "to": {
+     "block": "AND",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "B",
+     "port": "out"
+    },
+    "to": {
+     "block": "AND",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "A",
+     "port": "out"
+    },
+    "to": {
+     "block": "OR",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "B",
+     "port": "out"
+    },
+    "to": {
+     "block": "OR",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "A",
+     "port": "out"
+    },
+    "to": {
+     "block": "XOR",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "B",
+     "port": "out"
+    },
+    "to": {
+     "block": "XOR",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "A",
+     "port": "out"
+    },
+    "to": {
+     "block": "NOTA",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "A",
+     "port": "out"
+    },
+    "to": {
+     "block": "THA",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "B",
+     "port": "out"
+    },
+    "to": {
+     "block": "THA",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "B",
+     "port": "out"
+    },
+    "to": {
+     "block": "TINV",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "AND",
+     "port": "y"
+    },
+    "to": {
+     "block": "PAND",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "OR",
+     "port": "y"
+    },
+    "to": {
+     "block": "POR",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "XOR",
+     "port": "y"
+    },
+    "to": {
+     "block": "PXOR",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "NOTA",
+     "port": "y"
+    },
+    "to": {
+     "block": "PNOTA",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "THA",
+     "port": "sum"
+    },
+    "to": {
+     "block": "PTHA_S",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "THA",
+     "port": "carry"
+    },
+    "to": {
+     "block": "PTHA_C",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "TINV",
+     "port": "y"
+    },
+    "to": {
+     "block": "PTINV",
+     "port": "in"
+    }
+   }
+  ]
+ },
+ "options": {
+  "maxEvents": 250000,
+  "maxTicks": 4000
+ },
+ "expected": {
+  "ok": true,
+  "problems": [],
+  "warnings": [],
+  "probes": {
+   "PAND": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "AND"
+   },
+   "POR": {
+    "times": [
+     10
+    ],
+    "values": [
+     2
+    ],
+    "label": "OR"
+   },
+   "PXOR": {
+    "times": [
+     10
+    ],
+    "values": [
+     0
+    ],
+    "label": "XOR"
+   },
+   "PNOTA": {
+    "times": [
+     10
+    ],
+    "values": [
+     0
+    ],
+    "label": "NOTA"
+   },
+   "PTHA_S": {
+    "times": [
+     10
+    ],
+    "values": [
+     0
+    ],
+    "label": "THA_SUM"
+   },
+   "PTHA_C": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "THA_CARRY"
+   },
+   "PTINV": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "TINV"
+   }
+  },
+  "stats": {
+   "events": 22,
+   "maxTime": 10,
+   "radix": 3
+  },
+  "eventOrder": [
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "AND",
+    "portId": "a",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "OR",
+    "portId": "a",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "XOR",
+    "portId": "a",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "NOTA",
+    "portId": "a",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "THA",
+    "portId": "a",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "AND",
+    "portId": "b",
+    "value": 1
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "OR",
+    "portId": "b",
+    "value": 1
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "XOR",
+    "portId": "b",
+    "value": 1
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "THA",
+    "portId": "b",
+    "value": 1
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "TINV",
+    "portId": "a",
+    "value": 1
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PAND",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "POR",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PXOR",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PNOTA",
+    "portId": "in",
+    "value": 0
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PTHA_S",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PTHA_C",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PAND",
+    "portId": "in",
+    "value": 1
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "POR",
+    "portId": "in",
+    "value": 2
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PXOR",
+    "portId": "in",
+    "value": 0
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PTHA_S",
+    "portId": "in",
+    "value": 0
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PTHA_C",
+    "portId": "in",
+    "value": 1
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PTINV",
+    "portId": "in",
+    "value": 1
+   }
+  ]
+ }
+}

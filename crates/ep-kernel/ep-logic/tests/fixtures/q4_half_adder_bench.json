@@ -1,0 +1,168 @@
+{
+ "generatedBy": "crates/ep-kernel/ep-logic/tests/generate_fixtures.mjs — Phase 0 js/labs/logic engine (oracle, 03_PHYSICS §5)",
+ "engineSourceCommit": "5b1f47137bc442817c4c451b428525a213256023",
+ "oracle": "js/labs/logic/engine.js + js/core/events.js (EventQueue (time, seq) order)",
+ "bench": "q4_half_adder_bench",
+ "diagram": {
+  "radix": 4,
+  "blocks": [
+   {
+    "id": "A",
+    "type": "logic.IN",
+    "params": {
+     "value": 3,
+     "name": "A"
+    }
+   },
+   {
+    "id": "B",
+    "type": "logic.IN",
+    "params": {
+     "value": 2,
+     "name": "B"
+    }
+   },
+   {
+    "id": "HA",
+    "type": "kernel.q4_half_adder",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "PS",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "SUM"
+    }
+   },
+   {
+    "id": "PC",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "CARRY"
+    }
+   }
+  ],
+  "wires": [
+   {
+    "from": {
+     "block": "A",
+     "port": "out"
+    },
+    "to": {
+     "block": "HA",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "B",
+     "port": "out"
+    },
+    "to": {
+     "block": "HA",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "HA",
+     "port": "sum"
+    },
+    "to": {
+     "block": "PS",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "HA",
+     "port": "carry"
+    },
+    "to": {
+     "block": "PC",
+     "port": "in"
+    }
+   }
+  ]
+ },
+ "options": {
+  "maxEvents": 250000,
+  "maxTicks": 4000
+ },
+ "expected": {
+  "ok": true,
+  "problems": [],
+  "warnings": [],
+  "probes": {
+   "PS": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "SUM"
+   },
+   "PC": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "CARRY"
+   }
+  },
+  "stats": {
+   "events": 6,
+   "maxTime": 10,
+   "radix": 4
+  },
+  "eventOrder": [
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "HA",
+    "portId": "a",
+    "value": 3
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "HA",
+    "portId": "b",
+    "value": 2
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PS",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PC",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PS",
+    "portId": "in",
+    "value": 1
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PC",
+    "portId": "in",
+    "value": 1
+   }
+  ]
+ }
+}

@@ -1,0 +1,290 @@
+{
+ "generatedBy": "crates/ep-kernel/ep-logic/tests/generate_fixtures.mjs — Phase 0 js/labs/logic engine (oracle, 03_PHYSICS §5)",
+ "engineSourceCommit": "5b1f47137bc442817c4c451b428525a213256023",
+ "oracle": "js/labs/logic/engine.js + js/core/events.js (EventQueue (time, seq) order)",
+ "bench": "binary_mux_cmp",
+ "diagram": {
+  "radix": 2,
+  "blocks": [
+   {
+    "id": "SEL",
+    "type": "logic.IN",
+    "params": {
+     "value": 0,
+     "name": "SEL"
+    }
+   },
+   {
+    "id": "DA",
+    "type": "logic.IN",
+    "params": {
+     "value": 0,
+     "name": "A"
+    }
+   },
+   {
+    "id": "DB",
+    "type": "logic.IN",
+    "params": {
+     "value": 1,
+     "name": "B"
+    }
+   },
+   {
+    "id": "CA",
+    "type": "logic.IN",
+    "params": {
+     "value": 1,
+     "name": "CA"
+    }
+   },
+   {
+    "id": "CB",
+    "type": "logic.IN",
+    "params": {
+     "value": 1,
+     "name": "CB"
+    }
+   },
+   {
+    "id": "MUX",
+    "type": "logic.MUX2",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "CMP",
+    "type": "logic.CMPN",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "PMUX",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "MUX"
+    }
+   },
+   {
+    "id": "PGT",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "GT"
+    }
+   },
+   {
+    "id": "PEQ",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "EQ"
+    }
+   }
+  ],
+  "wires": [
+   {
+    "from": {
+     "block": "SEL",
+     "port": "out"
+    },
+    "to": {
+     "block": "MUX",
+     "port": "sel"
+    }
+   },
+   {
+    "from": {
+     "block": "DA",
+     "port": "out"
+    },
+    "to": {
+     "block": "MUX",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "DB",
+     "port": "out"
+    },
+    "to": {
+     "block": "MUX",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "CA",
+     "port": "out"
+    },
+    "to": {
+     "block": "CMP",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "CB",
+     "port": "out"
+    },
+    "to": {
+     "block": "CMP",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "MUX",
+     "port": "y"
+    },
+    "to": {
+     "block": "PMUX",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "CMP",
+     "port": "gt"
+    },
+    "to": {
+     "block": "PGT",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "CMP",
+     "port": "eq"
+    },
+    "to": {
+     "block": "PEQ",
+     "port": "in"
+    }
+   }
+  ]
+ },
+ "options": {
+  "maxEvents": 250000,
+  "maxTicks": 4000
+ },
+ "expected": {
+  "ok": true,
+  "problems": [],
+  "warnings": [],
+  "probes": {
+   "PMUX": {
+    "times": [
+     10
+    ],
+    "values": [
+     0
+    ],
+    "label": "MUX"
+   },
+   "PGT": {
+    "times": [
+     10
+    ],
+    "values": [
+     0
+    ],
+    "label": "GT"
+   },
+   "PEQ": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "EQ"
+   }
+  },
+  "stats": {
+   "events": 11,
+   "maxTime": 10,
+   "radix": 2
+  },
+  "eventOrder": [
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "MUX",
+    "portId": "sel",
+    "value": 0
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "MUX",
+    "portId": "a",
+    "value": 0
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "MUX",
+    "portId": "b",
+    "value": 1
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "CMP",
+    "portId": "a",
+    "value": 1
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "CMP",
+    "portId": "b",
+    "value": 1
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PMUX",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PMUX",
+    "portId": "in",
+    "value": 0
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PGT",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PEQ",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PGT",
+    "portId": "in",
+    "value": 0
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PEQ",
+    "portId": "in",
+    "value": 1
+   }
+  ]
+ }
+}

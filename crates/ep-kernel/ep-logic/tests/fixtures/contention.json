@@ -1,0 +1,101 @@
+{
+ "generatedBy": "crates/ep-kernel/ep-logic/tests/generate_fixtures.mjs — Phase 0 js/labs/logic engine (oracle, 03_PHYSICS §5)",
+ "engineSourceCommit": "5b1f47137bc442817c4c451b428525a213256023",
+ "oracle": "js/labs/logic/engine.js + js/core/events.js (EventQueue (time, seq) order)",
+ "bench": "contention",
+ "diagram": {
+  "radix": 2,
+  "blocks": [
+   {
+    "id": "I1",
+    "type": "logic.IN",
+    "params": {
+     "value": 0,
+     "name": "IN"
+    }
+   },
+   {
+    "id": "I2",
+    "type": "logic.IN",
+    "params": {
+     "value": 1,
+     "name": "IN"
+    }
+   },
+   {
+    "id": "P",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "P"
+    }
+   }
+  ],
+  "wires": [
+   {
+    "from": {
+     "block": "I1",
+     "port": "out"
+    },
+    "to": {
+     "block": "P",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "I2",
+     "port": "out"
+    },
+    "to": {
+     "block": "P",
+     "port": "in"
+    }
+   }
+  ]
+ },
+ "options": {
+  "maxEvents": 250000,
+  "maxTicks": 4000
+ },
+ "expected": {
+  "ok": true,
+  "problems": [],
+  "warnings": [
+   "Block P: input \"in\" driven by 2 outputs — contention, result not meaningful."
+  ],
+  "probes": {
+   "P": {
+    "times": [
+     0,
+     0
+    ],
+    "values": [
+     0,
+     1
+    ],
+    "label": "P"
+   }
+  },
+  "stats": {
+   "events": 2,
+   "maxTime": 0,
+   "radix": 2
+  },
+  "eventOrder": [
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "P",
+    "portId": "in",
+    "value": 0
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "P",
+    "portId": "in",
+    "value": 1
+   }
+  ]
+ }
+}

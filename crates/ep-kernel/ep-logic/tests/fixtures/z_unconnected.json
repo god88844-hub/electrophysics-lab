@@ -1,0 +1,66 @@
+{
+ "generatedBy": "crates/ep-kernel/ep-logic/tests/generate_fixtures.mjs — Phase 0 js/labs/logic engine (oracle, 03_PHYSICS §5)",
+ "engineSourceCommit": "5b1f47137bc442817c4c451b428525a213256023",
+ "oracle": "js/labs/logic/engine.js + js/core/events.js (EventQueue (time, seq) order)",
+ "bench": "z_unconnected",
+ "diagram": {
+  "radix": 2,
+  "blocks": [
+   {
+    "id": "ANDG",
+    "type": "logic.AND",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "PY",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "Y"
+    }
+   }
+  ],
+  "wires": [
+   {
+    "from": {
+     "block": "ANDG",
+     "port": "y"
+    },
+    "to": {
+     "block": "PY",
+     "port": "in"
+    }
+   }
+  ]
+ },
+ "options": {
+  "maxEvents": 250000,
+  "maxTicks": 4000
+ },
+ "expected": {
+  "ok": true,
+  "problems": [],
+  "warnings": [
+   "Block ANDG: input \"a\" unconnected (reads 'Z').",
+   "Block ANDG: input \"b\" unconnected (reads 'Z')."
+  ],
+  "probes": {
+   "PY": {
+    "times": [
+     0
+    ],
+    "values": [
+     "Z"
+    ],
+    "label": "Y"
+   }
+  },
+  "stats": {
+   "events": 0,
+   "maxTime": 0,
+   "radix": 2
+  },
+  "eventOrder": []
+ }
+}
