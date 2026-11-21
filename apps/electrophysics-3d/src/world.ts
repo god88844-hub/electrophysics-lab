@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { ElectronFlow } from './engine/electronFlow.js';
+import { frameStore } from './engine/solverFrame.mjs';
+import { fpsTrend } from './engine/fpsTrend.mjs';
 import { MAT, makeBreadboardTexture } from './bays/materials.js';
 import { makeTextSprite } from './engine/labels.js';
 import { Bay1Quantum, type Bay1Mode } from './bays/bay1Quantum.js';
@@ -9,7 +11,8 @@ import { Bay4Forensics } from './bays/bay4Forensics.js';
 import { ThermalVisuals } from './physics/thermalVisuals.js';
 import { SmokeSystem } from './physics/smoke.js';
 import { tempToRGBf } from '@physics/blackbody.mjs';
-import type { PhysicsSnapshot, FaultFx } from './physics/physicsClient.js';
+import { physicsClient, type PhysicsSnapshot, type FaultFx } from './physics/physicsClient.js';
+import { quantumClient, type BlochState } from './physics/quantumClient.js';
 
 export type WorkspaceId = 'quantum' | 'silicon' | 'soc' | 'library';
 
@@ -19,6 +22,13 @@ export const WORKSPACES: Array<{ id: WorkspaceId; name: string; unit: string }> 
   { id: 'soc', name: 'SoC Architect', unit: 'mm' },
   { id: 'library', name: 'Reference Library', unit: '—' },
 ];
+
+/**
+ * bay4's status lamp is fault-state only (its `text` arg is deliberately
+ * unused upstream) — a pre-allocated constant avoids a per-frame template
+ * string on the frame→visual path (zero-GC contract).
+ */
+const BAY4_STATUS_TEXT = 'kernel-frame telemetry';
 
 /** Curve decorator that adds a live Y offset — flow pulses ride layer peels. */
 class OffsetCurve extends THREE.Curve<THREE.Vector3> {
@@ -57,11 +67,19 @@ export class LabWorld {
   private workspaceGroups: Record<WorkspaceId, THREE.Group>;
   private activeWorkspace: WorkspaceId = 'quantum';
   private rigRoot = new THREE.Group();
-  private lastSnapshot: PhysicsSnapshot | null = null;
   private hoverTargets: THREE.Object3D[] = [];
   private flowIndexById = new Map<string, number>();
   private baselineActivity: Array<{ speed: number; brightness: number }> = [];
   private raycaster = new THREE.Raycaster();
+  // WP-1.5 pre-allocated scratch — the frame→visual path never allocates.
+  private flowColorScratch = new THREE.Color();
+  private hoverNdcScratch = new THREE.Vector2();
+  private hoverResult: { name: string; meta: string } = { name: '', meta: '' };
+  private stageTempsScratch = [300, 4, 0.1, 0.015];
+  private tilesRecordScratch: Record<string, number> = { cpu: 27, tpu: 27, gpu: 27, mem: 27 };
+  private flowActivities = new Map<string, { speed: number; brightness: number; color?: THREE.Color }>();
+  private busFlowColor = new THREE.Color(0x6fd0ff);
+  private unsubs: Array<() => void> = [];
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -92,6 +110,20 @@ export class LabWorld {
     this.buildFlowSystem();
     this.smokeDie = new SmokeSystem(scene, 200, 0x8a949f, 0.26);
     this.smokeCryo = new SmokeSystem(scene, 160, 0xaad4ff, 0.3);
+
+    // WP-1.5 frame surface: renderer, ViewCube, hover telemetry and the
+    // Playwright probes all read this ONE pre-allocated frame envelope.
+    if (typeof window !== 'undefined' && window.__lab) {
+      (window.__lab as unknown as Record<string, unknown>).frame = frameStore;
+      (window.__lab as unknown as Record<string, unknown>).fpsTrend = fpsTrend;
+    }
+    // Recompiled netlists change node/current topology — re-learn keys once.
+    this.unsubs.push(physicsClient.onNetlist(() => frameStore.resetTopology()));
+    this.unsubs.push(
+      quantumClient.onState(({ bloch, gateFidelity }: { bloch: BlochState[]; gateFidelity: number | null }) =>
+        frameStore.ingestQuantum(bloch, gateFidelity)
+      )
+    );
   }
 
   get currentWorkspace(): WorkspaceId {
@@ -210,11 +242,13 @@ export class LabWorld {
       this.flow.addPath({ curve: ridingCurve, color, nominalCurrent: 0.36 });
       this.flowIndexById.set(fc.id, this.flow.activityCount() - 1);
       this.baselineActivity.push({ speed: 0.75, brightness: 0.55 });
+      this.flowActivityFor(fc.id);
     }
     for (const fc of this.bay3.flowCurves) {
       this.flow.addPath({ curve: fc.curve, color: new THREE.Color(0x6fd0ff), nominalCurrent: 0.4 });
       this.flowIndexById.set(fc.id, this.flow.activityCount() - 1);
       this.baselineActivity.push({ speed: 0.5, brightness: 0.4 });
+      this.flowActivityFor(fc.id);
     }
     const met2Group = this.bay2.group.children.find((c) => c.name === 'layer-met2') as THREE.Group | undefined;
     if (met2Group) {
@@ -223,27 +257,55 @@ export class LabWorld {
       ) as THREE.Mesh | undefined;
       if (tube) {
         this.railTubeMat = tube.material as THREE.MeshStandardMaterial;
-        this.thermal.register(tube, () => (this.lastSnapshot?.temps?.traceC != null ? this.lastSnapshot.temps.traceC + 273.15 : 300));
+        this.thermal.register(tube, () => frameStore.thermal.traceC + 273.15);
       }
     }
     for (const tile of this.bay3.tiles) {
-      this.thermal.register(tile.thermalPlane, () => (this.lastSnapshot?.temps?.tiles?.[tile.id] ?? 45) + 273.15);
+      this.thermal.register(tile.thermalPlane, () => (frameStore.readTileC(tile.id) ?? 45) + 273.15);
     }
     const dut = this.bay4.group.getObjectByName('dutChip');
-    if (dut) this.thermal.register(dut as THREE.Mesh, () => (this.lastSnapshot?.temps?.junctionC ?? 27) + 273.15);
+    if (dut) this.thermal.register(dut as THREE.Mesh, () => frameStore.thermal.junctionC + 273.15);
   }
 
-  applyPhysicsSnapshot(s: PhysicsSnapshot): void {
-    this.lastSnapshot = s;
-    const voutQ4 = s.nodes.vout_q4 ?? 0;
+  /** Persistent per-path activity record (allocated once, mutated in place). */
+  private flowActivityFor(id: string): { speed: number; brightness: number; color?: THREE.Color } {
+    let a = this.flowActivities.get(id);
+    if (!a) {
+      a = { speed: 0.5, brightness: 0.4 };
+      this.flowActivities.set(id, a);
+    }
+    return a;
+  }
+
+  /**
+   * WP-1.5: the renderer consumes solver-frame typed arrays. The snapshot is
+   * ingested once into the pre-allocated frame envelope (zero per-frame heap
+   * allocation in steady state), then the visuals read the frame buffers.
+   */
+  applyPhysicsSnapshot(s: PhysicsSnapshot, opts: { live?: boolean } = {}): void {
+    frameStore.ingestSnapshot(s, opts);
+    this.applySolverFrame();
+  }
+
+  /** Forensic-replay frames: identical pipeline, schema-honest `live: false`. */
+  applyReplaySample(s: PhysicsSnapshot): void {
+    this.applyPhysicsSnapshot(s, { live: false });
+  }
+
+  /** Apply the current solver-frame buffers to the visuals (allocation-free). */
+  private applySolverFrame(): void {
+    const th = frameStore.thermal;
+    const circuit = frameStore.circuits[0];
+    // Q4 output level → voltage-coded flow colour (Q4 LDO levels 0/0.6/1.2/1.8).
+    const voutQ4 = frameStore.readNode('vout_q4');
     const q4Key = [0, 0.6, 1.2, 1.8].reduce((best, lvl) =>
       Math.abs(lvl - voutQ4) < Math.abs(best - voutQ4) ? lvl : best, 0);
-    const flowColor = new THREE.Color(q4Key >= 1.2 ? 0xffc46b : q4Key >= 0.6 ? 0xff9d5c : 0x4a5568);
-    const iNorm = Math.min(3, Math.abs(s.currents.RAIL ?? 0) / 0.36);
+    const flowColor = this.flowColorScratch.setHex(q4Key >= 1.2 ? 0xffc46b : q4Key >= 0.6 ? 0xff9d5c : 0x4a5568);
+    const iNorm = Math.min(3, Math.abs(frameStore.readCurrent('RAIL')) / 0.36);
     this.setFlowActivity('vdd-met2', iNorm, 0.35 + iNorm * 0.45, flowColor);
     this.setFlowActivity('gnd-met3', iNorm, 0.3 + iNorm * 0.4, flowColor);
     if (this.railTubeMat) {
-      const tK = (s.temps.traceC ?? 27) + 273.15;
+      const tK = th.traceC + 273.15;
       if (tK > 500) {
         const [r, g, b] = tempToRGBf(tK);
         this.railTubeMat.emissive.setRGB(r, g, b);
@@ -253,10 +315,17 @@ export class LabWorld {
         this.railTubeMat.emissiveIntensity = 0.4;
       }
     }
-    if (s.temps.tiles) this.bay3.setTileTemps(s.temps.tiles as Record<string, number>);
-    this.bay1.setStageTemps([300, 4, 0.1, s.temps.cryoK ?? 0.015]);
-    const fault = (s.temps.cryoK ?? 0.015) > 1.2 || (s.vgsMax ?? 0) >= 1.95;
-    this.bay4.setStatus(`VDD ${s.vdd.toFixed(2)} V · I ${Math.abs(s.currents.RAIL * 1000).toFixed(1)} mA`, fault);
+    if (th.tileCount > 0) {
+      for (let i = 0; i < th.tileCount; i++) {
+        const id = frameStore.tileIdAt(i);
+        if (id) this.tilesRecordScratch[id] = th.tiles[i];
+      }
+      this.bay3.setTileTemps(this.tilesRecordScratch);
+    }
+    this.stageTempsScratch[3] = th.cryoK;
+    this.bay1.setStageTemps(this.stageTempsScratch);
+    const fault = th.cryoK > 1.2 || circuit.vgsMax >= 1.95;
+    this.bay4.setStatus(BAY4_STATUS_TEXT, fault);
     this.thermal.update();
   }
 
@@ -278,28 +347,38 @@ export class LabWorld {
     }
   }
 
-  applyReplaySample(s: PhysicsSnapshot): void {
-    this.applyPhysicsSnapshot(s);
-  }
-
   setFlowActivity(id: string, speed: number, brightness: number, color?: THREE.Color): void {
     const idx = this.flowIndexById.get(id);
-    if (idx !== undefined) this.flow.setActivity(idx, { speed, brightness, color });
+    if (idx === undefined) return;
+    const a = this.flowActivityFor(id);
+    a.speed = speed;
+    a.brightness = brightness;
+    a.color = color;
+    this.flow.setActivity(idx, a);
   }
 
   resetFlowToBaseline(): void {
     let i = 0;
-    for (const [id] of this.flowIndexById) {
+    for (const [id, a] of this.flowActivities) {
       const base = this.baselineActivity[i] ?? { speed: 0.5, brightness: 0.4 };
-      this.flow.setActivity(i, { ...base, color: id.startsWith('bus') ? new THREE.Color(0x6fd0ff) : undefined });
+      a.speed = base.speed;
+      a.brightness = base.brightness;
+      a.color = id.startsWith('bus') ? this.busFlowColor : undefined;
+      this.flow.setActivity(i, a);
       i++;
     }
   }
 
-  /** Raycast hover callout: hovered object name + live telemetry meta. */
-  pickHover(ndcX: number, ndcY: number, camera: THREE.PerspectiveCamera): { name: string; meta: string } | null {
+  /**
+   * Raycast hover callout: hovered object name + live frame telemetry meta.
+   * WP-1.5: telemetry values are read from the solver-frame typed buffers —
+   * frames, not ad-hoc snapshot state. Raycast + result reuse pre-allocated
+   * objects; the meta string is built only while actually hovering.
+   */
+  pickHover(ndcX: number, ndcY: number, camera: THREE.PerspectiveCamera | THREE.OrthographicCamera): { name: string; meta: string } | null {
     if (this.hoverTargets.length === 0) return null;
-    this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+    this.hoverNdcScratch.set(ndcX, ndcY);
+    this.raycaster.setFromCamera(this.hoverNdcScratch, camera);
     const hits = this.raycaster.intersectObjects(this.hoverTargets, true);
     if (hits.length === 0) return null;
     const obj = hits[0].object;
@@ -312,13 +391,15 @@ export class LabWorld {
     const parts: string[] = [];
     if (this.currentWorkspace === 'silicon') parts.push('SKY130A');
     if (this.currentWorkspace === 'quantum') parts.push('cryo 15 mK');
-    const s = this.lastSnapshot;
-    if (s) {
-      parts.push(`T_trace ${s.temps.traceC.toFixed(0)} °C`);
-      parts.push(`I ${Math.abs(s.currents.RAIL * 1000).toFixed(1)} mA`);
-      parts.push(`VDD ${s.vdd.toFixed(2)} V`);
+    if (frameStore.stats.ingested > 0) {
+      parts.push(`T_trace ${frameStore.thermal.traceC.toFixed(0)} °C`);
+      parts.push(`I ${Math.abs(frameStore.readCurrent('RAIL') * 1000).toFixed(1)} mA`);
+      parts.push(`VDD ${frameStore.vdd.toFixed(2)} V`);
+      parts.push(`${frameStore.provenance.badge} · frame ${frameStore.frameId}`);
     }
-    return { name: name || obj.type, meta: parts.join(' · ') };
+    this.hoverResult.name = name || obj.type;
+    this.hoverResult.meta = parts.join(' · ');
+    return this.hoverResult;
   }
 
   private ghost?: THREE.Mesh;
@@ -393,6 +474,7 @@ export class LabWorld {
   }
 
   update(dt: number): void {
+    fpsTrend.frame(); // WP-1.5 FPS trend sampling (per rendered frame)
     this.bay1.update(dt, performance.now() * 0.001);
     this.bay2.update(dt);
     this.bay3.update(dt);
@@ -403,6 +485,8 @@ export class LabWorld {
   }
 
   dispose(): void {
+    for (const fn of this.unsubs) fn();
+    this.unsubs.length = 0;
     this.flow.dispose();
     this.thermal.dispose();
     this.smokeDie.dispose();

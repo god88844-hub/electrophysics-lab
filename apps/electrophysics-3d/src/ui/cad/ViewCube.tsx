@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { frameStore } from '../../engine/solverFrame.mjs';
 
 export type ViewPreset = 'iso' | 'top' | 'bottom' | 'front' | 'right';
 
 interface Props {
   /** Called with the preset view direction (world-space). */
   onView: (dir: THREE.Vector3, up: THREE.Vector3) => void;
-  /** Main-camera orientation sync source (quaternion). */
+  /** Main-camera orientation sync source (quaternion; bootstrap fallback only). */
   getCameraQuaternion: () => THREE.Quaternion;
 }
 
@@ -14,9 +15,18 @@ interface Props {
  * Interactive 3D ViewCube gizmo (Fusion/KiCad style) — a tiny self-rendered
  * three.js scene whose cube rotation mirrors the main camera; clicking a face
  * snaps the main camera to that view.
+ *
+ * WP-1.5: the mirror orientation is read from the solver-frame view record
+ * (CameraRig publishes the camera quaternion into pre-allocated typed buffers
+ * once per rendered frame) — frames, not ad-hoc closures. The prop callback is
+ * only a bootstrap fallback for the first frames before the rig's first update.
+ * The strip below the cube is the mandatory per-frame provenance badge
+ * (Builder Rule 5): solver badge · frame id · sim time · live/replay ·
+ * quality-governor level, driven by the same frame buffers.
  */
 export function ViewCube({ onView, getCameraQuaternion }: Props): React.ReactElement {
   const mountRef = useRef<HTMLDivElement>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<{ renderer?: THREE.WebGLRenderer; scene?: THREE.Scene; camera?: THREE.PerspectiveCamera; cube?: THREE.Mesh; ray?: THREE.Raycaster }>({});
   const faceNames = ['TOP', 'BOTTOM', 'FRONT', 'BACK', 'RIGHT', 'LEFT'];
   const faceDirs: Array<[THREE.Vector3, THREE.Vector3]> = [
@@ -94,18 +104,41 @@ export function ViewCube({ onView, getCameraQuaternion }: Props): React.ReactEle
       }
     });
 
+    // Pre-allocated per-tick scratch — the gizmo loop allocates nothing.
+    const cubeQuat = new THREE.Quaternion();
+    const badgeEl = badgeRef.current;
+    let lastBadge = '';
+
     let frame = 0;
     let lastRender = 0;
     const tick = () => {
       frame = requestAnimationFrame(tick);
       if (performance.now() - lastRender < 33) return; // 30 Hz gizmo is plenty
       lastRender = performance.now();
-      // Mirror main camera orientation.
-      cube.quaternion.copy(getCameraQuaternion()).invert();
+      // Mirror main camera orientation from the solver-frame view record.
+      const view = frameStore.view;
+      if (view.frameStamp > 0) {
+        cubeQuat.set(view.q[0], view.q[1], view.q[2], view.q[3]);
+        cube.quaternion.copy(cubeQuat).invert();
+      } else {
+        cube.quaternion.copy(getCameraQuaternion()).invert();
+      }
       for (const l of labelSprites) {
         l.sprite.position.copy(l.dir).multiplyScalar(0.85).applyQuaternion(cube.quaternion);
       }
       renderer.render(scene, camera);
+      // Mandatory per-frame provenance badge (frame-fed, DOM-cheap).
+      if (badgeEl) {
+        const q = frameStore.quality;
+        const text =
+          `${frameStore.provenance.badge} · frame ${frameStore.frameId} · ` +
+          `${frameStore.tSimS.toFixed(1)} s${frameStore.live ? '' : ' · REPLAY'}` +
+          ` · ${q.level}${q.changes > 0 ? ` (${q.changes}↓)` : ''}`;
+        if (text !== lastBadge) {
+          badgeEl.textContent = text;
+          lastBadge = text;
+        }
+      }
     };
     tick();
     return () => {
@@ -117,10 +150,29 @@ export function ViewCube({ onView, getCameraQuaternion }: Props): React.ReactEle
   }, []);
 
   return (
-    <div
-      ref={mountRef}
-      title="ViewCube — click a face (Iso/Top/Front/Right/Bottom)"
-      style={{ position: 'absolute', top: 52, right: 12, width: 104, height: 104, zIndex: 60, cursor: 'pointer' }}
-    />
+    <div style={{ position: 'absolute', top: 52, right: 12, zIndex: 60 }}>
+      <div
+        ref={mountRef}
+        title="ViewCube — click a face (Iso/Top/Front/Right/Bottom)"
+        style={{ width: 104, height: 104, cursor: 'pointer', position: 'relative' }}
+      />
+      <div
+        ref={badgeRef}
+        data-testid="frame-provenance-badge"
+        style={{
+          marginTop: 4,
+          textAlign: 'right',
+          color: frameStore.live ? '#8fa0b4' : '#f0c94f',
+          fontSize: 9.5,
+          lineHeight: '12px',
+          fontFamily: 'monospace',
+          textShadow: '0 1px 2px #000',
+          pointerEvents: 'none',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        provenance: awaiting first solver frame…
+      </div>
+    </div>
   );
 }
