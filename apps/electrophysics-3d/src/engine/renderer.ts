@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { frameStore } from './solverFrame.mjs';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -122,6 +123,9 @@ export function createRenderer(container: HTMLElement): RendererBundle {
       renderer.shadowMap.enabled = false;
     }
     renderer.shadowMap.needsUpdate = true;
+    // WP-1.5: publish the automatic iGPU quality-governor state on the frame
+    // surface so acceptance tests can verify it stays live and automatic.
+    frameStore.setQuality(level, renderer.getPixelRatio());
   }
 
   function render(delta: number): void {

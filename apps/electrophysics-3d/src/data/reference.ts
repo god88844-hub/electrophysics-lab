@@ -7,6 +7,8 @@ import rawMultiradix from '@reflib/03_multiradix_logic_baselines.json?raw';
 import rawQuantum from '@reflib/04_quantum_hardware_modalities.json?raw';
 import rawArchitecture from '@reflib/05_chip_architecture_benchmarks.json?raw';
 import rawFailures from '@reflib/06_failure_physics_thresholds.json?raw';
+import rawSocMemory from '@reflib/07_soc_interposer_memory_baselines.json?raw';
+import rawCells from '@reflib/08_standard_and_multiradix_cells.json?raw';
 import rawManifest from '@reflib/MANIFEST.json?raw';
 
 import constantsJson from '@reflib/01_fundamental_constants.json';
@@ -15,6 +17,8 @@ import multiradixJson from '@reflib/03_multiradix_logic_baselines.json';
 import quantumJson from '@reflib/04_quantum_hardware_modalities.json';
 import architectureJson from '@reflib/05_chip_architecture_benchmarks.json';
 import failuresJson from '@reflib/06_failure_physics_thresholds.json';
+import socMemoryJson from '@reflib/07_soc_interposer_memory_baselines.json';
+import cellsJson from '@reflib/08_standard_and_multiradix_cells.json';
 import manifestJson from '@reflib/MANIFEST.json';
 
 export interface ManifestEntry {
@@ -35,6 +39,8 @@ const RAW_FILES: Record<string, string> = {
   '04_quantum_hardware_modalities.json': rawQuantum,
   '05_chip_architecture_benchmarks.json': rawArchitecture,
   '06_failure_physics_thresholds.json': rawFailures,
+  '07_soc_interposer_memory_baselines.json': rawSocMemory,
+  '08_standard_and_multiradix_cells.json': rawCells,
 };
 
 async function sha256Hex(text: string): Promise<string> {
@@ -76,6 +82,8 @@ export const REFERENCE = {
   quantum: quantumJson,
   architecture: architectureJson,
   failures: failuresJson,
+  socMemory: socMemoryJson,
+  cells: cellsJson,
   manifest: manifestJson as unknown as ReferenceManifest,
 };
 
