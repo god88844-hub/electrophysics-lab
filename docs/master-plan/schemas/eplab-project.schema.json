@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "invention-lab/eplab-project.schema.json",
+  "title": "Electrophysics Lab Desktop Project (.eplab)",
+  "description": "Versioned Save/Open/Export/Auto-save project container for the CAD workbench. All payloads are JSON; binary geometry is forbidden (parametric generation from data/cad-specs/*.json). SHA-256 integrity seals every payload slice.",
+  "type": "object",
+  "required": ["format", "formatVersion", "createdAt", "name", "workspaces", "integrity"],
+  "properties": {
+    "format": { "const": "invention-lab/eplab-project/1" },
+    "formatVersion": { "type": "integer", "minimum": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "modifiedAt": { "type": "string", "format": "date-time" },
+    "name": { "type": "string", "maxLength": 120 },
+    "workspaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "components", "wires", "probes"],
+        "properties": {
+          "id": { "enum": ["quantum", "silicon", "soc", "library"] },
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "kind", "nodes", "position"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-z0-9_\\-]+$" },
+                "kind": { "type": "string" },
+                "params": { "type": "object" },
+                "nodes": { "type": "array", "items": { "type": "string" } },
+                "position": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 3 }
+              }
+            }
+          },
+          "wires": { "type": "array", "items": { "type": "object", "required": ["from", "to"], "properties": { "from": { "type": "string" }, "to": { "type": "string" } } } },
+          "probes": { "type": "array", "items": { "type": "string" } },
+          "quantumCircuit": { "type": "object", "description": "QHAL program for the quantum workspace (gates, pulses, modality)" }
+        }
+      }
+    },
+    "experiments": { "type": "array", "items": { "$ref": "experiment-bundle.schema.json" } },
+    "autoSave": { "type": "boolean", "default": true },
+    "integrity": {
+      "type": "object",
+      "required": ["payloadSHA256"],
+      "properties": {
+        "payloadSHA256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "algorithm": { "const": "SHA-256" },
+        "referenceLibraryLockedAt": { "type": "string", "description": "MANIFEST.json generatedAt snapshot when saved" }
+      }
+    }
+  }
+}

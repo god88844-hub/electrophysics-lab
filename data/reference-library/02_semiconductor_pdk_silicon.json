@@ -5,6 +5,7 @@
   "source_citation": "SKY130A PDK (SkyWater Technology, pinned open_pdks commit 0c1f82326278a0871f0a1fc4bdacf94c88e78e4d); FreePDK45 (NCSU/OSU, North Carolina State University); ASAP7 PDK (Arizona State University); material properties from CRC Handbook of Chemistry and Physics, 103rd ed. and Ioffe Institute semiconductor database",
   "source_url": "https://github.com/google/skywater-pdk, https://www.skywatertechnology.com/sky130/, https://www.asap.asu.edu/asap7, https://ptm.asu.edu/",
   "license_or_access": "Apache-2.0 (SKY130); free academic (FreePDK45); free academic (ASAP7); public CRC/Ioffe data",
+  "units": { "system": "SI", "length": "um/nm (per field)", "voltage": "V", "temperature_c": "°C", "sheet_resistance": "ohm/sq" },
   "parameters": {
     "sky130a": {
       "pdk_name": "SKY130A",

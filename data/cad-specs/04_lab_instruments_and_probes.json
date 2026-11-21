@@ -1,0 +1,57 @@
+{
+  "id": "04_lab_instruments_and_probes",
+  "domain": "parametric-cad-instruments",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "Optical breadboard M6 tapped-hole grid on 25 mm (1 inch) centers from published optical-table standards (Thorlabs/Newport MB series published hole-pattern specs); ESD bench mat per ANSI/ESD S4.1 work-surface standard class; oscilloscope needle-probe geometry from published Kelvin/spring-probe catalog dimensions (PMK/EE260-class Z0 probes, dimensional class); instrument UI palette from Keysight/Ansys published product-family styling conventions (charcoal graphite panels, off-white text); material palette anchored to 02_semiconductor_pdk_silicon.json materials.",
+  "source_url": "https://www.thorlabs.com/, https://www.newport.com/, https://www.esda.org/",
+  "license_or_access": "public (published catalog dimensions and standards classes)",
+  "units": { "length": "cm", "workspace": "all" },
+  "optical_breadboard": {
+    "hole_grid_pitch_cm": 2.54,
+    "hole_diameter_cm": 0.63,
+    "hole_thread": "M6",
+    "plate_thickness_cm": 1.2,
+    "material": "anodized dark-slate aluminum #1d2126, metalness 0.55, roughness 0.85",
+    "scene_texture": "512 px procedural canvas tile, 8 holes per tile edge, repeat 20×11.5 over the 120×70 cm floor"
+  },
+  "esd_bench_mat": {
+    "standard": "ANSI/ESD S4.1 work-surface class",
+    "color": "#22262b",
+    "thickness_cm": 0.06,
+    "surface_resistance_note": "dissipative class (presentation only; no electrical model claimed)"
+  },
+  "oscilloscope_probe": {
+    "type": "Z0 spring-loaded needle probe (Kelvin-class)",
+    "needle_length_cm": 1.0,
+    "needle_diameter_cm": { "top": 0.04, "bottom": 0.064 },
+    "tip_cone_height_cm": 0.14,
+    "collar_ring_radius_cm": 0.055,
+    "collar_color": "#62d0ff (channel 1) / #f0a94f (2) / #ff9d7a (3) / #8ef0b2 (4)",
+    "base_diameter_cm": { "top": 0.22, "bottom": 0.26 },
+    "spring_note": "spring-loaded plunger: tip deflects 0.1 cm on contact (presentation)"
+  },
+  "probe_instrument_chain": {
+    "plumbing": "probe → coax → dock oscilloscope channel",
+    "channels": { "max": 4, "colors": ["#62d0ff", "#ffd98a", "#ff9d7a", "#8ef0b2"] },
+    "waveform_buffer_samples": 240,
+    "auto_scale": "per-channel normalize to max|V| in window"
+  },
+  "material_palette_pbr": {
+    "anodized_aluminum": { "color": "#1d2126", "metalness": 0.55, "roughness": 0.85 },
+    "brushed_gold": { "color": "#d4af37", "metalness": 0.92, "roughness": 0.24 },
+    "stainless_steel": { "color": "#9aa2ad", "metalness": 0.9, "roughness": 0.3 },
+    "matte_steel": { "color": "#565c66", "metalness": 0.75, "roughness": 0.55 },
+    "copper": { "color": "#b87333", "metalness": 0.95, "roughness": 0.28 },
+    "esd_mat": { "color": "#22262b", "metalness": 0.1, "roughness": 0.9 },
+    "instrument_panel_ui": { "background": "#14171c", "text": "#eceff4", "borders": "#3a4250", "indicators": { "amber": "#f0a94f", "emerald": "#8ef0b2", "crimson": "#e05a40" } }
+  },
+  "lighting_rig": {
+    "key_light": "neutral 5600 K #f6f7f4, intensity 2.1, 1024² shadow map",
+    "fill_light": "#dde4ee, 0.45",
+    "ambient": "#dfe3ea, 0.5",
+    "environment": "PMREM room environment, intensity 0.42"
+  },
+  "parametric_bindings": {
+    "generator_contract": "engine/probes.ts renders the needle from these dimensions; the floor/bench render from the breadboard spec; UI chrome uses the instrument palette — all values trace here"
+  }
+}

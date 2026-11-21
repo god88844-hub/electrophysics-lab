@@ -1,0 +1,63 @@
+{
+  "id": "01_sky130_primitives_geometry",
+  "domain": "parametric-cad-sky130",
+  "provenance_status": "verified_offline_standard",
+  "source_citation": "Layer thicknesses, pitches and SOA limits from data/reference-library/02_semiconductor_pdk_silicon.json (SKY130A pinned commits); cell functions/gate counts from 03_multiradix_logic_baselines.json (Phase 0 verified 4/4 Q4 primitives); CMOS transistor structure geometry from Weste & Harris 'CMOS VLSI Design' 4th ed. standard layouts and SKY130A hd cell published footprints (08_standard_and_multiradix_cells.json). Scene presentation scales are declared per-workspace; physical dimensions are true-to-scale in µm.",
+  "source_url": "https://github.com/google/skywater-pdk",
+  "license_or_access": "Apache-2.0 (SKY130); textbook standard layouts",
+  "units": { "length": "um", "workspace": "Silicon CAD", "scene_note": "1 scene unit = 1 µm grid label; the 3D stack is vertically exaggerated ×3 for legibility (declared exaggeration factor, not a hidden scale lie)" },
+  "layer_stack_3d": {
+    "order_bottom_to_top": ["substrate", "nwell", "psub", "diffusion", "poly", "li1", "mcon", "met1", "via", "met2", "via2", "met3"],
+    "thickness_um": { "substrate": 525.0, "nwell": 0.5, "psub": 0.5, "diffusion": 0.25, "poly": 0.15, "li1": 0.25, "mcon_height": 0.25, "met1": 0.57, "via_height": 0.5, "met2": 0.845, "via2_height": 0.5, "met3": 1.035 },
+    "source": "02_semiconductor_pdk_silicon.json → parameters.sky130a.metal_stack.thickness_nm (met1 570 nm, met2 845 nm, met3 1035 nm; li1 250 nm)",
+    "materials": {
+      "substrate": "silicon (grey-blue #3a424d, clearcoat)",
+      "nwell": "muted olive #6a6a3f",
+      "psub": "slate #3d4450",
+      "diffusion": "active #7a5a48",
+      "poly": "brick-red polysilicon #8a3f38",
+      "li1": "tungsten grey #8f949c (silicided local interconnect)",
+      "met1": "copper-blue #3d6a8a (Al/TiN presentation)",
+      "met2": "electroplated copper #b87333",
+      "met3": "bright copper-gold #d9a441",
+      "via_stack": "tungsten plugs #9aa2ad",
+      "dielectric": "translucent pale SiO2 #aebfcf (opacity 0.22)"
+    }
+  },
+  "transistor_structure": {
+    "mosfet": {
+      "components": ["nwell/psub well region", "active diffusion (source/gate/drain)", "poly gate finger", "li1 contact stubs", "met1 pads"],
+      "gate_pitch_um": 0.48,
+      "gate_length_um": { "sky130_min": 0.15, "hd_library_drawn": 0.15 },
+      "fingers_per_cell": "1..8 (parametric by gate_count)"
+    },
+    "cell_footprints": {
+      "inv_1_um": { "w": 1.38, "h": 2.72 },
+      "nand2_1_um": { "w": 1.38, "h": 2.72 },
+      "fa_1_um": { "w": 5.52, "h": 2.72 },
+      "source": "08_standard_and_multiradix_cells.json → sky130a_binary_cells (published hd library footprints)"
+    }
+  },
+  "verified_cells": {
+    "provenance": "Phase 0 verified 4/4 SKY130A Q4 primitives — DRC=0 (Magic), Netgen unique LVS ✓, RC PEX ✓, sky130 commit f62031a1be9aefe902d6d54cddd6f59b57627436",
+    "cells": [
+      { "name": "q4_thresh_det", "gates": 6, "footprint_3d": "2.76 × 2.72 µm core + li1/met1 rails", "instance_count": { "poly_fingers": 6, "li1_stubs": 6, "met1_pads": 6 } },
+      { "name": "q4_inv", "gates": 6, "footprint_3d": "2.76 × 2.72 µm core", "instance_count": { "poly_fingers": 6, "li1_stubs": 6, "met1_pads": 6 } },
+      { "name": "q4_mux4", "gates": 8, "footprint_3d": "3.68 × 2.72 µm core", "instance_count": { "poly_fingers": 8, "li1_stubs": 8, "met1_pads": 8 } },
+      { "name": "q4_half_adder", "gates": 8, "footprint_3d": "3.68 × 2.72 µm core", "instance_count": { "poly_fingers": 8, "li1_stubs": 8, "met1_pads": 8 } }
+    ],
+    "binary_comparison_cells": [
+      { "name": "cmos_inv", "gates": 2, "structure": "1 PMOS (s=vdd) + 1 NMOS (s=gnd), gate-tied" },
+      { "name": "binary_half_adder", "gates": 6, "structure": "1 XOR + 1 AND (CMOS static)" }
+    ]
+  },
+  "wafer": {
+    "diameter_mm": 300.0,
+    "notch": "flat/notch at [-x]",
+    "scene_scale": "die region shown as 4.2 × 2.9 scene units on a 2.6-radius wafer disc"
+  },
+  "parametric_bindings": {
+    "generator_contract": "apps/electrophysics-3d renders layers from SKY130_LAYERS + this spec; layer visibility/opacity driven by the Silicon inspector panel; geometry is generated procedurally at runtime from these numbers — zero binary .glb assets",
+    "forbidden": "no hand-tuned magic numbers in the renderer; every dimension traces to 02/08 JSON or this file"
+  }
+}

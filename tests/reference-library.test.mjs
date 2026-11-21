@@ -22,8 +22,8 @@ const jsonFiles = fs.readdirSync(LIB_DIR)
   .filter((f) => f.endsWith('.json') && f !== 'MANIFEST.json')
   .sort();
 
-test('reference-library: exactly 6 data files present', () => {
-  assert.equal(jsonFiles.length, 6, `expected 6 files, found: ${jsonFiles.join(', ')}`);
+test('reference-library: exactly 8 data files present (01-06 verified base + 07/08 v4 vault expansion)', () => {
+  assert.equal(jsonFiles.length, 8, `expected 8 files, found: ${jsonFiles.join(', ')}`);
 });
 
 test('reference-library: every file has all required top-level fields', () => {

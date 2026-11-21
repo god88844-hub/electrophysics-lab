@@ -1,0 +1,11 @@
+{
+  "format": "invention-lab/reference-library-manifest/1",
+  "generatedAt": "2026-11-20T19:59:49.793Z",
+  "files": [
+    {
+      "file": "01_academy_missions.json",
+      "sha256": "c1c9d161577b2a7efdceac94115e74f48cff1d2d991270adfe8a03de3d062caf",
+      "size_bytes": 9390
+    }
+  ]
+}

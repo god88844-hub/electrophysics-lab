@@ -1,3 +1,5 @@
+<!-- v4 POINTER: This legacy planning stub is superseded. The single source of truth for forward-looking planning is docs/master-plan/00_INDEX.md. Content below is preserved verbatim for history. -->
+
 # MASTER PLAN — Electrophysics Lab v2
 
 > **Project**: `god88844-hub/invention-lab` (brand: **Electrophysics Lab**)

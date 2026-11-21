@@ -5,6 +5,7 @@
   "source_citation": "SKY130A PDK voltage-level definitions (Phase 0 verified primitives); multi-valued logic noise-margin theory from Hirasuna (1999) and Pécot et al.; radix-economy from Thomas K. Moon (2005), 'Fundamentals of Digital Logic'",
   "source_url": "https://github.com/google/skywater-pdk, https://en.wikipedia.org/wiki/Multi-valued_logic",
   "license_or_access": "Apache-2.0 (SKY130); public domain (theory)",
+  "units": {"system":"SI","voltage":"V","economy":"dimensionless R/ln(R)"},
   "parameters": {
     "binary_radix2_1p8v": {
       "name": "Binary (radix-2) — 1.8 V SKY130",

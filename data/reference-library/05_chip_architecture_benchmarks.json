@@ -5,6 +5,7 @@
   "source_citation": "RISC-V RV32IM ISA specification (riscv.org, version 2.2); Google TPU v1 paper (Jouppi et al., ISCA 2017); NVIDIA Ampere architecture whitepaper (NVIDIA Corp., 2020); Forth standard (Forth-2012); Systolic array theory from Kung & Su (1984)",
   "source_url": "https://riscv.org/technical/specifications/, https://ai.googleblog.com/2017/04/quantuping-neural-networks.html, https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-us-nvidia-1758950-r4-web.pdf",
   "license_or_access": "public (RISC-V ISA spec); published academic (TPU); public (NVIDIA whitepaper)",
+  "units": {"system":"SI","frequency":"MHz","power":"W/mW","memory":"KB/MB/GB","bandwidth":"GB/s"},
   "parameters": {
     "riscv_rv32im": {
       "name": "RISC-V RV32IM (educational CPU)",

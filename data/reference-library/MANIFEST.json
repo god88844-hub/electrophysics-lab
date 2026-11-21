@@ -1,36 +1,46 @@
 {
   "format": "invention-lab/reference-library-manifest/1",
-  "generatedAt": "2026-11-19T20:13:44.042Z",
+  "generatedAt": "2026-11-20T20:16:05.852Z",
   "files": [
     {
       "file": "01_fundamental_constants.json",
-      "sha256": "11b055141ee1fea01ec6e0de7201972f5ebad765274c4a06f9fa9341dd2dcb66",
-      "size_bytes": 3216
+      "sha256": "042d50ce358d1bfe3272e5105d862fac0fd275573a3f5bab68a33ba8e5d7ecdb",
+      "size_bytes": 3339
     },
     {
       "file": "02_semiconductor_pdk_silicon.json",
-      "sha256": "c123fc5ba2b2a57ca4ccee4fdb16d713d9a79f0266d6711bae464d92e3ebfa37",
-      "size_bytes": 6624
+      "sha256": "094a9e22277cd319f09a60bca50dd734d87e59d0e324452076205559d4e07101",
+      "size_bytes": 6756
     },
     {
       "file": "03_multiradix_logic_baselines.json",
-      "sha256": "d09b3c7f5f518756ed42507ebc11996b3c730209871f030a3f300f7ecf8aa692",
-      "size_bytes": 4937
+      "sha256": "26a84081c74bbeb5b689430b0ff7c80c809515058dd515ee7f0438b1fb46486b",
+      "size_bytes": 5013
     },
     {
       "file": "04_quantum_hardware_modalities.json",
-      "sha256": "ad82899562507eed38774e9dbd9fa07b82c8a47e7129b6c887edd9638131a1be",
-      "size_bytes": 7434
+      "sha256": "0cb1ab4c9ecda5d335f7a5b9cb083505a5828c0bc816d4c8aa98aef046d015fe",
+      "size_bytes": 7553
     },
     {
       "file": "05_chip_architecture_benchmarks.json",
-      "sha256": "8d2b9a8e530df0c4190b467cc07b9da3fb0b82e76c0d466a42d6bb0d0e59925d",
-      "size_bytes": 5168
+      "sha256": "ae8fac8d364320ef5a2bffde67a1bf5030a0825b14ebb6538239827899391890",
+      "size_bytes": 5268
     },
     {
       "file": "06_failure_physics_thresholds.json",
-      "sha256": "8b74e7eab2dd4323176811c7f7ba252c7563819c20d688ad443da6f4475ba239",
-      "size_bytes": 8582
+      "sha256": "50c752500428353499ca7a4940d4e6e2780ae10bfc8b97228f6689bbac29e58c",
+      "size_bytes": 8704
+    },
+    {
+      "file": "07_soc_interposer_memory_baselines.json",
+      "sha256": "3906fc3f97d2e1954af55d060e49e23bf51d1189e9f7f2ea232edc75c283136f",
+      "size_bytes": 5339
+    },
+    {
+      "file": "08_standard_and_multiradix_cells.json",
+      "sha256": "5a85ca767e05ffa7827ed7754dc34bdf5732414ec0e4aa4f500ed4aab0658e6d",
+      "size_bytes": 5248
     }
   ]
 }

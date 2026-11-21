@@ -1,3 +1,5 @@
+<!-- v4 POINTER: This legacy planning stub is superseded. The single source of truth for forward-looking planning is docs/master-plan/00_INDEX.md. Content below is preserved verbatim for history. -->
+
 # UX / Game Design Spec — Anti-Clutter Lab Environment
 
 ## Core rule: 85%+ Open 3D Canvas
