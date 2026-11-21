@@ -3,15 +3,17 @@ resolver = "2"
 # Dual-target kernel workspace (WP-1.2):
 #   - crates/ep-kernel           native kernel entry (Tauri IPC / typed-array buffers)
 #   - crates/ep-kernel/ep-core   units, SHA-256-verified reference data, schema mirrors, admission
+#   - crates/ep-kernel/ep-thermal  implicit (BE/CN) Fourier heat PDE + forensics
 #   - crates/ep-kernel-wasm      wasm-bindgen exports for browser dev preview + CI
 # Future members (Phase 2+ per docs/master-plan/02_SYSTEM_ARCHITECTURE.md):
-#   ep-circuit, ep-thermal, ep-logic, ep-chip
+#   ep-logic, ep-chip
 members = [
     "crates/ep-kernel",
     "crates/ep-kernel/ep-core",
     "crates/ep-kernel/ep-circuit",
     "crates/ep-kernel/ep-chip",
     "crates/ep-kernel/ep-quantum",
+    "crates/ep-kernel/ep-thermal",
     "crates/ep-kernel-wasm",
 ]
 
