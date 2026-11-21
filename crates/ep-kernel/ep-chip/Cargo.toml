@@ -1,0 +1,11 @@
+[package]
+name = "ep-chip"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Cycle-accurate RV32IM/Custom-ISA CPU kernel (WP-4.1): register-file bit-exact against the Phase 0 chip-engine harness and the IL-8/RV32IM bounded reference, with declared dynamic-power accounting"
+
+[dependencies]
+ep-core = { path = "../ep-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
