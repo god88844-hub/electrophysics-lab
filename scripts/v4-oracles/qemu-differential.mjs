@@ -83,31 +83,18 @@ function main() {
     process.exit(requireLive ? 1 : 0);
   }
 
-  // (3) Live differential: assemble the dump's exact program words with the
-  // phase8-identical GNU pipeline (result_words .data block mirrors the
-  // original rv32m-operations.S layout), run real QEMU user-mode.
-  const words = dump.rv32.program.words;
+  // (3) Live differential: assemble the COMMITTED phase8 source with the
+  // phase8-identical GNU pipeline and run real QEMU user-mode. The frozen
+  // program words are the machine code of this exact source; the 12 result
+  // WORD values are layout-independent and must match bit-exactly.
   const dataBytes = frozen.length * 4;
-  const asm = [
-    '.text',
-    '.balign 4',
-    '.global _start',
-    '_start:',
-    ...words.map((w) => `.word ${w}`),
-    '.data',
-    '.balign 4',
-    'result_words:',
-    `.zero ${dataBytes}`,
-    '',
-  ].join('\n');
+  const sourcePath = join(REPO_ROOT, 'benchmarks', 'phase8', 'rv32m-operations.S');
+  if (!existsSync(sourcePath)) fail(`phase8 source missing: ${sourcePath}`);
 
   const temp = mkdtempSync(join(tmpdir(), 'wp46-qemu-'));
   try {
-    const asmPath = join(temp, 'wp46.S');
     const objPath = join(temp, 'wp46.o');
     const elfPath = join(temp, 'wp46.elf');
-    writeFileSync(asmPath, asm);
-
     const asRun = spawnSync('riscv64-unknown-elf-as', ['-march=rv32im', '-mabi=ilp32', sourcePath, '-o', objPath], {
       encoding: 'buffer',
     });
