@@ -32,7 +32,9 @@ async function boot(page) {
     if (m.type() === 'error') errors.push(m.text());
   });
   await page.goto('/');
-  await expect(page.getByText(/SHA-256 6\/6/)).toBeVisible({ timeout: 40_000 });
+  // WP-1.5 vault sync: the app-side RAW_FILES covers reference-library 01–08,
+  // matching PR #99's sealed MANIFEST.json — the boot badge verifies 8/8 clean.
+  await expect(page.getByText(/SHA-256 8\/8/)).toBeVisible({ timeout: 40_000 });
   return errors;
 }
 
