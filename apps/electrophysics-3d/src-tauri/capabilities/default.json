@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "WP-1.1 desktop shell capability: core runtime APIs plus the native dialog plugin for the typed IPC skeleton (ping/version/admission-status/kernel-solve/native-file-dialog).",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:default"]
+}
