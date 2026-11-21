@@ -25,6 +25,16 @@
 //!   activity, using `ep-core` SI units.
 //! - [`custom`]: the custom-ISA hook — deterministic, fail-closed dispatch of
 //!   the RISC-V custom-0/custom-1 opcode space to a registered handler.
+//! - [`tpu`]: WP-4.3 weight-stationary systolic TPU — INT8/per-axis-QDQ
+//!   quantized GEMM with exact INT32 accumulation (saturating + documented
+//!   overflow events, fail-closed `K_max = 2³¹/(255·255)` admission), the
+//!   exact §3 wave-front cycle/utilization equations
+//!   `cycles = ceil(M/P)·ceil(N/P)·(K + 2P − 2)`, an EXPERIMENTAL Q4
+//!   multi-radix mode (2 digits/byte packing + nearest-partition dequant pass
+//!   onto the verified Q4 LDO levels), and per-tile MAC activity & switching
+//!   power telemetry for the 64-tile 3D SoC heatmap. Bit-exact against the
+//!   `packages/chip-engine/src/accelerators.mjs` oracle (§5: TPU GEMM oracle
+//!   = exact INT8 reference math, tolerance bit-exact).
 //!
 //! Oracle calibration (`03_PHYSICS_MATH_FUNDAMENTALS.md` §5): RV32IM
 //! execution is bit-exact against the Phase 0 harness. The QEMU user-mode
@@ -36,9 +46,14 @@ pub mod cpu;
 pub mod custom;
 pub mod isa;
 pub mod power;
+pub mod tpu;
 pub mod twin;
 
 pub use cpu::{Cpu, CpuError, CpuIsa, RunResult, StepOutcome, Trace, Trap};
 pub use custom::{CustomEffect, CustomIsaHook};
 pub use power::{DynamicPowerModel, Farad, Hertz, InstructionMix, PowerError};
+pub use tpu::{
+    pack_q4, unpack_q4, OverflowEvent, OverflowPolicy, Q4DequantTable, Q4Packed, Q4Result,
+    QdqScales, SystolicResult, SystolicTpu, TileTelemetry, TpuConfig, TpuError,
+};
 pub use twin::TwinCpu;
