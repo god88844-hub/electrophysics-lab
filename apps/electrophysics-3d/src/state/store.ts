@@ -181,6 +181,17 @@ declare global {
       store: Store;
       worldRef: { current: unknown };
       physicsClient?: { setParams(patch: Record<string, unknown>): void };
+    history?: {
+      canUndo(workspace: string): boolean;
+      canRedo(workspace: string): boolean;
+      undoDepth(workspace: string): number;
+      redoDepth(workspace: string): number;
+      push(command: unknown, ctx: unknown): unknown;
+    };
+    historyCtx?: unknown;
+    projectToScreen?: (obj: unknown) => { x: number; y: number };
+    frame?: unknown;
+    fpsTrend?: unknown;
       projectToScreen?: (obj: unknown) => { x: number; y: number };
     };
   }
