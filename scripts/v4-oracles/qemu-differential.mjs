@@ -81,7 +81,22 @@ function main() {
     writeFileSync(elfPath, elf);
     const run = spawnSync('qemu-riscv32', [elfPath], { encoding: 'buffer' });
     if (run.error) fail(`qemu-riscv32 could not execute: ${run.error.message}`);
-    if (run.status !== 0) fail(`qemu-riscv32 exited ${run.status}: ${run.stderr.toString().slice(0, 400)}`);
+    if (run.status !== 0) {
+      // Full diagnostics for the load/run failure (version, ELF header, wave-front trace).
+      const version = spawnSync('qemu-riscv32', ['--version'], { encoding: 'utf8' });
+      console.error(`qemu: ${(version.stdout || '').split('\n')[0] ?? 'unknown'}`);
+      console.error(`elf bytes: ${elf.length}; header: ${Buffer.from(elf.slice(0, 84)).toString('hex')}`);
+      const logPath = join(temp, 'trace.log');
+      const traced = spawnSync('qemu-riscv32', ['-d', 'in_asm,cpu', '-D', logPath, elfPath], { encoding: 'buffer' });
+      console.error(`traced run: exit=${traced.status} stdout=${traced.stdout.length}B stderr=${traced.stderr.toString().slice(0, 200)}`);
+      try {
+        const log = readFileSync(logPath, 'utf8');
+        console.error(`in_asm tail:\n${log.split('\n').slice(-40).join('\n')}`);
+      } catch {
+        console.error('in_asm log unavailable (guest likely never started)');
+      }
+      fail(`qemu-riscv32 exited ${run.status}: ${run.stderr.toString().slice(0, 400)}`);
+    }
 
     const expectedBytes = 4 * frozen.length;
     if (run.stdout.length !== expectedBytes) {
