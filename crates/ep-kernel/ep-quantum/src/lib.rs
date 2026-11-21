@@ -18,6 +18,13 @@
 //! oracle (03_PHYSICS_MATH_FUNDAMENTALS.md §4 QEC bullet, §5 QEC-sweep
 //! row) — asserted in `tests/qec_oracle.rs`.
 //!
+//! WP-5.3 adds the Matrix Product State offline path ([`mps`]): up to 500
+//! qubits with a configurable bond-dimension cap, exact truncation-error
+//! telemetry, SWAP-routed long-range gates, seeded sampling, badged
+//! `SIMULATED_PHYSICS_MODEL` (untruncated) / `SIMULATED_NOISY_QUANTUM`
+//! (truncated) — parity with the exact density-matrix solver asserted in
+//! `tests/mps_oracle.rs` (≤ 1e-9 on 6-qubit seeded random circuits).
+//!
 //! No unsafe; no I/O; wasm32-compatible.
 
 #![forbid(unsafe_code)]
@@ -25,6 +32,7 @@
 pub mod admission;
 pub mod devices;
 pub mod lindblad;
+pub mod mps;
 pub mod qec;
 
 pub use admission::{admit_offline, dense_working_set_bytes, offline_max_qubits};
@@ -36,6 +44,11 @@ pub use lindblad::ops;
 pub use lindblad::{
     average_gate_fidelity, rotation, Axis, DensityMatrix, Drive, InitialState, LindbladSim,
     Mulberry32, NoiseModel, Op2, ZzPair, DENSITY_MATRIX_MAX_QUBITS,
+};
+pub use mps::{
+    admit_mps, apply_two_qubit_to_density, mps_working_set_bytes, op2_to_mat, svd_complex,
+    svd_truncate, Gate2, MpsSim, TruncationTelemetry, C64, MPS_MAX_QUBITS, MPS_PROVENANCE_EXACT,
+    MPS_PROVENANCE_TRUNCATED,
 };
 pub use qec::{
     admit_qec_frame, bench_frame_layers, esm_bit_flip_logical_error_rate, esm_run_bit_flip_trial,
