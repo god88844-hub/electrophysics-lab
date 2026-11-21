@@ -59,7 +59,11 @@ fn build_elf(words: &[u32], data_bytes: usize) -> Vec<u8> {
     elf.extend_from_slice(&0_u16.to_le_bytes()); // e_shnum
     elf.extend_from_slice(&0_u16.to_le_bytes()); // e_shstrndx
                                                  // One PT_LOAD covering the whole file from p_offset 0 at vaddr 0x10000.
-    let file_len = (elf.len() + words.len() * 4 + data_bytes) as u32;
+                                                 // file_len must include the EHDR (52) AND this PT_LOAD header (32) — the
+                                                 // WP-4.6 live QEMU oracle caught the missing PHDR bytes as a SIGSEGV: the
+                                                 // result_words tail fell outside the mapped segment (p_filesz 256 < 288).
+    const PHDR_SIZE: usize = 32;
+    let file_len = (elf.len() + PHDR_SIZE + words.len() * 4 + data_bytes) as u32;
     let mut ph = Vec::with_capacity(32);
     ph.extend_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
     ph.extend_from_slice(&0_u32.to_le_bytes()); // p_offset
