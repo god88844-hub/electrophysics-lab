@@ -9,6 +9,7 @@ resolver = "2"
 members = [
     "crates/ep-kernel",
     "crates/ep-kernel/ep-core",
+    "crates/ep-kernel/ep-circuit",
     "crates/ep-kernel-wasm",
 ]
 

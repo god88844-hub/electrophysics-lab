@@ -1,0 +1,11 @@
+[package]
+name = "ep-circuit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kernel MNA DC solver: R/V/I stamps, numeric-Jacobian Newton with damped stepping + source stepping + gmin escalation, symmetric drain/source Shichman-Hodges MOSFET (parity with packages/physics-engine/src/mna.mjs)"
+
+[dependencies]
+ep-core = { path = "../ep-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
