@@ -4,8 +4,23 @@ import { createRenderer, createQualityGovernor, type RendererBundle } from './en
 import { CameraRig } from './engine/cameraRig.js';
 import { LabWorld, WORKSPACES, type WorkspaceId } from './world.js';
 import { worldRef } from './worldRef.js';
-import { store, flashToast } from './state/store.js';
-import { verifyReferenceIntegrity } from './data/reference.js';
+import { store, flashToast, type LabState } from './state/store.js';
+import {
+  buildEplabProject,
+  validateEplabProject,
+  snapshotFromState,
+  wiresFromSandboxGroup,
+  downloadProjectFile,
+  readProjectFileViaInput,
+  saveProjectViaDesktop,
+  openProjectViaDesktop,
+  saveAutosave,
+  restoreAutosave,
+  clearAutosave,
+  defaultProjectName,
+} from './state/project.js';
+import { desktopBridge } from './desktop/index.js';
+import { verifyReferenceIntegrity, REFERENCE } from './data/reference.js';
 import { physicsClient, type PhysicsSnapshot, type ForensicReport, type ProposedFix, type FaultFx } from './physics/physicsClient.js';
 import { quantumClient, type BlochState, type BreakthroughBundle } from './physics/quantumClient.js';
 import { LibraryOverlay } from './ui/LibraryOverlay.js';
@@ -28,6 +43,79 @@ export function App() {
   const bundleRef = useRef<{ renderer: RendererBundle; rig: CameraRig; world: LabWorld } | null>(null);
   const state = useLabState();
   const pointerNdc = useRef({ x: -2, y: -2, clientX: 0, clientY: 0 });
+
+  // ---- WP-1.3 — .eplab project persistence (Save / Open / Auto-save) ----
+  // Reference-library snapshot every seal is bound to (MANIFEST generatedAt).
+  const libraryLockedAt = REFERENCE.manifest.generatedAt;
+  // Committed-state snapshot only (transient tool state is never serialized).
+  const persistSnapshot = () =>
+    snapshotFromState(store.get(), wiresFromSandboxGroup(worldRef.current?.bay2.group ?? null));
+  const applyLoadedProject = (loaded: { state: Record<string, unknown>; wires: Array<{ from: string; to: string }>; name: string; payloadSHA256: string }) => {
+    store.set(loaded.state as Partial<LabState>);
+    // Traces are mesh-only (not in the store) — re-add after the sandbox
+    // components have re-rendered (setTimeout lands after React effects).
+    setTimeout(() => {
+      for (const w of loaded.wires) worldRef.current?.addManhattanTrace(w.from, w.to);
+    }, 0);
+    // Durable persistence marker (the toast is transient, 2.6 s).
+    const lab = window.__lab as unknown as Record<string, unknown>;
+    if (lab) lab.projectLastOpen = { name: loaded.name, sha: loaded.payloadSHA256.slice(0, 8), wires: loaded.wires.length, at: new Date().toISOString() };
+    flashToast(`Opened ${loaded.name} — SHA-256 seal verified (${loaded.payloadSHA256.slice(0, 8)}…), ${loaded.wires.length} traces restored`);
+  };
+  const saveProjectAction = async () => {
+    try {
+      const filename = defaultProjectName();
+      const sealed = await buildEplabProject(persistSnapshot(), { name: filename, referenceLibraryLockedAt: libraryLockedAt });
+      let status: string | null = null;
+      if (desktopBridge.isDesktop()) {
+        const res = await saveProjectViaDesktop(sealed, desktopBridge, filename);
+        if (res.ok) status = `Saved ${res.path} — seal ${sealed.payloadSHA256.slice(0, 8)}…`;
+        else if (res.reason === 'cancelled') {
+          flashToast('Save cancelled');
+          return;
+        } else {
+          // Native dialog/acceptance problem — surface it, fall back to web.
+          flashToast('Native save unavailable (' + res.reason + ') — using browser download');
+        }
+      }
+      if (!status) {
+        const dl = downloadProjectFile(sealed, filename);
+        status = dl.ok
+          ? `Saved ${filename} — seal ${sealed.payloadSHA256.slice(0, 8)}… (browser download)`
+          : 'Save failed: ' + dl.reason;
+      }
+      flashToast(status);
+    } catch (err) {
+      flashToast('Save failed: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+  const openProjectAction = async () => {
+    let picked: { name: string; text: string } | null = null;
+    if (desktopBridge.isDesktop()) {
+      const res = await openProjectViaDesktop(desktopBridge);
+      if (res.ok) picked = { name: res.name, text: res.text };
+      else if (res.reason === 'cancelled') {
+        flashToast('Open cancelled');
+        return;
+      } else {
+        flashToast('Native open unavailable (' + res.reason + ') — using the browser file picker');
+      }
+    }
+    if (!picked) picked = (await readProjectFileViaInput()) as { name: string; text: string } | null;
+    if (!picked) {
+      flashToast('Open cancelled');
+      return;
+    }
+    try {
+      const loaded = await validateEplabProject(JSON.parse(picked.text), { referenceLibraryLockedAt: libraryLockedAt });
+      applyLoadedProject(loaded);
+    } catch (err) {
+      // Fail-closed: corrupt/tampered file — store untouched, reason shown.
+      // Validation messages already carry the precise "Open refused:" reason.
+      flashToast(err instanceof Error ? err.message : String(err));
+    }
+  };
+  // -----------------------------------------------------------------------
 
   useEffect(() => {
     const container = mountRef.current;
@@ -257,10 +345,39 @@ export function App() {
     };
     window.addEventListener('pointermove', onPointerMove);
 
+    // WP-1.3 — auto-save: 30 s interval + window blur, sealed committed state
+    // only. Boot: fail-closed restore of the auto-save slot (refused slots
+    // are cleared, never partially applied).
+    const autosaveNow = () => {
+      void buildEplabProject(persistSnapshot(), { name: 'autosave', referenceLibraryLockedAt: libraryLockedAt })
+        .then((sealed) => {
+          saveAutosave(sealed.project);
+          const lab = window.__lab as unknown as Record<string, unknown>;
+          if (lab) lab.projectAutosaveAt = sealed.project.modifiedAt;
+        })
+        .catch(() => { /* best-effort: explicit saves report failures honestly */ });
+    };
+    void restoreAutosave({ referenceLibraryLockedAt: libraryLockedAt })
+      .then((restored) => {
+        if (restored) applyLoadedProject(restored);
+      })
+      .catch((err: unknown) => {
+        clearAutosave();
+        flashToast(err instanceof Error ? err.message : String(err));
+      });
+    const autosaveTimer = window.setInterval(autosaveNow, 30_000);
+    window.addEventListener('blur', autosaveNow);
+    const lab = window.__lab as unknown as Record<string, unknown>;
+    if (lab) {
+      lab.project = { mode: desktopBridge.mode, autosaveNow, saveNow: saveProjectAction, openPicker: openProjectAction };
+    }
+
     return () => {
       cancelAnimationFrame(frameId);
       container.removeEventListener('pointerdown', onViewportClick);
       window.removeEventListener('pointermove', onPointerMove);
+      window.clearInterval(autosaveTimer);
+      window.removeEventListener('blur', autosaveNow);
       world.dispose();
       renderer.dispose();
       rig.dispose();
@@ -418,6 +535,22 @@ export function App() {
         }} title="Run/Pause [Space]">{state.playing ? '❚❚ Pause' : '▶ Run'}</button>
         <button style={toolBtn} onClick={() => physicsClient.stepOnce()} title="Step one tick [.]">Step</button>
         <button style={toolBtn} onClick={() => { physicsClient.reset(); worldRef.current?.clearFailureVisuals(); }} title="Reset">Reset</button>
+        <span style={{ width: 1, height: 22, background: '#3a4250' }} />
+        <button style={toolBtn} onClick={() => { void saveProjectAction(); }} title="Save project (.eplab) — SHA-256 sealed">Save</button>
+        <button style={toolBtn} onClick={() => { void openProjectAction(); }} title="Open project (.eplab) — validated fail-closed">Open</button>
+        {state.toast && (
+          <span
+            data-testid="project-toast"
+            style={{
+              maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              color: /refused|failed|mismatch/i.test(state.toast) ? '#f07a4f' : '#8ef0b2',
+              fontSize: 11.5, fontFamily: 'monospace',
+            }}
+            title={state.toast}
+          >
+            {state.toast}
+          </span>
+        )}
         <div style={{ flex: 1 }} />
         <span style={{ color: state.fps >= 55 ? '#8ef0b2' : state.fps >= 42 ? '#f0c94f' : '#f07a4f', fontWeight: 700, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
           {state.fps} FPS
