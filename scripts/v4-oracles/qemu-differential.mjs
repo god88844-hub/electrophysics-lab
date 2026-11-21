@@ -5,11 +5,11 @@
  * (format `invention-lab/wp46-oracle-dump/1`), then:
  *   1. re-asserts the Rust side against the frozen Phase 8 manifest
  *      (unconditional — this holds without QEMU),
- *   2. assembles the dump's exact program words with the GNU RISC-V
- *      toolchain using the phase8-identical pipeline
+ *   2. assembles the committed `benchmarks/phase8/rv32m-operations.S` (the
+ *      exact source the phase8 workflow proves on these runners daily) with
+ *      the phase8-identical pipeline
  *      (`as -march=rv32im -mabi=ilp32` → `ld -m elf32lriscv -Ttext=0x10000
- *      -e _start --no-relax` — the layout `scripts/phase8-qemu-rv32m.mjs`
- *      proves on these runners daily),
+ *      -e _start --no-relax`),
  *   3. runs `qemu-riscv32` user-mode and asserts QEMU's real `write(1, a1, 48)`
  *      stdout equals the strict core's result words AND the frozen manifest
  *      words — **bit-exact** (§5 row: RV32IM execution → bit-exact).
@@ -23,7 +23,7 @@
  * that into a hard failure — never a silent pass (PHASE_04 failure modes).
  */
 
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -34,6 +34,9 @@ import {
   printSkipVerdict,
   toolOnPath,
 } from './oracle-lib.mjs';
+import { fileURLToPath } from 'node:url';
+
+const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 function fail(msg) {
   console.error(`WP46-QEMU-ORACLE-FAIL: ${msg}`);
@@ -105,7 +108,7 @@ function main() {
     const elfPath = join(temp, 'wp46.elf');
     writeFileSync(asmPath, asm);
 
-    const asRun = spawnSync('riscv64-unknown-elf-as', ['-march=rv32im', '-mabi=ilp32', asmPath, '-o', objPath], {
+    const asRun = spawnSync('riscv64-unknown-elf-as', ['-march=rv32im', '-mabi=ilp32', sourcePath, '-o', objPath], {
       encoding: 'buffer',
     });
     if (asRun.status !== 0) fail(`as failed: ${asRun.stderr.toString().slice(0, 400)}`);
@@ -142,7 +145,7 @@ function main() {
       pass: true,
       words: qemuWords.length,
       differential: 'qemu-riscv32 user-mode vs ep-chip strict RV32IM core — bit-exact (03 §5)',
-      program: 'frozen Phase 8 RV32M program (WP-4.1 fixture :: qemuProgram), GNU-assembled phase8-identical',
+      program: 'benchmarks/phase8/rv32m-operations.S via the phase8 GNU pipeline (frozen fixture words asserted alongside)',
       frozenManifestWords: frozen.length,
       tolerance: 'bit-exact',
     });

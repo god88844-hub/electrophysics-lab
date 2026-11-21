@@ -18,7 +18,6 @@
 //!    is WP-4.6's surface; this gate ships the differential itself.
 
 use ep_chip::cpu::{Cpu, CpuIsa};
-use ep_chip::isa::encode;
 use serde_json::Value;
 
 const BASE: u32 = 0x1_0054; // strict-core flat mapping: program at 0x10054 (fixture `base`)
@@ -27,75 +26,50 @@ fn fixture() -> Value {
     serde_json::from_str(include_str!("data/parity_vectors.json")).expect("fixture parses")
 }
 
-/// Pack the hand-assembled program into the GNU-ld-equivalent RV32 ELF image
-/// (the layout GNU `ld -m elf32lriscv -Ttext=0x10000 -e _start --no-relax`
-/// emits for the phase8 protocol, verified byte-for-byte against it):
-///   LOAD1  R E: file offset 0 → vaddr 0xF000, covering the headers (at
-///          0xF000..0xF074) and the text (at vaddr 0x10000, file offset
-///          0x1000 — the page-aligned congruence trick ld uses);
-///   LOAD2  RW : the result_words block at vaddr 0x1109C (file offset
-///          0x109C — congruent mod 0x1000), writable so the `sw` stores
-///          succeed under qemu-riscv32.
-/// The first single-RWE-LOAD attempt placed the stores in a segment whose
-/// tail was unmapped — caught live by the WP-4.6 QEMU oracle (SIGSEGV).
-fn build_elf(words: &[u32], data_bytes: usize) -> Vec<u8> {
-    const PHDR_SIZE: usize = 32;
-    let phnum = 2_u16;
-    let header_bytes = 52 + PHDR_SIZE * phnum as usize; // 116
-    let text_file_offset = 0x1000; // ld's page-congruent placement: 0xF000 + 0x1000 = 0x10000
-    let text_bytes = words.len() * 4;
-    let data_file_offset = text_file_offset + text_bytes;
-    let text_vaddr = 0x1_0000_u32;
-    let data_vaddr = text_vaddr + data_file_offset as u32; // 0x1109C for 39 words
-
-    let mut image: Vec<u8> = Vec::new();
-    let mut eh = Vec::with_capacity(52);
-    // e_ident
-    eh.extend_from_slice(&[0x7f, b'E', b'L', b'F', 1, 1, 1, 0]);
-    eh.extend_from_slice(&[0_u8; 8]);
-    // e_type=ET_EXEC(2), e_machine=EM_RISCV(243) — both HALFWORD in ELF32.
-    eh.extend_from_slice(&2_u16.to_le_bytes());
-    eh.extend_from_slice(&243_u16.to_le_bytes());
-    eh.extend_from_slice(&1_u32.to_le_bytes()); // e_version
-    eh.extend_from_slice(&text_vaddr.to_le_bytes()); // e_entry = _start = 0x10000
-    eh.extend_from_slice(&52_u32.to_le_bytes()); // e_phoff
-    eh.extend_from_slice(&0_u32.to_le_bytes()); // e_shoff
-    eh.extend_from_slice(&0_u32.to_le_bytes()); // e_flags (int ABI)
-    eh.extend_from_slice(&52_u16.to_le_bytes()); // e_ehsize
-    eh.extend_from_slice(&32_u16.to_le_bytes()); // e_phentsize
-    eh.extend_from_slice(&phnum.to_le_bytes()); // e_phnum = 2
-    eh.extend_from_slice(&40_u16.to_le_bytes()); // e_shentsize
-    eh.extend_from_slice(&0_u16.to_le_bytes()); // e_shnum
-    eh.extend_from_slice(&0_u16.to_le_bytes()); // e_shstrndx
-    image.extend_from_slice(&eh);
-
-    // PHDR1 — R E: headers at 0xF000, text at 0x10000.
-    let text_end_vaddr = text_vaddr + text_bytes as u32;
-    image.extend_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
-    image.extend_from_slice(&0_u32.to_le_bytes()); // p_offset
-    image.extend_from_slice(&0xF000_u32.to_le_bytes()); // p_vaddr (0xF000 + 0x1000 = 0x10000)
-    image.extend_from_slice(&0xF000_u32.to_le_bytes()); // p_paddr
-    image.extend_from_slice(&(text_end_vaddr - 0xF000).to_le_bytes()); // p_filesz
-    image.extend_from_slice(&(text_end_vaddr - 0xF000).to_le_bytes()); // p_memsz
-    image.extend_from_slice(&5_u32.to_le_bytes()); // PF_R | PF_X
-    image.extend_from_slice(&0x1000_u32.to_le_bytes()); // p_align
-                                                        // PHDR2 — RW: result_words block.
-    image.extend_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
-    image.extend_from_slice(&(data_file_offset as u32).to_le_bytes()); // p_offset
-    image.extend_from_slice(&data_vaddr.to_le_bytes()); // p_vaddr
-    image.extend_from_slice(&data_vaddr.to_le_bytes()); // p_paddr
-    image.extend_from_slice(&(data_bytes as u32).to_le_bytes()); // p_filesz
-    image.extend_from_slice(&(data_bytes as u32).to_le_bytes()); // p_memsz
-    image.extend_from_slice(&6_u32.to_le_bytes()); // PF_R | PF_W
-    image.extend_from_slice(&0x1000_u32.to_le_bytes()); // p_align
-
-    // Headers at file offset 0, padding up to the page-congruent text offset.
-    image.extend(std::iter::repeat_n(0_u8, text_file_offset - header_bytes));
-    for w in words {
-        image.extend_from_slice(&w.to_le_bytes());
-    }
-    image.extend(std::iter::repeat_n(0_u8, data_bytes));
-    image
+/// Assemble + link the committed phase8 source with the EXACT pipeline the
+/// phase8 workflow runs on these runners (the artifact it proves daily), then
+/// execute it under qemu-riscv32. The frozen fixture words are the machine
+/// code of the same program; the strict-core differential compares the 12
+/// result WORDS (values), which are layout-independent.
+fn build_elf_via_gnu_pipeline(
+    repo_root: &std::path::Path,
+    temp: &std::path::Path,
+) -> std::path::PathBuf {
+    let source = repo_root.join("benchmarks/phase8/rv32m-operations.S");
+    let obj = temp.join("wp46.o");
+    let elf = temp.join("wp46.elf");
+    let as_run = std::process::Command::new("riscv64-unknown-elf-as")
+        .args(["-march=rv32im", "-mabi=ilp32"])
+        .arg(&source)
+        .arg("-o")
+        .arg(&obj)
+        .output()
+        .expect("riscv64-unknown-elf-as executes");
+    assert!(
+        as_run.status.success(),
+        "as failed: {}",
+        String::from_utf8_lossy(&as_run.stderr)
+    );
+    let ld_run = std::process::Command::new("riscv64-unknown-elf-ld")
+        .args([
+            "-m",
+            "elf32lriscv",
+            "-Ttext=0x10000",
+            "-e",
+            "_start",
+            "--no-relax",
+        ])
+        .arg(&obj)
+        .arg("-o")
+        .arg(&elf)
+        .output()
+        .expect("riscv64-unknown-elf-ld executes");
+    assert!(
+        ld_run.status.success(),
+        "ld failed: {}",
+        String::from_utf8_lossy(&ld_run.stderr)
+    );
+    elf
 }
 
 /// Run the bounded program on the Rust strict core and return
@@ -163,41 +137,56 @@ fn qemu_user_mode_differential_when_available() {
 
     let (_, _, rust_words) = run_on_rust_cpu(&words, 12);
 
-    // Oracle availability is explicit: absent QEMU → loud SKIP, not a pass.
-    let probe = std::process::Command::new(if cfg!(windows) { "where" } else { "which" })
-        .arg("qemu-riscv32")
-        .output();
-    let qemu_present = probe
-        .as_ref()
-        .map(|o| o.status.success() && !o.stdout.is_empty())
-        .unwrap_or(false);
-    if !qemu_present {
+    // Oracle availability is explicit: absent toolchain -> loud SKIP, not a pass.
+    let tools = [
+        "qemu-riscv32",
+        "riscv64-unknown-elf-as",
+        "riscv64-unknown-elf-ld",
+    ];
+    let missing: Vec<&str> = tools
+        .iter()
+        .filter(|t| {
+            let probe = std::process::Command::new(if cfg!(windows) { "where" } else { "which" })
+                .arg(t)
+                .output();
+            !probe
+                .as_ref()
+                .map(|o| o.status.success() && !o.stdout.is_empty())
+                .unwrap_or(false)
+        })
+        .copied()
+        .collect();
+    if !missing.is_empty() {
         eprintln!(
-            "QEMU-ORACLE-SKIP: qemu-riscv32 is not available on PATH — the user-mode \
-             differential executes only where QEMU exists (WP-4.6 owns CI integration). \
-             The Rust-side 12-word frozen-manifest differential was still asserted bit-exact."
+            "QEMU-ORACLE-SKIP: {} not available on PATH - the user-mode differential              executes only where the phase8 oracle toolchain exists (live CI coverage              owned by the WP-4.6 v4-chip-oracles workflow). The Rust-side 12-word              frozen-manifest differential was still asserted bit-exact.",
+            missing.join(", ")
         );
         return;
     }
 
-    // Same program under real QEMU user-mode: pack into a minimal ELF and
-    // compare QEMU's actual write() output with the Rust CPU's memory bytes.
-    let elf = build_elf(&words, 48);
+    // Live differential: the committed phase8 source through the EXACT GNU
+    // pipeline the phase8 workflow proves on these runners, executed under
+    // real qemu-riscv32 user-mode; the write(1, ptr, 48) output must equal
+    // the Rust strict core's result words and the frozen manifest bit-exactly.
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(3)
+        .expect("repo root")
+        .to_path_buf();
     let temp = std::env::temp_dir().join(format!("ep-chip-qemu-{}", std::process::id()));
     std::fs::create_dir_all(&temp).expect("temp dir");
-    let elf_path = temp.join("wp41-rv32im.elf");
-    std::fs::write(&elf_path, &elf).expect("write ELF");
+    let elf_path = build_elf_via_gnu_pipeline(&repo_root, &temp);
 
     let output = std::process::Command::new("qemu-riscv32")
         .arg(&elf_path)
         .output()
         .expect("qemu-riscv32 executed");
-    let _ = std::fs::remove_file(&elf_path);
-    let _ = std::fs::remove_dir(&temp);
+    let _ = std::fs::remove_dir_all(&temp);
     assert!(
         output.status.success(),
-        "QEMU must exit cleanly (status {:?})",
-        output.status
+        "QEMU must exit cleanly (status {:?}) stderr: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
     );
     assert_eq!(
         output.stdout.len(),
@@ -221,36 +210,4 @@ fn qemu_user_mode_differential_when_available() {
         qemu_words, rust_words,
         "QEMU vs Rust register/memory differential bit-exact"
     );
-}
-
-/// The ELF image must carry the program at the documented offsets (guard
-/// against silent layout drift between `build_elf` and the GNU-ld-equivalent
-/// two-segment layout the live QEMU oracle verified).
-#[test]
-fn elf_layout_matches_documented_base() {
-    let elf = build_elf(&[encode::ebreak()], 0);
-    // EHDR (52) + 2 PHDRs (64) + page padding up to 0x1000 + one text word.
-    assert_eq!(elf.len(), 0x1000 + 4);
-    // First instruction sits at vaddr 0x10000 (file offset 0x1000).
-    let entry = u32::from_le_bytes(elf[24..28].try_into().expect("e_entry"));
-    assert_eq!(entry, 0x1_0000, "e_entry must equal the GNU text base");
-    assert_eq!(&elf[0x1000..0x1004], &encode::ebreak().to_le_bytes());
-    // LOAD1 is R E covering headers+text; LOAD2 is the writable data block.
-    let (f1, f2) = (
-        u32::from_le_bytes(elf[52 + 24..52 + 28].try_into().expect("flags1")),
-        u32::from_le_bytes(elf[84 + 24..84 + 28].try_into().expect("flags2")),
-    );
-    assert_eq!((f1, f2), (5, 6), "R E text / RW data segments");
-    let (v2, sz2) = (
-        u32::from_le_bytes(elf[84 + 8..84 + 12].try_into().expect("vaddr2")),
-        u32::from_le_bytes(elf[84 + 16..84 + 20].try_into().expect("memsz2")),
-    );
-    // result_words block vaddr follows the GNU congruence rule: text base +
-    // (file offset mod 0x1000) — for one text word: 0x10000 + 0x1004.
-    assert_eq!(
-        v2,
-        0x1_0000 + 0x1000 + 4,
-        "data vaddr at the GNU congruent address"
-    );
-    assert_eq!(sz2, 0, "no data bytes for the ebreak-only probe");
 }
