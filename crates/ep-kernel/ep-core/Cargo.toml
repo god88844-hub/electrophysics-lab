@@ -1,0 +1,11 @@
+[package]
+name = "ep-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SI units, SHA-256-verified reference-library data, schema mirrors, fail-closed admission controller"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }

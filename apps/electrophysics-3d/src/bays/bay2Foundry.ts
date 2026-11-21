@@ -3,6 +3,10 @@ import { MAT } from './materials.js';
 import { makeTextSprite } from '../engine/labels.js';
 import { makeProbePin } from '../engine/probes.js';
 import { SKY130, Q4_PRIMITIVES } from '../data/reference.js';
+import { parseSky130Spec } from './silicon/sky130Spec.mjs';
+import { Sky130PolyCellViewer } from './silicon/sky130CellViewer.js';
+// WP-3.4 geometry source of truth — SHA-256 sealed in data/cad-specs/MANIFEST.json.
+import sky130CadSpecRaw from '../../../../data/cad-specs/01_sky130_primitives_geometry.json';
 
 export const SKY130_LAYERS = [
   { key: 'substrate', name: 'Substrate', thickness: 0.22 },
@@ -37,15 +41,20 @@ interface LayerRecord {
  * (q4_thresh_det, q4_inv, q4_mux4, q4_half_adder) plus binary inverter/adder
  * comparison cells, with a live Layer-Peel Slicer (L hotkey).
  * Sheet resistances and thicknesses: 02_semiconductor_pdk_silicon.json.
+ * WP-3.4: the polygon-accurate cell-inspection stage (`polyCellViewer`,
+ * generated from data/cad-specs/01_sky130_primitives_geometry.json) rides the
+ * same Layer panel (visibility/opacity) and Layer-Peel Slicer as this rig.
  */
 export class Bay2Foundry {
   readonly group = new THREE.Group();
+  /** WP-3.4 — true-to-scale per-primitive polygon stage (see silicon/ modules). */
+  readonly polyCellViewer: Sky130PolyCellViewer;
   private layers: LayerRecord[] = [];
   private primitiveCells: Array<{ cell: THREE.Group; label: THREE.Sprite | null }> = [];
   private peelT = 0; // animated parameter 0..1 toward goal
   private peelGoal = 0;
-  private crossDepthGoal = SKY130_LAYERS.length; // 0 = met3 only … 11 = everything
-  private crossDepthT = SKY130_LAYERS.length;
+  private crossDepthGoal: number = SKY130_LAYERS.length; // 0 = met3 only … 11 = everything
+  private crossDepthT: number = SKY130_LAYERS.length;
   /** Flow paths registered for the electron-pulse system (VDD/GND rails). */
   flowCurves: Array<{ id: string; curve: THREE.Curve3; radix: 'binary' | 'q4' }> = [];
 
@@ -55,6 +64,14 @@ export class Bay2Foundry {
     this.buildPrimitives();
     this.buildTransistorFins();
     this.buildProbePins();
+    // WP-3.4 — polygon-accurate Q4-primitive stage. It sits clear of the
+    // default Silicon camera frustum (wafer + die + bench stay the default
+    // composition) on the lab floor at 1 stage unit = 1 µm cell scale;
+    // zoom out (orbit radius ≥ ~30) or pan right to inspect it. Sandbox/place
+    // interaction stays ground-plane-based, so there is no click interference.
+    this.polyCellViewer = new Sky130PolyCellViewer(parseSky130Spec(sky130CadSpecRaw));
+    this.polyCellViewer.group.position.set(17, 0, 9);
+    this.group.add(this.polyCellViewer.group);
     this.applyPeel(0, this.crossDepthGoal, true);
   }
 
@@ -188,11 +205,14 @@ export class Bay2Foundry {
   /** KLayout-style per-layer opacity (0..1) for the layer panel. */
   setLayerOpacity(key: string, opacity: number): void {
     const layer = this.layers.find((l) => l.key === key);
-    if (!layer) return;
-    for (const mat of layer.materials) {
-      mat.transparent = true;
-      mat.opacity = Math.max(0.05, Math.min(1, opacity));
+    if (layer) {
+      for (const mat of layer.materials) {
+        mat.transparent = true;
+        mat.opacity = Math.max(0.05, Math.min(1, opacity));
+      }
     }
+    // WP-3.4: the polygon viewer reuses the same Layer panel control.
+    this.polyCellViewer.setLayerOpacity(key, opacity);
   }
 
   /** KLayout-style per-layer visibility toggle (M13 layer panel). */
@@ -201,6 +221,8 @@ export class Bay2Foundry {
       const show = visible[layer.key] ?? true;
       layer.group.visible = show;
     }
+    // WP-3.4: the polygon viewer reuses the same Layer panel control.
+    this.polyCellViewer.setLayerVisibility(visible);
   }
 
   /** Current peel offset (world Y) of a layer — lets flow pulses ride the peel. */
@@ -337,6 +359,8 @@ export class Bay2Foundry {
   setPeelTargets(exploded: number, crossDepth: number): void {
     this.peelGoal = exploded;
     this.crossDepthGoal = crossDepth;
+    // WP-3.4: the polygon viewer rides the same Layer-Peel Slicer.
+    this.polyCellViewer.setPeelTargets(exploded, crossDepth);
   }
 
   private applyPeel(exploded: number, crossDepth: number, instant = false): void {
@@ -369,6 +393,7 @@ export class Bay2Foundry {
       this.crossDepthT += (this.crossDepthGoal - this.crossDepthT) * k;
       this.applyPeel(this.peelT, Math.round(this.crossDepthT));
     }
+    this.polyCellViewer.update(dt);
     // Primitive cells gently pulse with verified-status glow (visual status only).
     const time = performance.now() * 0.001;
     this.primitiveCells.forEach(({ cell }, i) => {

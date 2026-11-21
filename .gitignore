@@ -21,3 +21,6 @@ benchmarks/evidence/phase26/
 benchmarks/evidence/phase27/
 benchmarks/evidence/phase28/
 benchmarks/evidence/phase29/
+/target/
+crates/ep-kernel-wasm/pkg/
+/pkg/
