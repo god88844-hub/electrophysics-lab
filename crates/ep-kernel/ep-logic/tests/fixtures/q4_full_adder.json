@@ -1,0 +1,192 @@
+{
+ "generatedBy": "crates/ep-kernel/ep-logic/tests/generate_fixtures.mjs — Phase 0 js/labs/logic engine (oracle, 03_PHYSICS §5)",
+ "engineSourceCommit": "5b1f47137bc442817c4c451b428525a213256023",
+ "oracle": "js/labs/logic/engine.js + js/core/events.js (EventQueue (time, seq) order)",
+ "bench": "q4_full_adder",
+ "diagram": {
+  "radix": 4,
+  "blocks": [
+   {
+    "id": "A",
+    "type": "logic.IN",
+    "params": {
+     "value": 3,
+     "name": "A"
+    }
+   },
+   {
+    "id": "B",
+    "type": "logic.IN",
+    "params": {
+     "value": 2,
+     "name": "B"
+    }
+   },
+   {
+    "id": "CIN",
+    "type": "logic.CONST",
+    "params": {
+     "value": 0
+    }
+   },
+   {
+    "id": "ADD",
+    "type": "logic.ADDN",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "PSUM",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "SUM"
+    }
+   },
+   {
+    "id": "PCOUT",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "COUT"
+    }
+   }
+  ],
+  "wires": [
+   {
+    "from": {
+     "block": "A",
+     "port": "out"
+    },
+    "to": {
+     "block": "ADD",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "B",
+     "port": "out"
+    },
+    "to": {
+     "block": "ADD",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "CIN",
+     "port": "out"
+    },
+    "to": {
+     "block": "ADD",
+     "port": "cin"
+    }
+   },
+   {
+    "from": {
+     "block": "ADD",
+     "port": "sum"
+    },
+    "to": {
+     "block": "PSUM",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "ADD",
+     "port": "cout"
+    },
+    "to": {
+     "block": "PCOUT",
+     "port": "in"
+    }
+   }
+  ]
+ },
+ "options": {
+  "maxEvents": 250000,
+  "maxTicks": 4000
+ },
+ "expected": {
+  "ok": true,
+  "problems": [],
+  "warnings": [],
+  "probes": {
+   "PSUM": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "SUM"
+   },
+   "PCOUT": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "COUT"
+   }
+  },
+  "stats": {
+   "events": 7,
+   "maxTime": 10,
+   "radix": 4
+  },
+  "eventOrder": [
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "ADD",
+    "portId": "a",
+    "value": 3
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "ADD",
+    "portId": "b",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "ADD",
+    "portId": "cin",
+    "value": 0
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PSUM",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PCOUT",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PSUM",
+    "portId": "in",
+    "value": 1
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "PCOUT",
+    "portId": "in",
+    "value": 1
+   }
+  ]
+ }
+}

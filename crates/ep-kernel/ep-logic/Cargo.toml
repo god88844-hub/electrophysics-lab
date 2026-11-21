@@ -1,0 +1,11 @@
+[package]
+name = "ep-logic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kernel event-driven multi-radix logic simulator: Binary/Ternary/Q4/Custom-R radix gates, verified SKY130A Q4 primitives, (time, seq) event queue, event-stream output (parity oracle: js/labs/logic, 03_PHYSICS §5)"
+
+[dependencies]
+ep-core = { path = "../ep-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }

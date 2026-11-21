@@ -1,0 +1,313 @@
+{
+ "generatedBy": "crates/ep-kernel/ep-logic/tests/generate_fixtures.mjs — Phase 0 js/labs/logic engine (oracle, 03_PHYSICS §5)",
+ "engineSourceCommit": "5b1f47137bc442817c4c451b428525a213256023",
+ "oracle": "js/labs/logic/engine.js + js/core/events.js (EventQueue (time, seq) order)",
+ "bench": "q4_ripple_2digit",
+ "diagram": {
+  "radix": 4,
+  "blocks": [
+   {
+    "id": "ADD0",
+    "type": "logic.ADDN",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "ADD1",
+    "type": "logic.ADDN",
+    "params": {
+     "delay": 10
+    }
+   },
+   {
+    "id": "A0",
+    "type": "logic.IN",
+    "params": {
+     "value": 2,
+     "name": "d00"
+    }
+   },
+   {
+    "id": "B0",
+    "type": "logic.IN",
+    "params": {
+     "value": 3,
+     "name": "d01"
+    }
+   },
+   {
+    "id": "A1",
+    "type": "logic.IN",
+    "params": {
+     "value": 3,
+     "name": "d10"
+    }
+   },
+   {
+    "id": "B1",
+    "type": "logic.IN",
+    "params": {
+     "value": 2,
+     "name": "d11"
+    }
+   },
+   {
+    "id": "CIN0",
+    "type": "logic.CONST",
+    "params": {
+     "value": 0
+    }
+   },
+   {
+    "id": "S0",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "S0"
+    }
+   },
+   {
+    "id": "S1",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "S1"
+    }
+   },
+   {
+    "id": "COUT",
+    "type": "logic.PROBE",
+    "params": {
+     "name": "Cout"
+    }
+   }
+  ],
+  "wires": [
+   {
+    "from": {
+     "block": "A0",
+     "port": "out"
+    },
+    "to": {
+     "block": "ADD0",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "B0",
+     "port": "out"
+    },
+    "to": {
+     "block": "ADD0",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "CIN0",
+     "port": "out"
+    },
+    "to": {
+     "block": "ADD0",
+     "port": "cin"
+    }
+   },
+   {
+    "from": {
+     "block": "A1",
+     "port": "out"
+    },
+    "to": {
+     "block": "ADD1",
+     "port": "a"
+    }
+   },
+   {
+    "from": {
+     "block": "B1",
+     "port": "out"
+    },
+    "to": {
+     "block": "ADD1",
+     "port": "b"
+    }
+   },
+   {
+    "from": {
+     "block": "ADD0",
+     "port": "cout"
+    },
+    "to": {
+     "block": "ADD1",
+     "port": "cin"
+    }
+   },
+   {
+    "from": {
+     "block": "ADD0",
+     "port": "sum"
+    },
+    "to": {
+     "block": "S0",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "ADD1",
+     "port": "sum"
+    },
+    "to": {
+     "block": "S1",
+     "port": "in"
+    }
+   },
+   {
+    "from": {
+     "block": "ADD1",
+     "port": "cout"
+    },
+    "to": {
+     "block": "COUT",
+     "port": "in"
+    }
+   }
+  ]
+ },
+ "options": {
+  "maxEvents": 250000,
+  "maxTicks": 4000
+ },
+ "expected": {
+  "ok": true,
+  "problems": [],
+  "warnings": [],
+  "probes": {
+   "S0": {
+    "times": [
+     10
+    ],
+    "values": [
+     1
+    ],
+    "label": "S0"
+   },
+   "S1": {
+    "times": [
+     20
+    ],
+    "values": [
+     2
+    ],
+    "label": "S1"
+   },
+   "COUT": {
+    "times": [
+     20
+    ],
+    "values": [
+     1
+    ],
+    "label": "Cout"
+   }
+  },
+  "stats": {
+   "events": 13,
+   "maxTime": 20,
+   "radix": 4
+  },
+  "eventOrder": [
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "ADD0",
+    "portId": "a",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "ADD0",
+    "portId": "b",
+    "value": 3
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "ADD1",
+    "portId": "a",
+    "value": 3
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "ADD1",
+    "portId": "b",
+    "value": 2
+   },
+   {
+    "time": 0,
+    "type": "input",
+    "blockId": "ADD0",
+    "portId": "cin",
+    "value": 0
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "S0",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "ADD1",
+    "portId": "cin",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "S1",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "COUT",
+    "portId": "in",
+    "value": "Z"
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "S0",
+    "portId": "in",
+    "value": 1
+   },
+   {
+    "time": 10,
+    "type": "input",
+    "blockId": "ADD1",
+    "portId": "cin",
+    "value": 1
+   },
+   {
+    "time": 20,
+    "type": "input",
+    "blockId": "S1",
+    "portId": "in",
+    "value": 2
+   },
+   {
+    "time": 20,
+    "type": "input",
+    "blockId": "COUT",
+    "portId": "in",
+    "value": 1
+   }
+  ]
+ }
+}
