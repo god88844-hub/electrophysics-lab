@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { frameStore } from './solverFrame.mjs';
 
 export interface RigCameraSource {
   activeCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
@@ -28,6 +29,15 @@ export class CameraRig {
   private lastX = 0;
   private lastY = 0;
   private keys = new Set<string>();
+  // WP-1.5 pre-allocated scratch: the per-frame update performs zero heap
+  // allocation and publishes the camera orientation into the solver-frame
+  // view record (ViewCube + hover read the frame, not ad-hoc closures).
+  private scratchFwd = new THREE.Vector3();
+  private scratchRight = new THREE.Vector3();
+  private scratchPos = new THREE.Vector3();
+  private lookOrigin = new THREE.Vector3(0, 0, 0);
+  private lookM4 = new THREE.Matrix4();
+  private lookQ = new THREE.Quaternion();
   private keyDown = (e: KeyboardEvent): void => {
     const k = e.key.toLowerCase();
     if (['w', 'a', 's', 'd', 'q', 'e'].includes(k)) this.keys.add(k);
@@ -97,8 +107,8 @@ export class CameraRig {
   update(dt: number): void {
     // WASD/QE pan relative to current azimuth.
     const speed = 6 * dt;
-    const fwd = new THREE.Vector3(Math.sin(this.azimuth + Math.PI), 0, Math.cos(this.azimuth + Math.PI));
-    const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
+    const fwd = this.scratchFwd.set(Math.sin(this.azimuth + Math.PI), 0, Math.cos(this.azimuth + Math.PI));
+    const right = this.scratchRight.set(fwd.z, 0, -fwd.x);
     if (this.keys.has('w')) this.goalTarget.addScaledVector(fwd, speed);
     if (this.keys.has('s')) this.goalTarget.addScaledVector(fwd, -speed);
     if (this.keys.has('a')) this.goalTarget.addScaledVector(right, -speed);
@@ -129,15 +139,26 @@ export class CameraRig {
       ortho.lookAt(this.target);
       ortho.updateProjectionMatrix();
     } else {
-      const pos = new THREE.Vector3(
+      const pos = this.scratchPos.set(
         this.target.x + this.radius * Math.sin(this.azimuth) * Math.cos(this.elevation),
         this.target.y + this.radius * Math.sin(this.elevation),
-        this.target.z + this.radius * Math.cos(this.azimuth) * Math.cos(this.elevation)
+        this.target.z + this.radius * Math.cos(this.elevation)
       );
       const persp = cam as THREE.PerspectiveCamera;
       persp.up.copy(this.upHint);
       persp.position.copy(pos);
       persp.lookAt(this.target);
     }
+
+    // Publish the ViewCube orientation feed (same origin-lookAt convention the
+    // ViewCube mirror uses) into the pre-allocated solver-frame view record.
+    this.lookM4.lookAt(cam.position, this.lookOrigin, cam.up);
+    this.lookQ.setFromRotationMatrix(this.lookM4);
+    frameStore.setView(this.lookQ, {
+      azimuth: this.azimuth,
+      elevation: this.elevation,
+      radius: this.radius,
+      ortho: this.cameraSource.useOrtho,
+    });
   }
 }
