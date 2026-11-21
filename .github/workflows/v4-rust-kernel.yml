@@ -1,0 +1,71 @@
+# v4 Rust kernel (WP-1.2): ep-core units/verified-data/admission native tests
+# + wasm32 build verification. Web CI (npm test, Playwright, Phase 30/39) is
+# unaffected — this workflow adds kernel coverage on the same events.
+name: v4 Rust kernel (ep-core native + wasm32)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/v4-rust-kernel.yml'
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/v4-rust-kernel.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  native-tests:
+    name: cargo test --workspace (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Formatting (rustfmt check)
+        run: cargo fmt --all -- --check
+      - name: Clippy (warnings are failures)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Tests (cargo test --workspace)
+        run: cargo test --workspace --locked
+
+  wasm32-verification:
+    name: wasm32 build verification (ep-kernel-wasm)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: wasm32 check (ep-core + ep-kernel-wasm)
+        run: |
+          cargo check -p ep-core --target wasm32-unknown-unknown
+          cargo check -p ep-kernel-wasm --target wasm32-unknown-unknown
+      - name: wasm32 build (ep-kernel-wasm, cdylib)
+        run: cargo build -p ep-kernel-wasm --target wasm32-unknown-unknown --release
+      - name: Zero committed build artifacts
+        shell: bash
+        run: |
+          if git ls-files | grep -E '(^|/)(target/|pkg/)' ; then
+            echo "ERROR: build artifacts are tracked in git"
+            exit 1
+          fi
+          echo "OK: no tracked target/ or pkg/ artifacts"
