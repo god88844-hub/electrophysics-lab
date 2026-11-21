@@ -3,6 +3,9 @@ node_modules/
 .DS_Store
 AUDIT_SOURCE.txt
 apps/electrophysics-3d/dist/
+# Tauri v2 desktop shell build outputs (WP-1.1) — never tracked (Builder Rule 3).
+apps/electrophysics-3d/src-tauri/target/
+apps/electrophysics-3d/src-tauri/gen/schemas/
 benchmarks/evidence/phase69-test/
 benchmarks/evidence/phase69-rogue-test/
 benchmarks/evidence/phase72/package/

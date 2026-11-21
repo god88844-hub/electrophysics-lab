@@ -2,3 +2,6 @@ node_modules
 dist
 test-results
 playwright-report
+# Tauri v2 desktop shell build outputs (WP-1.1) — never tracked (Builder Rule 3).
+src-tauri/target
+src-tauri/gen/schemas

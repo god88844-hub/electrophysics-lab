@@ -7,7 +7,11 @@
     "dev": "vite --port 3001",
     "build": "vite build",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:wp11": "playwright test e2e/wp11-desktop-shell.spec.ts",
+    "desktop:check": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "desktop:build": "tauri build",
+    "desktop:smoke": "node scripts/wp11-desktop-smoke.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -16,6 +20,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
+    "@tauri-apps/cli": "^2.9.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/three": "^0.169.0",

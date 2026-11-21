@@ -9,15 +9,15 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# The desktop binary is an OPTIONAL build target (WP-1.1). The web app
+# (npm run dev / vite preview) remains the primary product and CI path.
+# Building the .exe requires Rust stable + the Tauri CLI:
+#   cd apps/electrophysics-3d && npm run desktop:build   (npx tauri build)
 [features]
-# This template is inert by default — the desktop binary is an OPTIONAL build
-# target. The web app (npm run dev / vite preview) remains the primary product
-# and CI path. Building the .exe requires Rust stable + the Tauri CLI:
-#   cargo install tauri-cli --version ^2
-#   npx tauri build
 default = []
 
 [profile.release]
