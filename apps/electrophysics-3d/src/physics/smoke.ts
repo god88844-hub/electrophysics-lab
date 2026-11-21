@@ -70,6 +70,15 @@ export class SmokeSystem {
     }
   }
 
+  /**
+   * WP-2.6 — spawn from a KERNEL-REPORTED failing coordinate (bench-space
+   * position mapped by forensicEvents from the failing heat-grid cell).
+   * VFX only ever triggers from real threshold events carrying an anchor.
+   */
+  spawnAnchored(anchor: { x: number; y: number; z: number }, n = 12, spread = 0.15, upSpeed = 0.7): void {
+    this.spawn(new THREE.Vector3(anchor.x, anchor.y, anchor.z), n, spread, upSpeed);
+  }
+
   update(dt: number): void {
     const pos = this.positions;
     for (let i = 0; i < this.count; i++) {
