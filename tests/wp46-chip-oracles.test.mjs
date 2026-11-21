@@ -230,9 +230,13 @@ test('WP-4.6: harness scripts and the read-only example exist and parse', () => 
     }
   }
   if (python3) {
-    execFileSync(python3, ['-m', 'py_compile', join(ROOT, 'scripts/v4-oracles/onnx-tpu-differential.py')], {
-      stdio: 'pipe',
-    });
+    // PYTHONPYCACHEPREFIX keeps the py_compile cache out of the working tree
+    // (Phase 30/39 clean-tree discipline — no generated files land in scripts/).
+    execFileSync(
+      python3,
+      ['-m', 'py_compile', join(ROOT, 'scripts/v4-oracles/onnx-tpu-differential.py')],
+      { stdio: 'pipe', env: { ...process.env, PYTHONPYCACHEPREFIX: join(tmpdir(), 'wp46-pycache') } }
+    );
   } else {
     console.log('WP46-NOTE: no working python interpreter on PATH — the py_compile check was skipped loudly');
   }
