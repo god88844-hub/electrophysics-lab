@@ -24,7 +24,7 @@ import { verifyReferenceIntegrity, REFERENCE } from './data/reference.js';
 import { physicsClient, type PhysicsSnapshot, type ForensicReport, type ProposedFix, type FaultFx } from './physics/physicsClient.js';
 import { quantumClient, type BlochState, type BreakthroughBundle } from './physics/quantumClient.js';
 import { LibraryOverlay } from './ui/LibraryOverlay.js';
-import { historyManager, makePlaceComponent, makeRouteWire, makeSetParam, committedHeadSnapshot } from './state/history.js';
+import { historyManager, makePlaceComponent, makeDeleteComponent, makeRouteWire, makeSetParam, committedHeadSnapshot } from './state/history.js';
 import { InspectorPanels } from './ui/InspectorPanels.js';
 import { BottomDock } from './ui/cad/BottomDock.js';
 import { ViewCube } from './ui/cad/ViewCube.js';
@@ -432,6 +432,7 @@ export function App() {
           historyManager.push(
             makeRouteWire('silicon', { from: pending, to: target }),
             {
+              getWires: () => store.get().wires ?? [],
               setWires: (wires) => store.set({ wires } as unknown as Partial<LabState>),
               addTraceMesh: (f: string, t: string) => {
                 world.addManhattanTrace(f, t);
