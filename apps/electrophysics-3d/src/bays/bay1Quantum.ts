@@ -37,7 +37,7 @@ export class Bay1Quantum {
   private blochArrows: THREE.Group[] = [];
   private blochPurityShells: THREE.Mesh[] = [];
   private pulseBeam?: THREE.Mesh;
-  private pulseBeamLevel = 0;
+  pulseBeamLevel = 0;
 
   constructor() {
     const fridge = this.buildFridge();
@@ -54,6 +54,7 @@ export class Bay1Quantum {
     this.group.add(this.coldLight);
 
     this.buildBlochSpheres();
+    this.setBlochOverlay(false);
     this.buildPulseBeam();
   }
 
@@ -107,9 +108,6 @@ export class Bay1Quantum {
       arrow.add(tip);
       g.add(arrow);
       this.blochArrows.push(arrow);
-      const label = makeTextSprite(`q${i}`, { scale: 0.32, color: '#9fd8ff', fontSize: 30 });
-      label.position.set(0, 0.62, 0);
-      g.add(label);
       this.blochGroups.push(g);
       this.group.add(g);
     }
@@ -203,10 +201,6 @@ export class Bay1Quantum {
         g.add(link);
       }
       // Temperature label.
-      const sprite = makeTextSprite(s.label, { scale: 0.52, color: '#cfe6ff' });
-      sprite.position.set(s.radius + 0.55, s.y, 0);
-      g.add(sprite);
-      this.plateLabelSprites.push(sprite);
     }
 
     // Braided OFHC copper thermal straps between cold stages (real cryostat practice).
@@ -260,9 +254,6 @@ export class Bay1Quantum {
       }
     }
     g.add(pads);
-    const dieLabel = makeTextSprite('16-qubit transmon die · 15 mK', { scale: 0.8, color: '#9fd8ff' });
-    dieLabel.position.set(0, 1.12, 0);
-    g.add(dieLabel);
 
     // Probes at the base stage.
     const probe1 = makeProbePin(1.0, 0x62d0ff);
@@ -325,15 +316,6 @@ export class Bay1Quantum {
     const coupler = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.3), MAT.brushedGold);
     coupler.position.set(-0.05, 1.435, 0);
     g.add(coupler);
-    const label = makeTextSprite('MZI photonic chip · 1550 nm · loss 0.5 dB/cm', { scale: 1.0, color: '#ffd9a0' });
-    label.position.set(0, 1.72, 0);
-    g.add(label);
-    const meta = makeTextSprite(
-      `MZI IL ${modality.mzi_insertion_loss_db.typical} dB · π-shift ${modality.thermo_optic_phase_shifter.p_pi_mw.typical} mW`,
-      { scale: 0.72, color: '#c9b08a' }
-    );
-    meta.position.set(0, 1.6, 0);
-    g.add(meta);
     // Probe pins.
     const probe = makeProbePin(0.9, 0xffc46b);
     probe.position.set(-0.95, 1.4, 0.35);
@@ -372,22 +354,34 @@ export class Bay1Quantum {
     grid.name = 'atomGrid';
     g.add(grid);
     this.atomGrid = grid;
+    // Rydberg blockade halos: translucent rings of radius r_b around atoms
+    // inside each other's blockade radius (V = C6/r6 > Ω) — 04 JSON parameters.
+    const haloMat = new THREE.MeshBasicMaterial({ color: 0xff6d8a, transparent: true, opacity: 0.16, side: THREE.DoubleSide });
+    const halo = new THREE.InstancedMesh(new THREE.RingGeometry(0.07, 0.085, 20), haloMat, 12);
+    const hd = new THREE.Object3D();
+    let hi = 0;
+    for (let ix = 0; ix < 8 && hi < 12; ix += 2) {
+      for (let iz = 0; iz < 8 && hi < 12; iz += 3) {
+        hd.position.set(-0.42 + ix * 0.12, 1.38, -0.42 + iz * 0.12);
+        hd.rotation.x = -Math.PI / 2;
+        hd.updateMatrix();
+        halo.setMatrixAt(hi++, hd.matrix);
+      }
+    }
+    halo.name = 'blockade-halos';
+    g.add(halo);
     // Laser beams (Rydberg 480 nm + trap 780 nm).
     const beamMat = new THREE.MeshBasicMaterial({ color: 0x7ab8ff, transparent: true, opacity: 0.35 });
     const rydberg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 10), beamMat);
     rydberg.rotation.z = Math.PI / 2;
     rydberg.position.set(0, 1.42, 0);
     g.add(rydberg);
-    const label = makeTextSprite('87Rb tweezer grid · 8×8 · Rydberg 480 nm', { scale: 1.05, color: '#ffb3c2' });
-    label.position.set(0, 1.78, 0);
-    g.add(label);
-    const meta = makeTextSprite(
-      `blockade r_b ${modality.rydberg_blockade_radius_um.typical} µm · C₆ ${modality.rydberg_c6_ghz_um6.typical} GHz·µm⁶`,
-      { scale: 0.72, color: '#c9a2ad' }
-    );
-    meta.position.set(0, 1.66, 0);
-    g.add(meta);
     return g;
+  }
+
+  /** HUD overlay toggle: in-scene Bloch spheres default OFF (docked panel). */
+  setBlochOverlay(on: boolean): void {
+    for (const g of this.blochGroups) g.visible = on;
   }
 
   setMode(mode: Bay1Mode): void {

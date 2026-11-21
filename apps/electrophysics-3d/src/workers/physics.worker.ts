@@ -434,6 +434,14 @@ self.onmessage = (e: MessageEvent) => {
       // load brought back under budget — allow recovery
       cryoQuenched = false;
     }
+  } else if (msg.type === 'pause') {
+    paused = true;
+  } else if (msg.type === 'step') {
+    const result = physicsTick(1 / 240);
+    if (result) {
+      applyFaultActions(result.events);
+      postMessage({ type: 'snapshot', snapshot: result.snapshot, live: true });
+    }
   } else if (msg.type === 'resume') {
     paused = false;
     lastFrame = performance.now();

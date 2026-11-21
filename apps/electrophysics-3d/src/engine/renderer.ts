@@ -11,6 +11,9 @@ export interface RendererBundle {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
+  orthoCamera: THREE.OrthographicCamera;
+  useOrtho: boolean;
+  activeCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   composer: EffectComposer;
   bloomPass: UnrealBloomPass;
   setQuality: (level: QualityLevel) => void;
@@ -90,6 +93,17 @@ export function createRenderer(container: HTMLElement): RendererBundle {
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
 
+  // Orthographic camera for CAD ortho views (O key toggle).
+  const aspect = container.clientWidth / container.clientHeight;
+  const orthoHeight = 14;
+  const orthoCamera = new THREE.OrthographicCamera(
+    (-orthoHeight * aspect) / 2, (orthoHeight * aspect) / 2,
+    orthoHeight / 2, -orthoHeight / 2, 0.1, 140
+  );
+  orthoCamera.position.set(0, 5.2, 16);
+  orthoCamera.lookAt(0, 1.2, 0);
+  let useOrtho = false;
+
   let quality: QualityLevel = 'high';
 
   function applyQuality(level: QualityLevel): void {
@@ -114,6 +128,8 @@ export function createRenderer(container: HTMLElement): RendererBundle {
     composer.render(delta);
   }
 
+  const bundleRef: { bundle?: RendererBundle } = {};
+
   function resize(): void {
     const w = container.clientWidth;
     const h = container.clientHeight;
@@ -122,6 +138,10 @@ export function createRenderer(container: HTMLElement): RendererBundle {
     bloomPass.resolution.set(Math.max(1, w * 0.5), Math.max(1, h * 0.5));
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    const orthoAspect = w / h;
+    orthoCamera.left = (-orthoHeight * orthoAspect) / 2;
+    orthoCamera.right = (orthoHeight * orthoAspect) / 2;
+    orthoCamera.updateProjectionMatrix();
   }
 
   function dispose(): void {
@@ -135,10 +155,20 @@ export function createRenderer(container: HTMLElement): RendererBundle {
 
   window.addEventListener('resize', resize);
 
-  return {
+  const bundle: RendererBundle = {
     renderer,
     scene,
     camera,
+    orthoCamera,
+    get useOrtho() {
+      return useOrtho;
+    },
+    set useOrtho(v: boolean) {
+      useOrtho = v;
+    },
+    get activeCamera() {
+      return useOrtho ? orthoCamera : camera;
+    },
     composer,
     bloomPass,
     get quality() {
@@ -149,6 +179,8 @@ export function createRenderer(container: HTMLElement): RendererBundle {
     resize,
     dispose,
   };
+  bundleRef.bundle = bundle;
+  return bundle;
 }
 
 /**

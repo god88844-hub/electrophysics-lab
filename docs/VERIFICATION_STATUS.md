@@ -119,3 +119,22 @@ New engines are simulation models and carry their badges: the SoC
 architecture comparison is `SIMULATED_ARCHITECTURAL_MODEL`; failure physics
 still cite 06_failure_physics_thresholds.json exactly (1.95 V / 1085 °C /
 260 °C / 12 mW); no physical-validation claims anywhere.
+
+## v3 (M11–M14) verification update
+
+| Suite | Result |
+| --- | --- |
+| `npm test` | **1054 pass / 0 fail / 1 skip** (unchanged — v3 is UI/interaction layer; engines untouched) |
+| Playwright (v3 shell 4 + legacy close-UX 1) | **5 pass / 0 fail** (serial + 1 retry) |
+| Phase 30 integration audit (local) | CAPTURE + STRICT PASS |
+| Phase 39 reproducible source baseline (local) | SELF-TEST / BUILD / VERIFY / STRICT-AUDIT PASS |
+
+M11 root cause: test-generated artifacts (evidence tarballs, dist/) were
+tracked, so `npm test` dirtied the tracked tree and the Phase 30/39
+`git diff HEAD` audits failed. Untracked + gitignored — no gate weakened.
+Local Windows verification additionally required `core.autocrlf=false`
+(byte-exact Git-original comparison); CI Linux runners are unaffected.
+
+Evidence boundary unchanged: the SoC architecture comparison remains
+`SIMULATED_ARCHITECTURAL_MODEL`; all failure physics cite
+06_failure_physics_thresholds.json exactly; no physical-validation claims.

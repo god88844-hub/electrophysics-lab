@@ -110,6 +110,14 @@ class PhysicsClient {
     this.ensure().postMessage({ type: 'resume' });
   }
 
+  pauseSimulation(): void {
+    this.ensure().postMessage({ type: 'pause' });
+  }
+
+  stepOnce(): void {
+    this.ensure().postMessage({ type: 'step' });
+  }
+
   reset(): void {
     this.ensure().postMessage({ type: 'reset' });
   }

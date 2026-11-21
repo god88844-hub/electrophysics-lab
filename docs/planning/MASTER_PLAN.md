@@ -115,3 +115,17 @@ User interactions             ←── keyboard + pointer ──→ camera fly-
 
 Verification totals after M10: **1054 pass / 0 fail / 1 skip** (`npm test`),
 3D build clean, Playwright smoke suite green (M7 4/4 + M8 close-UX 3/3).
+
+## v3 milestone status (M11–M14, branch `feature/v3-cad-workbench`)
+
+| Milestone | Deliverable | State |
+| --- | --- | --- |
+| M11 | Main CI regressions fixed (Phase 30/39): generated build outputs + test tarballs untracked (dist/, evidence/phase69-test|rogue-test, phase72/package, phase39/phase30 summaries) — gates unchanged, Phase 30 CAPTURE+STRICT PASS and Phase 39 BUILD/VERIFY/STRICT PASS verified locally (also required `core.autocrlf=false` for byte-exact Windows verification) | ✅ |
+| M12 | Industrial CAD/EDA shell: single-workspace mounting (rig caching, one rig rendered), 40 px toolbar (tabs, V/C/W/P/L/T/O, transport), 3D ViewCube + ortho/persp, zero permanent floating labels (hover callout + 24 px status bar), collapsible bottom instrument dock, collapsible right inspector | ✅ |
+| M13 | Data-driven geometry: SKY130 per-cell poly/li1/met1 detail, KLayout-style layer visibility + opacity panel, 64-tile individually addressable systolic MAC matrix driven by chip-engine matmul, CPW resonators + Josephson junctions on the transmon die, Rydberg blockade halos, Bloch spheres docked (HUD overlay optional) | ✅ |
+| M14 | Direct 3D CAD interaction: ghost-preview Place (C), Manhattan Wire Routing (W) with netlist recompile, 3D Probe pins (P) with multi-channel live waveforms in the dock; Tauri v2 desktop packaging prep (inert, documented); e2e rewritten for the v3 shell | ✅ |
+
+Verification totals after M14: **1054 pass / 0 fail / 1 skip** (`npm test`),
+**5 pass / 0 fail** (Playwright: 4 v3-shell tests + 1 legacy close-UX test,
+serial workers + 1 retry for SwiftShader load sensitivity), Phase 30/39 gates
+re-verified locally on the fixed tree.
