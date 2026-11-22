@@ -88,3 +88,91 @@ export class ThermalVisuals {
     this.entries = [];
   }
 }
+
+// ---------------------------------------------------------------------------
+// WP-2.6 — forensic overlay: oxide-arc flash + char decal anchored at the
+// KERNEL-REPORTED failing coordinates (forensicEvents bench mapping of the
+// failing heat-grid cell). Created only from real threshold events; the
+// layer self-disposes on forensic reset.
+// ---------------------------------------------------------------------------
+
+export interface BenchAnchor {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface ForensicOverlay {
+  /** Oxide-arc flash: cold-white point light + brief spark burst at the anchor. */
+  arcFlash(anchor: BenchAnchor): void;
+  /** Charred decal burned onto the die plane at the anchor (persists). */
+  charDecal(anchor: BenchAnchor): void;
+  /** Dispose everything (forensic reset). */
+  dispose(): void;
+}
+
+export function createForensicOverlay(scene: THREE.Scene): ForensicOverlay {
+  const group = new THREE.Group();
+  group.name = 'forensic-vfx';
+  scene.add(group);
+  const disposables: Array<THREE.Material | THREE.BufferGeometry | THREE.Texture> = [];
+  const decals: THREE.Mesh[] = [];
+
+  return {
+    arcFlash(anchor) {
+      // Point flash at the failing cell — brief, physics-triggered only.
+      const light = new THREE.PointLight(0xbfdcff, 18, 6, 2);
+      light.position.set(anchor.x, anchor.y + 0.25, anchor.z);
+      group.add(light);
+      // Spark burst: a small one-shot particle ring at the same coordinate.
+      const sparkCount = 14;
+      const positions = new Float32Array(sparkCount * 3);
+      for (let i = 0; i < sparkCount; i++) {
+        positions[i * 3] = anchor.x;
+        positions[i * 3 + 1] = anchor.y + 0.05;
+        positions[i * 3 + 2] = anchor.z;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: 0xdfe9ff, size: 0.06, transparent: true, opacity: 0.9, depthWrite: false });
+      const sparks = new THREE.Points(geo, mat);
+      sparks.frustumCulled = false;
+      group.add(sparks);
+      disposables.push(geo, mat);
+      // 450 ms flash lifetime (mirrors the oracle bay's arc flash window).
+      setTimeout(() => {
+        group.remove(light);
+        group.remove(sparks);
+        light.dispose();
+      }, 450);
+    },
+
+    charDecal(anchor) {
+      // Charred burn mark on the die plane at the failing cell (persists
+      // until forensic reset — real damage evidence, never decorative).
+      const geo = new THREE.CircleGeometry(0.09, 20);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x0d0d0f,
+        roughness: 0.95,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.88,
+      });
+      const decal = new THREE.Mesh(geo, mat);
+      decal.rotation.x = -Math.PI / 2;
+      decal.position.set(anchor.x, anchor.y - 0.015, anchor.z);
+      decal.name = 'forensic-char-decal';
+      group.add(decal);
+      decals.push(decal);
+      disposables.push(geo, mat);
+    },
+
+    dispose() {
+      for (const d of disposables) d.dispose();
+      disposables.length = 0;
+      decals.length = 0;
+      scene.remove(group);
+      group.clear();
+    },
+  };
+}
