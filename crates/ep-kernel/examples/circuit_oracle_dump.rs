@@ -79,8 +79,8 @@ fn dump_case(id: &str, title: &str, description: &str, netlist: &Netlist) -> Val
         gmin: 0.0,
         ..SolveOptions::default()
     };
-    let result =
-        solve_dc(netlist, &opts, &AdmissionController::new()).unwrap_or_else(|e| panic!("case {id} must solve: {e:?}"));
+    let result = solve_dc(netlist, &opts, &AdmissionController::new())
+        .unwrap_or_else(|e| panic!("case {id} must solve: {e:?}"));
     assert!(
         result.converged,
         "case {id} must converge (Newton ‖F‖∞ < 1e-9)"
