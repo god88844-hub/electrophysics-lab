@@ -136,7 +136,10 @@ export function buildDeck(caseDump) {
       lines.push(`Rshort_${el.label} ${g} ${s} ${num(el.gateShortR)}`);
     }
   }
-  // Operating-point measurement block: one print per quantity (stable parse).
+  // Measurement block: `print` is a .control-mode command — the prints must
+  // sit AFTER `op` inside the .control/.endc block (a deck with prints
+  // outside .control errors out: "Simulation interrupted due to error!").
+  lines.push('.control', 'set noaskquit', 'op');
   for (const n of netlist.nodes) {
     if (!n.ground) {
       lines.push(`print v(${n.name})`);
@@ -146,7 +149,7 @@ export function buildDeck(caseDump) {
   for (const label of vSources) {
     lines.push(`print i(${label.toLowerCase()})`);
   }
-  lines.push('.control', 'set noaskquit', 'op', 'quit', '.endc', '.end');
+  lines.push('quit', '.endc', '.end');
   return { deck: lines.join('\n') + '\n', nodes, vSources };
 }
 

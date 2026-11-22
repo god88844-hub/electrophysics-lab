@@ -135,7 +135,13 @@ test('deck: divider case builds a resistive divider deck with tightened options'
   assert.ok(deck.includes('R2 mid 0 2000'));
   assert.ok(deck.includes('print v(mid)'));
   assert.ok(deck.includes(`print ${sourceCurrentVector('V1')}`));
-  assert.ok(deck.includes('.control'), 'batch .control block');
+  // `print` is a .control-mode command: it must sit after `op` inside the
+  // .control/.endc block (a deck with prints outside .control errors out).
+  const controlIndex = deck.indexOf('.control');
+  const opIndex = deck.indexOf('op');
+  const printIndex = deck.indexOf('print v(mid)');
+  assert.ok(controlIndex >= 0 && opIndex > controlIndex && printIndex > opIndex, 'prints inside .control after op');
+  assert.ok(deck.indexOf('.endc') > deck.indexOf('print i(v1)'), '.endc closes after the prints');
   assert.ok(deck.includes('.end'));
   assert.deepEqual(nodes, ['src', 'mid']);
   assert.deepEqual(vSources, ['V1']);
