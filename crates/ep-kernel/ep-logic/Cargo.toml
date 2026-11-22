@@ -7,5 +7,6 @@ description = "Kernel event-driven multi-radix logic simulator: Binary/Ternary/Q
 
 [dependencies]
 ep-core = { path = "../ep-core" }
+ep-circuit = { path = "../ep-circuit" }
 serde = { workspace = true }
 serde_json = { workspace = true }
