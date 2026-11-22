@@ -330,19 +330,20 @@ function applyFaultActions(events: ReturnType<typeof evaluateThresholds>): void 
       // The highest-stress PMOS gate shorts permanently.
       const target = ev.node === 'MP_BIN' ? MP_BIN : MP_Q4;
       target.gateShorted = true;
-      postMessage({ type: 'faultFx', fx: { kind: 'arc', node: ev.node, value: ev.value } });
     } else if (ev.type === 'trace_fusing') {
       meltedRail = true;
-      postMessage({ type: 'faultFx', fx: { kind: 'melt', node: 'RAIL_VDD', value: ev.value } });
-    } else if (ev.type === 'pcb_delamination') {
-      postMessage({ type: 'faultFx', fx: { kind: 'smoke', node: 'pcb', value: ev.value } });
     } else if (ev.type === 'cryo_quench') {
       cryoQuenched = true;
-      postMessage({ type: 'faultFx', fx: { kind: 'quench', node: 'mixing_chamber', value: ev.value } });
     }
     failureLatch.add(ev.type);
     lastFailureEvent = ev;
-    // Build the forensic report from the last 100 ms and pause.
+
+    // WP-2.6 — kernel-reported failing coordinates: the exact heat-injection
+    // cell of the failing structure (physics.worker `injectHeat` layout).
+    const anchor = failingAnchorFor(ev);
+
+    // Build the forensic report from the last 100 ms and pause. The failing
+    // anchor travels inside the autopsy meta (kernel evidence, not prose).
     const window = ring.windowLast(100);
     const report = buildForensicReport({
       event: ev,
@@ -360,11 +361,65 @@ function applyFaultActions(events: ReturnType<typeof evaluateThresholds>): void 
         simTimeS: simT,
         datasetSha256: failJson.id,
         playbackScale: 1,
-        engine: 'packages/physics-engine (MNA + FTCS heat + cryo ODE)',
+        engine: 'packages/physics-engine (MNA + implicit heat + cryo ODE) — ep-thermal/ep-circuit mirror',
+        failingAnchor: anchor,
       },
     });
     paused = true;
+    // VFX payload carries the anchor: arc/char/smoke land on the FAILING
+    // structure's kernel coordinates (never a decorative hardcode).
+    postMessage({ type: 'faultFx', fx: { kind: fxKindFor(ev.type), node: ev.node, value: ev.value, anchor, format: 'invention-lab/forensic-autopsy/1' } });
     postMessage({ type: 'failure', report, replay: window, fix: proposeFix(ev, { vddNominalV: SKY.nominal_vdd_v }) });
+  }
+}
+
+/** Visual fx kind for a threshold-event type (arc/char/smoke/quench family). */
+function fxKindFor(type: string): 'arc' | 'melt' | 'smoke' | 'quench' {
+  switch (type) {
+    case 'gate_oxide_breakdown': return 'arc';
+    case 'trace_fusing': return 'melt';
+    case 'pcb_delamination': return 'smoke';
+    case 'si_thermal_runaway': return 'melt';
+    case 'cryo_quench': return 'quench';
+    default: return 'melt';
+  }
+}
+
+/**
+ * WP-2.6 — kernel-reported failing coordinate for a threshold event: the
+ * normalized heat-grid cell the failing structure dissipates in (mirrors
+ * `injectHeat`/tile layout). For the PCB kind the hottest tile is measured
+ * from the grid (real data, not a fixed guess).
+ */
+function failingAnchorFor(ev: ReturnType<typeof evaluateThresholds>[number]): { grid: string; u: number; v: number; label: string } {
+  switch (ev.type) {
+    case 'gate_oxide_breakdown': {
+      const node = ev.node ?? 'MP_Q4';
+      const isBin = node.includes('BIN');
+      const isN = node.startsWith('MN');
+      return { grid: 'die', u: isBin ? 0.58 : 0.42, v: isN ? 0.52 : 0.32, label: node };
+    }
+    case 'trace_fusing':
+      return { grid: 'die', u: 0.5, v: 0.18, label: ev.node ?? 'RAIL_VDD' };
+    case 'si_thermal_runaway':
+      return { grid: 'die', u: 0.42, v: 0.42, label: 'junction' };
+    case 'pcb_delamination': {
+      // Hottest tile from the live grid (measured, not assumed).
+      let hottest = TILES[0];
+      let hottestC = -Infinity;
+      for (const tile of TILES) {
+        const c = pcbGrid.tempAt(tile.x, tile.y) - 273.15;
+        if (c > hottestC) {
+          hottestC = c;
+          hottest = tile;
+        }
+      }
+      return { grid: 'pcb', u: hottest.x, v: hottest.y, label: hottest.id };
+    }
+    case 'cryo_quench':
+      return { grid: 'cryo', u: 0.5, v: 0.5, label: ev.node ?? 'mixing_chamber' };
+    default:
+      return { grid: 'die', u: 0.5, v: 0.4, label: ev.node ?? 'unknown' };
   }
 }
 
@@ -380,6 +435,97 @@ function resetFaults(): void {
   ring.clear();
   paused = false;
 }
+
+// ------------------------------------------------- WP-2.6 slow motion ------
+// 100 ms ring-buffer slow-motion replay: the recorded kernel frames are
+// re-emitted at the slow cadence as schema-honest `live: false` snapshots
+// (solver-frame.schema.json: "false while replaying the forensic ring
+// buffer"). Frames flow through the same snapshot channel, so every frame
+// consumer (dock scope cursor, world visuals) scrubs the recorded physics.
+let slowMo: { frames: Snapshot[]; timer: ReturnType<typeof setInterval> | null; index: number } | null = null;
+
+function startSlowMo(): void {
+  stopSlowMoTimer();
+  const frames = ring.windowLast(100);
+  if (frames.length === 0) return;
+  slowMo = { frames, timer: null, index: 0 };
+  postSlowMoFrame();
+  slowMo.timer = setInterval(() => {
+    if (!slowMo) return;
+    slowMo.index = Math.min(slowMo.index + 1, slowMo.frames.length - 1);
+    postSlowMoFrame();
+    if (slowMo.index >= slowMo.frames.length - 1) stopSlowMoTimer(); // hold on the failure instant
+  }, 100);
+  postMessage({ type: 'slowMoState', playing: true, total: slowMo.frames.length });
+}
+
+function postSlowMoFrame(): void {
+  if (!slowMo) return;
+  const snapshot = slowMo.frames[slowMo.index];
+  postMessage({
+    type: 'snapshot',
+    snapshot,
+    live: false, // schema-honest replay frame
+    replayIndex: slowMo.index,
+    replayTotal: slowMo.frames.length,
+  });
+}
+
+function scrubSlowMo(index: number): void {
+  if (!slowMo) {
+    // Scrubbing without an active playback session: open one over the ring.
+    startSlowMo();
+    if (!slowMo) return;
+  }
+  stopSlowMoTimer();
+  slowMo.index = Math.max(0, Math.min(index, slowMo.frames.length - 1));
+  postSlowMoFrame();
+  postMessage({ type: 'slowMoState', playing: false, total: slowMo.frames.length, index: slowMo.index });
+}
+
+function stopSlowMoTimer(): void {
+  if (slowMo?.timer) {
+    clearInterval(slowMo.timer);
+    slowMo.timer = null;
+  }
+}
+
+function stopSlowMo(): void {
+  stopSlowMoTimer();
+  if (slowMo) {
+    postMessage({ type: 'slowMoState', playing: false, total: slowMo.frames.length, index: slowMo.index });
+  }
+}
+
+// ------------------------------------------------- WP-2.6 post-fix re-test --
+// After a physics-valid fix is applied, the sim re-runs a 1 s clean window
+// (240 ticks @ 240 Hz). Any threshold trip inside the window fails the
+// re-test honestly; a clean window passes with measured peaks.
+let retest: { ticks: number; events: number; peaks: { vgsMax: number; iMax: number; tempMaxC: number } } | null = null;
+
+function beginRetest(): void {
+  retest = { ticks: 0, events: 0, peaks: { vgsMax: 0, iMax: 0, tempMaxC: 0 } };
+}
+
+function retestObserve(snapshot: Snapshot, events: ReturnType<typeof evaluateThresholds>): void {
+  if (!retest) return;
+  retest.ticks += 1;
+  retest.events += events.length;
+  retest.peaks.vgsMax = Math.max(retest.peaks.vgsMax, snapshot.vgsMax);
+  retest.peaks.iMax = Math.max(retest.peaks.iMax, snapshot.iMax);
+  retest.peaks.tempMaxC = Math.max(retest.peaks.tempMaxC, snapshot.tempMaxC);
+  if (retest.ticks >= 240) {
+    const done = retest;
+    retest = null;
+    postMessage({
+      type: 'fixed',
+      applied: lastAppliedFix,
+      retest: { ok: done.events === 0, ticks: done.ticks, trips: done.events, peaks: done.peaks },
+    });
+  }
+}
+
+let lastAppliedFix: Partial<WorkerParams> = {};
 
 // ------------------------------------------------------------ main loop ----
 const TICK = 1 / 240;
@@ -408,6 +554,7 @@ function loop(): void {
     }
     if (latest) {
       applyFaultActions(anyEvents);
+      if (retest) retestObserve(latest.snapshot, anyEvents);
       if (tickCount % 4 === 0 && !paused) {
         const s = latest.snapshot;
         postMessage({
@@ -443,22 +590,35 @@ self.onmessage = (e: MessageEvent) => {
       postMessage({ type: 'snapshot', snapshot: result.snapshot, live: true });
     }
   } else if (msg.type === 'resume') {
+    stopSlowMo();
     paused = false;
     lastFrame = performance.now();
   } else if (msg.type === 'reset') {
+    stopSlowMo();
+    retest = null;
     resetFaults();
     params.vddMaxV = null;
     params.traceWidthFactor = 1;
     postMessage({ type: 'resetDone' });
+  } else if (msg.type === 'startSlowMo') {
+    startSlowMo();
+  } else if (msg.type === 'scrubSlowMo') {
+    scrubSlowMo(msg.index ?? 0);
+  } else if (msg.type === 'stopSlowMo') {
+    stopSlowMo();
   } else if (msg.type === 'applyFix') {
-    // Physics-valid fix: reset the fault chain, apply the patch, re-run clean.
+    // Physics-valid fix: reset the fault chain, apply the patch, re-run clean
+    // through the 1 s post-fix re-test window (240 ticks @ 240 Hz).
     const patch: Partial<WorkerParams> = msg.patch ?? {};
     if (patch.vddMaxV !== undefined) params.vddMaxV = patch.vddMaxV;
     if (patch.traceWidthFactor !== undefined) params.traceWidthFactor = patch.traceWidthFactor;
     if (patch.drivePowerMaxW !== undefined) params.drivePowerW = Math.min(params.drivePowerW, patch.drivePowerMaxW);
     if (patch.convectionScale !== undefined) params.thermalConvectionScale = patch.convectionScale;
+    stopSlowMo();
     resetFaults();
-    postMessage({ type: 'fixed', applied: patch });
+    lastAppliedFix = { ...patch };
+    beginRetest();
+    postMessage({ type: 'fixed-pending', applied: patch });
   } else if (msg.type === 'setNetlist') {
     try {
       sandbox = compileSandbox(msg.spec);

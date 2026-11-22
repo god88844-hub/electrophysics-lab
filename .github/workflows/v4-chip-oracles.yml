@@ -1,0 +1,87 @@
+# WP-4.6 — v4 chip CI oracles: LIVE external differentials for the ep-chip
+# kernel. Both oracles are MANDATORY here (no skip markers in CI):
+#   1. QEMU user-mode: qemu-riscv32 executes the frozen Phase 8 RV32M ELF and
+#      the 48-byte write(1) output must equal the ep-chip strict core's memory
+#      bit-exactly (03 §5: RV32IM execution → bit-exact).
+#   2. ONNX Runtime CPU: a QDQ MatMulInteger/per-axis-DequantizeLinear graph
+#      re-derives the WP-4.3 systolic TPU's INT32 grid (bit-exact) and
+#      dequantized logits (±1e-5 relative) (03 §5: ONNX INT8/QDQ → ±1e-5).
+# Locally the same harnesses print loud WP46-*-ORACLE-SKIP verdicts when the
+# tools are absent (`--require-live` omitted) — a skip is never a silent pass.
+# Phase 0 workflows (phase8/phase10) are untouched.
+name: v4 chip CI oracles (QEMU + ONNX Runtime, live)
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  chip-oracles-live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install real QEMU user-mode + GNU RISC-V toolchain (loud, fail-closed)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user binutils-riscv64-unknown-elf
+          command -v qemu-riscv32
+          command -v riscv64-unknown-elf-as
+          command -v riscv64-unknown-elf-ld
+          qemu-riscv32 --version
+      - name: Install pinned real ONNX Runtime CPU + onnx (loud, fail-closed)
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "numpy==2.4.6" "onnx==1.23.2" "onnxruntime==1.32.0"
+          python3 - <<'PY'
+          import onnx, onnxruntime, numpy
+          assert onnx.__version__ == '1.23.2'
+          assert onnxruntime.__version__ == '1.32.0'
+          assert 'CPUExecutionProvider' in onnxruntime.get_available_providers()
+          print('WP46 ONNX Runtime CPU quantization oracle installed')
+          PY
+      - name: Build the read-only oracle dump example (locked)
+        run: cargo build --locked -p ep-kernel --example chip_oracle_dump
+      - name: Emit the ep-chip oracle dump (strict RV32IM core + systolic TPU)
+        env:
+          # Evidence stays outside the working tree (Phase 30/39 clean-tree
+          # discipline: zero generated files under the repo).
+          DUMP: ${{ runner.temp }}/wp46-oracles/chip_oracle_dump.json
+        run: |
+          mkdir -p "$(dirname "$DUMP")"
+          cargo run --locked -p ep-kernel --example chip_oracle_dump > "$DUMP"
+          python3 -c "import json,sys; d=json.load(open('$DUMP')); assert d['format']=='invention-lab/wp46-oracle-dump/1'; assert d['provenance']=='SIMULATED_ARCHITECTURAL_MODEL'; print('dump OK:', d['rv32']['program']['words'].__len__(), 'program words,', len(d['tpu']['cI32']), 'TPU outputs')"
+      - name: Oracle 1 — QEMU user-mode differential (live, bit-exact)
+        run: node scripts/v4-oracles/qemu-differential.mjs "$RUNNER_TEMP/wp46-oracles/chip_oracle_dump.json" --require-live
+      - name: Oracle 2 — ONNX Runtime CPU differential (live, bit-exact int32 + ±1e-5 logits)
+        run: python3 scripts/v4-oracles/onnx-tpu-differential.py "$RUNNER_TEMP/wp46-oracles/chip_oracle_dump.json" --require-live
+      - name: ep-chip suite runs LIVE with QEMU present (WP-4.1 differential no longer skips)
+        run: cargo test --locked -p ep-chip
+      - name: Publish WP-4.6 oracle verdict
+        if: always()
+        run: |
+          {
+            echo "## WP-4.6 chip CI oracles"
+            if [ -f "$RUNNER_TEMP/wp46-oracles/chip_oracle_dump.json" ]; then
+              echo "- dump: \`invention-lab/wp46-oracle-dump/1\` emitted (read-only example)"
+            else
+              echo "- ERROR: oracle dump missing"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp46-chip-oracle-evidence
+          path: ${{ runner.temp }}/wp46-oracles/chip_oracle_dump.json
+          if-no-files-found: error

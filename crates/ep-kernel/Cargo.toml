@@ -7,5 +7,8 @@ description = "Native kernel entry: re-exports ep-core (units, verified referenc
 
 [dependencies]
 ep-core = { path = "ep-core" }
+# WP-4.6: read-only oracle-dump example surfaces the ep-chip strict RV32IM
+# core and the WP-4.3 systolic TPU to scripts/v4-oracles/ (library unchanged).
+ep-chip = { path = "ep-chip" }
 serde = { workspace = true }
 serde_json = { workspace = true }
