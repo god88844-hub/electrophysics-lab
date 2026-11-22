@@ -26,6 +26,7 @@
 //! propagates, bus contention warns (last-write-wins by event order), and
 //! oscillation aborts with the oracle's explicit event-storm error.
 
+pub mod characterize;
 pub mod components;
 pub mod engine;
 pub mod queue;
@@ -36,7 +37,13 @@ pub mod value;
 #[cfg(test)]
 mod tests;
 
-pub use components::{BlockParams, BlockState, ComponentKind, PortDef, PortDir};
+pub use characterize::{
+    characterize_cell_arcs, half_adder_binary_cell, inv1_cell, nand2_cell, noise_margins,
+    q4_level_margins_v, run_arc, sweep_vtc, worst_leakage_w, ArcProvenance, ArcRow, ArcRun,
+    CellTiming, CharError, CharLevel, CharacterizationConfig, CharacterizedArc, Device,
+    OperatingCorner, OutDir, TimingLibrary, TransNetlist, TransientConfig, INV_W_N_UM, INV_W_P_UM,
+    L_UM,
+};
 pub use engine::{
     run_logic, Block, CallbackTag, EventRecord, InputTag, LogicDiagram, PortRef, ProbeRecord,
     RunError, RunOptions, RunResult, RunStats, Wire,
