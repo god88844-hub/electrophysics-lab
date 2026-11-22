@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { MAT } from './materials.js';
 import { makeTextSprite } from '../engine/labels.js';
 import { REFERENCE } from '../data/reference.js';
+import { createLiveRunner, packetRouteFor, BUS_ROUTES, type SocLiveRunner, type SocLiveEvent } from './soc/liveExec.js';
+import * as chipEngine from '@chip/index.mjs';
 
 export interface SocTile {
   id: string;
@@ -289,6 +291,120 @@ export class Bay3Soc {
     }
   }
 
+  // ------------------------------------------------------------------
+  // WP-4.5 — live-program packet flow: pre-allocated instanced packets
+  // riding the interposer bus routes, spawned STRICTLY from the executed
+  // instruction stream (lw/sw memory transactions, systolic dispatch).
+  // Halted/paused → no new packets (the queue drains to zero and stays).
+  // ------------------------------------------------------------------
+
+  private livePackets?: THREE.InstancedMesh;
+  private liveStates: Array<{ route: number; t: number; dir: 1 | -1; active: boolean }> = [];
+  private liveQueue: Array<{ route: number; dir: 1 | -1 }> = [];
+  private liveRunner: SocLiveRunner | null = null;
+  private liveEmitted = 0;
+  private liveHalted = true;
+  private liveActivityLevels = [0, 0, 0, 0, 0];
+
+  private buildLivePacketSystem(): void {
+    const LIVE_CAPACITY = 48;
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x8fd0ff,
+      emissive: 0x3aa0ff,
+      emissiveIntensity: 1.6,
+      metalness: 0.3,
+      roughness: 0.3,
+    });
+    this.livePackets = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 8, 6), mat, LIVE_CAPACITY);
+    this.livePackets.frustumCulled = false;
+    this.livePackets.name = 'liveBusPackets';
+    this.liveStates = Array.from({ length: LIVE_CAPACITY }, () => ({ route: 0, t: 0, dir: 1, active: false }));
+    const hidden = new THREE.Object3D();
+    hidden.position.set(0, -100, 0);
+    hidden.updateMatrix();
+    for (let i = 0; i < LIVE_CAPACITY; i++) this.livePackets.setMatrixAt(i, hidden.matrix);
+    this.livePackets.instanceMatrix.needsUpdate = true;
+    this.group.add(this.livePackets);
+  }
+
+  /** Attach an externally created runner (bay3.update drives it each frame). */
+  attachLiveRunner(runner: SocLiveRunner): void {
+    this.buildLivePacketSystem();
+    this.liveRunner = runner;
+    this.liveHalted = true;
+  }
+
+  /**
+   * Get (or lazily create) the bay-owned live runner singleton. Owning it on
+   * the bay (not the React tree) makes controls remount-proof: inspector
+   * panels may come and go, the executed program keeps its registers/PC.
+   */
+  ensureLiveRunner(): SocLiveRunner {
+    if (!this.liveRunner) {
+      this.buildLivePacketSystem();
+      this.liveRunner = createLiveRunner(chipEngine, {
+        onPower: (watts: number) => {
+          // Per-tile power/thermal injection via physicsClient (real Fourier
+          // solver coupling; physicsClient surfaces it on window.__lab).
+          (globalThis as unknown as { __lab?: { physicsClient?: { setTilePower(w: number): void } } }).__lab?.physicsClient?.setTilePower(Math.min(180, watts));
+        },
+      });
+      this.liveRunner.loadProgram('asm');
+      this.liveHalted = false;
+    }
+    return this.liveRunner;
+  }
+
+  /** The currently attached live runner (the inspector panel owns creation). */
+  getLiveRunner(): SocLiveRunner | null {
+    return this.liveRunner;
+  }
+
+  /**
+   * Queue packets from executed instruction events (called per frame with
+   * the runner's own events — never fabricated).
+   */
+  private enqueueLiveEvents(events: SocLiveEvent[]): void {
+    for (const ev of events) {
+      const route = packetRouteFor(ev);
+      if (route === null) continue; // ALU/MUL/branch/jump stay on the CPU tile
+      if (this.liveQueue.length < 128) this.liveQueue.push(route);
+      this.liveEmitted += 1;
+    }
+  }
+
+  /** Live packet-flow + runner stats for the inspector and the e2e suite. */
+  livePacketStats(): { active: number; queued: number; emitted: number; halted: boolean; running: boolean; levels: number[] } {
+    return {
+      active: this.liveStates.filter((p) => p.active).length,
+      queued: this.liveQueue.length,
+      emitted: this.liveEmitted,
+      halted: this.liveHalted,
+      running: this.liveRunner ? (this.liveRunner.state() as { running: boolean }).running : false,
+      levels: [...this.liveActivityLevels],
+    };
+  }
+
+  /** Per-route recent activity 0..1 (decayed counters → bus emissive). */
+  private updateLiveActivity(dt: number): void {
+    const counts = [0, 0, 0, 0, 0];
+    for (const p of this.liveStates) if (p.active) counts[p.route] += 1;
+    counts.forEach((c, i) => {
+      // Instant attack from real traffic, slow decay when the bus goes quiet.
+      const target = Math.min(1, c / 6);
+      this.liveActivityLevels[i] = Math.max(target, this.liveActivityLevels[i] - dt * 1.5);
+    });
+    this.setBusActivity(this.liveActivityLevels);
+  }
+
+  /** Force the forensic-zero state: no runner → no packets, dim buses. */
+  private updateLiveIdle(): void {
+    if (this.liveActivityLevels.some((l) => l > 0.001)) {
+      this.liveActivityLevels = this.liveActivityLevels.map(() => 0);
+      this.setBusActivity(this.liveActivityLevels);
+    }
+  }
+
   update(dt: number): void {
     const k = 1 - Math.exp(-5 * dt);
     this.explodeT += (this.explodeGoal - this.explodeT) * k;
@@ -307,6 +423,61 @@ export class Bay3Soc {
       const z = this.npuTile && g === this.npuTile.group ? 1.55 : base[1];
       g.position.set(x + ox * this.explodeT, 0.79 + this.explodeT * 0.5 * ((i % 2) + 1), z + oz * this.explodeT);
     });
-    void dt;
+
+    // WP-4.5 — live program → packets. The runner executes instructions only
+    // while playing; halted/paused produce ZERO events, so the packet system
+    // drains to zero and stays there (no decorative loops).
+    if (this.liveRunner && this.livePackets) {
+      this.__liveRunnerIdentity = this.liveRunner === this.liveRunner;
+      const st = this.liveRunner.state() as { running: boolean; halted: boolean };
+      this.liveHalted = st.halted;
+      const events = this.liveRunner.tick(dt);
+      if (events.length > 0) this.enqueueLiveEvents(events);
+      this.updateLiveActivity(dt);
+      if (!st.running && !st.halted) this.updateLiveIdle();
+
+      // Spawn queued packets into free slots (bounded per frame).
+      let spawned = 0;
+      while (this.liveQueue.length > 0 && spawned < 8) {
+        const slot = this.liveStates.find((p) => !p.active);
+        if (!slot) break;
+        const { route, dir } = this.liveQueue.shift()!;
+        slot.route = route;
+        slot.t = dir === 1 ? 0 : 1;
+        slot.dir = dir;
+        slot.active = true;
+        spawned += 1;
+      }
+
+      // Advance active packets along their route curve; write instances.
+      const dummy = new THREE.Object3D();
+      const curveDirs: Array<[THREE.Vector3, THREE.Vector3]> = [];
+      void curveDirs;
+      const speed = 0.9;
+      let active = 0;
+      this.liveStates.forEach((p, i) => {
+        if (!p.active) return;
+        active += 1;
+        p.t += dt * speed * p.dir;
+        if (p.t >= 1 || p.t <= 0) {
+          p.active = false;
+          dummy.position.set(0, -100, 0);
+        } else {
+          const curve = this.flowCurves[p.route]?.curve;
+          if (curve) {
+            const pos = curve.getPoint(Math.min(1, Math.max(0, p.t)));
+            dummy.position.copy(pos);
+          } else {
+            dummy.position.set(0, -100, 0);
+          }
+        }
+        dummy.updateMatrix();
+        this.livePackets!.setMatrixAt(i, dummy.matrix);
+      });
+      if (this.livePackets) this.livePackets.instanceMatrix.needsUpdate = true;
+      void active;
+    } else {
+      this.updateLiveIdle();
+    }
   }
 }
