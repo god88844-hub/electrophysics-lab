@@ -51,7 +51,7 @@ jobs:
           mkdir -p "$(dirname "$DUMP")"
           cargo run --locked -p ep-kernel --example circuit_oracle_dump > "$DUMP"
           python3 -c "import json,sys; d=json.load(open('$DUMP')); assert d['format']=='invention-lab/wp24-oracle-dump/1'; assert d['provenance']=='SIMULATED_ARCHITECTURAL_MODEL'; assert len(d['cases'])>=10; print('dump OK:', len(d['cases']), 'cases')"
-      - name: Oracle — live ngspice differential (§5: node V ±1e-6 V, currents ±1e-9 A, KCL + power < 1e-9)
+      - name: "Oracle — live ngspice differential (§5 tolerances: node V ±1e-6 V, currents ±1e-9 A, KCL + power < 1e-9)"
         run: node scripts/v4-oracles/ngspice-differential.mjs "$RUNNER_TEMP/wp24-oracles/circuit_oracle_dump.json" --require-live
       - name: Harness unit suite (deck building, parsing, tolerances, skip discipline)
         run: node --test tests/wp24-ngspice-oracle.test.mjs
