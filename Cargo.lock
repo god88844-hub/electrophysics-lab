@@ -135,6 +135,7 @@ name = "ep-thermal"
 version = "0.1.0"
 dependencies = [
  "ep-core",
+ "ep-quantum",
  "serde",
  "serde_json",
 ]

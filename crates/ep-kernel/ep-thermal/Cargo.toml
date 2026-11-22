@@ -9,3 +9,8 @@ description = "Implicit (Backward-Euler / Crank-Nicolson) 2D/3D Fourier heat PDE
 ep-core = { path = "../ep-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+# WP-5.6: T1/T2 collapse cross-checks drive the ep-quantum Lindblad kernel
+# with the cryo quench flags (test-only; the dependency is one-directional).
+ep-quantum = { path = "../ep-quantum" }
