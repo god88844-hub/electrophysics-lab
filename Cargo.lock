@@ -97,6 +97,7 @@ name = "ep-kernel"
 version = "0.1.0"
 dependencies = [
  "ep-chip",
+ "ep-circuit",
  "ep-core",
  "serde",
  "serde_json",

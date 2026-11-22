@@ -1,0 +1,74 @@
+# WP-2.4 — v4 circuit CI oracle: LIVE ngspice differential for the ep-circuit
+# DC solver (divider, inverter, cascade, RC bias point, breakdown bias point,
+# bridge, … — the 10-case suite).
+#
+# The read-only example `crates/ep-kernel/examples/circuit_oracle_dump.rs`
+# emits the ep-circuit operating points; the harness
+# `scripts/v4-oracles/ngspice-differential.mjs` builds one ngspice batch deck
+# per case from the dump's own netlist descriptions, runs LIVE `ngspice -b`
+# (installed below, fail-closed) and asserts the
+# `03_PHYSICS_MATH_FUNDAMENTALS.md` §5 CI Oracle Calibration tolerances:
+# node voltages ±1e-6 V, branch currents ±1e-9 A, plus the §1.2 conservation
+# oracles (KCL + power < 1e-9) recomputed independently from the dump.
+#
+# Locally the same harness prints a loud WP24-NGSPICE-ORACLE-SKIP verdict when
+# ngspice is absent (`--require-live` omitted) — a skip is never a silent
+# pass. Phase 0 workflows (coupled-wire-ngspice) are untouched.
+# Evidence stays in $RUNNER_TEMP only — the tracked tree stays 100 % clean
+# for Phase 30/39.
+name: v4 circuit CI oracle (live ngspice differential)
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  circuit-oracle-live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install the independent electrical oracle (loud, fail-closed)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ngspice
+          command -v ngspice
+          ngspice --version
+      - name: Build the read-only oracle dump example (locked)
+        run: cargo build --locked -p ep-kernel --example circuit_oracle_dump
+      - name: Emit the ep-circuit oracle dump (10-case DC suite)
+        env:
+          DUMP: ${{ runner.temp }}/wp24-oracles/circuit_oracle_dump.json
+        run: |
+          mkdir -p "$(dirname "$DUMP")"
+          cargo run --locked -p ep-kernel --example circuit_oracle_dump > "$DUMP"
+          python3 -c "import json,sys; d=json.load(open('$DUMP')); assert d['format']=='invention-lab/wp24-oracle-dump/1'; assert d['provenance']=='SIMULATED_ARCHITECTURAL_MODEL'; assert len(d['cases'])>=10; print('dump OK:', len(d['cases']), 'cases')"
+      - name: Oracle — live ngspice differential (§5: node V ±1e-6 V, currents ±1e-9 A, KCL + power < 1e-9)
+        run: node scripts/v4-oracles/ngspice-differential.mjs "$RUNNER_TEMP/wp24-oracles/circuit_oracle_dump.json" --require-live
+      - name: Harness unit suite (deck building, parsing, tolerances, skip discipline)
+        run: node --test tests/wp24-ngspice-oracle.test.mjs
+      - name: Publish WP-2.4 oracle verdict
+        if: always()
+        run: |
+          {
+            echo "## WP-2.4 circuit CI oracle"
+            if [ -f "$RUNNER_TEMP/wp24-oracles/circuit_oracle_dump.json" ]; then
+              echo "- dump: \`invention-lab/wp24-oracle-dump/1\` emitted (read-only example)"
+            else
+              echo "- ERROR: oracle dump missing"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp24-circuit-oracle-evidence
+          path: ${{ runner.temp }}/wp24-oracles/circuit_oracle_dump.json
+          if-no-files-found: error
