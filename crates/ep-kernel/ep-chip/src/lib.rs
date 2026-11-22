@@ -45,6 +45,16 @@
 //!   controller (125 °C stepwise / ±5 °C hysteresis / 200 °C
 //!   `si_thermal_runaway` latch) coupled to `ep-thermal` tile temps.
 //!
+//! - [`gpu`]: WP-4.2 SIMT GPU warp-execution engine — configurable warp
+//!   width (bit-packed per-lane predicate masks, `u64`), reconvergence
+//!   stack, shared-memory bank-conflict accounting (classic
+//!   `banks = warp_width` model with the broadcast exception), §3 occupancy
+//!   (`active lanes / warp width`), vector ALU ops, and
+//!   `P_dyn = α·C·V²·f` scaled by active lanes. The scheduler surface is
+//!   bit-exact against `packages/chip-engine/src/accelerators.mjs ::
+//!   simulateWarpKernel` (§3: divergent warp costs 2× the uniform warp —
+//!   cycle counts identical, asserted against the committed golden fixture).
+//!
 //! Oracle calibration (`03_PHYSICS_MATH_FUNDAMENTALS.md` §5): RV32IM
 //! execution is bit-exact against the Phase 0 harness. The QEMU user-mode
 //! differential reuses the Phase 8 protocol on the same bounded program and
@@ -53,6 +63,7 @@
 
 pub mod cpu;
 pub mod custom;
+pub mod gpu;
 pub mod isa;
 pub mod power;
 pub mod soc;
@@ -61,6 +72,13 @@ pub mod twin;
 
 pub use cpu::{Cpu, CpuError, CpuIsa, RunResult, StepOutcome, Trace, Trap};
 pub use custom::{CustomEffect, CustomIsaHook};
+pub use gpu::{
+    bank_conflicts, ops_per_cycle, BranchOutcome, GpuConfig, GpuError, KernelRunResult,
+    LaneOutcome, ReconvergenceFrame, SharedAccess, VectorAluOp, WarpExecution, WarpRunTelemetry,
+    WarpScheduler, CAP_PER_LANE_EVENT_F, DEFAULT_SHARED_BANKS, DEFAULT_VDD, DEFAULT_WARP_WIDTH,
+    GPU_BADGE, MAX_WARP_WIDTH, POWER_TDP_W, TEMP_MAX_C, TEMP_MIN_C, WARP_WIDTH_AMD,
+    WARP_WIDTH_INTEL, WARP_WIDTH_NVIDIA,
+};
 pub use power::{DynamicPowerModel, Farad, Hertz, InstructionMix, PowerError};
 pub use soc::{
     alpha_energy, bytes_per_cycle, compare_architectures, copy_time_cycles, littles_law, roofline,
