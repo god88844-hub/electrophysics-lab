@@ -153,8 +153,8 @@ test('deck: divider case builds a resistive divider deck with tightened options'
 
 test('deck: MOSFET cases emit LEVEL=1 parity cards (β = KP·W/L folded identically)', () => {
   const { deck } = buildDeck(inverterCase);
-  assert.ok(deck.includes('Mp out vin vdd mod_Mp W=1u L=1u'), 'PMOS d g s order');
-  assert.ok(deck.includes('Mn out vin 0 mod_Mn W=1u L=1u'), 'NMOS d g s order');
+  assert.ok(deck.includes('Mp out vin vdd vdd mod_Mp W=1u L=1u'), 'PMOS d g s bulk order (bulk = source)');
+  assert.ok(deck.includes('Mn out vin 0 0 mod_Mn W=1u L=1u'), 'NMOS d g s bulk order (bulk = source)');
   assert.ok(
     deck.includes('.MODEL mod_Mp PMOS (LEVEL=1 KP=0.004 VTO=-0.45 LAMBDA=0.06 W=1u L=1u)'),
     'PMOS LEVEL=1 card (signed VTO)',

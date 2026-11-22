@@ -106,8 +106,11 @@ export function buildDeck(caseDump) {
         break;
       case 'M': {
         // Shichman–Hodges parity card: LEVEL=1, β = KP·W/L with W = L = 1 µm.
+        // ngspice MOS instances are 4-terminal (d g s bulk model) — the bulk
+        // ties to the source (vbs = 0: no body effect, exactly the ep-circuit
+        // square-law model of 03 §1.2).
         const model = `mod_${el.label}`;
-        lines.push(`${el.label} ${b} ${a} ${c} ${model} W=1u L=1u`);
+        lines.push(`${el.label} ${b} ${a} ${c} ${c} ${model} W=1u L=1u`);
         lines.push(
           `.MODEL ${model} ${el.type === 'P' ? 'PMOS' : 'NMOS'} (LEVEL=1 KP=${num(el.kp)} VTO=${num(el.vth)} LAMBDA=${num(el.lambda)} W=1u L=1u)`,
         );
