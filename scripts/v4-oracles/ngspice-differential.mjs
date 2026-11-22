@@ -45,6 +45,9 @@ export const POWER_CONSERVATION_TOLERANCE_W = 1e-9;
  * the two solvers' converged solutions meet the §5 calibration tolerances. */
 export const NGSPICE_OPTIONS =
   '.options reltol=1e-12 abstol=1e-15 vntol=1e-12 gmin=1e-12';
+/** ngspice's default `print` output is ~7 significant digits — the §5
+ * ±1e-9 A branch-current tolerance needs full precision. */
+export const NGSPICE_NUMDGT = 15;
 
 /** Resolve the artifact root: $RUNNER_TEMP in CI, OS temp dir locally. */
 export function artifactRoot() {
@@ -102,7 +105,9 @@ export function buildDeck(caseDump) {
         vSources.push(el.label);
         break;
       case 'I':
-        lines.push(`${el.label} ${a} ${b} DC ${num(el.i)}`);
+        // ngspice `Ixxx n+ n-` pulls current out of n+; ep-circuit's stamp
+        // pushes i INTO node a — the deck emits the swapped pair.
+        lines.push(`${el.label} ${b} ${a} DC ${num(el.i)}`);
         break;
       case 'M': {
         // Shichman–Hodges parity card: LEVEL=1, β = KP·W/L with W = L = 1 µm.
@@ -142,7 +147,7 @@ export function buildDeck(caseDump) {
   // Measurement block: `print` is a .control-mode command — the prints must
   // sit AFTER `op` inside the .control/.endc block (a deck with prints
   // outside .control errors out: "Simulation interrupted due to error!").
-  lines.push('.control', 'set noaskquit', 'op');
+  lines.push('.control', 'set noaskquit', `set numdgt=${NGSPICE_NUMDGT}`, 'op');
   for (const n of netlist.nodes) {
     if (!n.ground) {
       lines.push(`print v(${n.name})`);
@@ -165,7 +170,8 @@ export function parseNgspicePrint(stdout, expectedVectors) {
   const values = new Map();
   const re = /([A-Za-z_][\w().#]*)\s*=\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)/g;
   for (const m of stdout.matchAll(re)) {
-    values.set(m[1], Number(m[2]));
+    // ngspice lowercases vector names (v(srcA) prints as v(srca)).
+    values.set(m[1].toLowerCase(), Number(m[2]));
   }
   const missing = expectedVectors.filter((v) => !values.has(v.toLowerCase()));
   if (missing.length > 0) {
@@ -336,7 +342,7 @@ export function runDifferential(dump, { requireLive = false, workDir } = {}) {
       const measured = parseNgspicePrint(stdout, expected);
       const checks = [];
       for (const n of nodes) {
-        const actual = measured.get(`v(${n})`);
+        const actual = measured.get(`v(${n})`.toLowerCase());
         const expectedV = caseDump.nodeVoltages[n];
         const ok = withinNodeVoltageTolerance(actual, expectedV);
         checks.push({
@@ -348,7 +354,7 @@ export function runDifferential(dump, { requireLive = false, workDir } = {}) {
         });
       }
       for (const label of vSources) {
-        const actual = measured.get(sourceCurrentVector(label));
+        const actual = measured.get(sourceCurrentVector(label).toLowerCase());
         const expectedI = caseDump.deviceCurrents[label];
         const ok = withinBranchCurrentTolerance(actual, expectedI);
         checks.push({

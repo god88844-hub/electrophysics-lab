@@ -127,9 +127,10 @@ test('dump protocol: valid dump passes; malformed dumps are refused', () => {
 // Deck building — from the dump's own netlist, never a parallel copy
 // ---------------------------------------------------------------------------
 
-test('deck: divider case builds a resistive divider deck with tightened options', () => {
+test('deck: divider case builds a resistive divider deck with tightened options + full print precision', () => {
   const { deck, nodes, vSources } = buildDeck(dividerCase);
   assert.ok(deck.includes(NGSPICE_OPTIONS), 'tightened ngspice convergence options');
+  assert.ok(deck.includes('set numdgt=15'), 'full-precision print output (the §5 ±1e-9 A tolerance needs >7 digits)');
   assert.ok(deck.includes('V1 src 0 DC 10'));
   assert.ok(deck.includes('R1 src mid 1000'));
   assert.ok(deck.includes('R2 mid 0 2000'));
@@ -142,7 +143,7 @@ test('deck: divider case builds a resistive divider deck with tightened options'
   const controlLine = lineIndex('.control');
   const opLine = lineIndex('op');
   const printLine = lineIndex('print v(mid)');
-  assert.ok(controlLine >= 0 && opLine === controlLine + 2, '.control, set noaskquit, then op');
+  assert.ok(controlLine >= 0 && opLine === controlLine + 3, '.control, set noaskquit, set numdgt, then op');
   assert.ok(printLine > opLine, 'prints AFTER op inside the control block');
   assert.ok(lineIndex('.endc') > lineIndex('print i(v1)'), '.endc closes after the prints');
   assert.ok(lines[lines.length - 2] === '.end' && lines[lines.length - 1] === '');
@@ -265,6 +266,11 @@ test('parse: missing expected vectors throw with the stdout tail (fail-closed)',
 test('parse: exponent forms with capital E and plus signs parse', () => {
   const values = parseNgspicePrint('v(x) = -1.23E+05', ['v(x)']);
   assert.equal(values.get('v(x)'), -123000);
+});
+
+test('parse: ngspice lowercases vector names (v(srcA) prints as v(srca))', () => {
+  const values = parseNgspicePrint('v(srca) = 1.000000000000000e+01', ['v(srcA)']);
+  assert.equal(values.get('v(srca)'), 10);
 });
 
 // ---------------------------------------------------------------------------
