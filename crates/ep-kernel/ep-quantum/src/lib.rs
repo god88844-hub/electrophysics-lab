@@ -33,6 +33,7 @@ pub mod admission;
 pub mod devices;
 pub mod lindblad;
 pub mod mps;
+pub mod optimizer;
 pub mod qec;
 
 pub use admission::{admit_offline, dense_working_set_bytes, offline_max_qubits};
