@@ -39,8 +39,10 @@
 //! Usage: `cargo run --locked -p ep-kernel --example circuit_oracle_dump`
 
 use ep_circuit::{
-    kcl_max_residual, operating_point, solve, ElementKind, MosfetParams, MosfetType, Netlist,
+    kcl_max_residual, operating_point, solve_dc, ElementKind, MosfetParams, MosfetType, Netlist,
+    SolveOptions,
 };
+use ep_core::admission::AdmissionController;
 use ep_core::ProvenanceBadge;
 use serde_json::{json, Value};
 
@@ -62,7 +64,23 @@ fn pmos(vth: f64, kp: f64, lambda: f64) -> MosfetParams {
 /// harness turns into an ngspice deck, the ep-circuit operating point, and
 /// the fail-closed conservation oracles (03 §1.2).
 fn dump_case(id: &str, title: &str, description: &str, netlist: &Netlist) -> Value {
-    let result = solve(netlist).unwrap_or_else(|e| panic!("case {id} must solve: {e:?}"));
+    // The §5 calibration tolerance is ±1e-6 V — cascaded stages amplify the
+    // converged-point difference by the stage gain. Two system-level choices
+    // make ep-circuit and ngspice solve the EXACT same system (the parity is
+    // then limited only by solver arithmetic, ~1e-11 V):
+    //  - `gmin = 0`: ep-circuit's default folds a 1e-12 S node-to-ground
+    //    leakage into its residual; ngspice's LEVEL=1 cards have no junction
+    //    diodes, so ngspice has no such shunt (its gmin is inapplicable).
+    //  - `tolerance = 1e-14`: an order tighter than the 1e-9 default, so the
+    //    converged point is exact to ~1e-12 V.
+    let opts = SolveOptions {
+        max_newton_steps: 100,
+        tolerance: 1e-14,
+        gmin: 0.0,
+        ..SolveOptions::default()
+    };
+    let result =
+        solve_dc(netlist, &opts, &AdmissionController::new()).unwrap_or_else(|e| panic!("case {id} must solve: {e:?}"));
     assert!(
         result.converged,
         "case {id} must converge (Newton ‖F‖∞ < 1e-9)"

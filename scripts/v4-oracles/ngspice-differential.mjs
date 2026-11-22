@@ -250,7 +250,9 @@ export function independentPowerSumW(caseDump) {
     } else if (el.kind === 'V') {
       sum += num(el.branchCurrent) * (v(a) - v(b));
     } else if (el.kind === 'I') {
-      sum += num(el.i) * (v(a) - v(b));
+      // The ideal source pushes i into node a: the through-current from a to b
+      // is −i, so it DELIVERS −i·(v_a − v_b) to the rest of the circuit.
+      sum += -num(el.i) * (v(a) - v(b));
     } else if (el.kind === 'M') {
       const inNode = el.inIsDrain ? b : c;
       const outNode = el.inIsDrain ? c : b;
