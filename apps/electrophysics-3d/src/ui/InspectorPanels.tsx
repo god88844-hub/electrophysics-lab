@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { SandboxComponent } from '../state/store.js';
 
 import * as chipEngine from '@chip/index.mjs';
@@ -6,6 +6,7 @@ const { compareArchitectures, systolicMatmul, createRV32, asm } = chipEngine;
 import type { LabState } from '../state/store.js';
 import { Q4_PRIMITIVES, REFERENCE, TRANSMON } from '../data/reference.js';
 import { physicsClient } from '../physics/physicsClient.js';
+import { PROGRAMS } from '../bays/soc/liveExec.js';
 import { quantumClient, type BreakthroughBundle } from '../physics/quantumClient.js';
 import { worldRef } from '../worldRef.js';
 import { flashToast } from '../state/store.js';
@@ -501,6 +502,101 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
     );
   }
 
+  
+/**
+ * WP-4.5 — SoC live-program runner (Bay 3 inspector section): real RV32IM
+ * Assembly / Forth / pre-compiled C-binary programs executing on the
+ * packages/chip-engine interpreter (browser execution path, Builder Law 6),
+ * with Play / Pause / Step-1-Instruction / Reset controls and live
+ * register/PC/stack readouts. Every executed instruction drives the 3D
+ * interposer packet flow + per-tile power injection through Bay3Soc's
+ * attached runner (badged SIMULATED_ARCHITECTURAL_MODEL).
+ */
+const SocLiveRunnerPanel = React.memo(function SocLiveRunnerPanel(): React.ReactElement {
+  (window as unknown as Record<string, number>).__socPanelRenders = ((window as unknown as Record<string, number>).__socPanelRenders ?? 0) + 1;
+  const [, bump] = useState(0);
+  const [kind, setKind] = useState<'asm' | 'forth' | 'cbinary'>('asm');
+  const [playing, setPlaying] = useState(false);
+  const [readout, setReadout] = useState<Record<string, unknown> | null>(null);
+
+  // The runner is OWNED by Bay3Soc (`ensureLiveRunner` — bay-level singleton):
+  // it survives inspector remounts, and Bay3Soc.update ticks it every frame.
+  const runnerOf = () => worldRef.current?.bay3.ensureLiveRunner();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      (window as unknown as Record<string, number>).__socIntervalTicks = ((window as unknown as Record<string, number>).__socIntervalTicks ?? 0) + 1;
+      const runner = worldRef.current?.bay3.getLiveRunner();
+      if (!runner) return;
+      const st = runner.state() as Record<string, unknown>;
+      // Change-guarded updates: a static DOM lets Playwright click reliably.
+      setReadout((prev) => (JSON.stringify(prev) === JSON.stringify(st) ? prev : st));
+      setPlaying((p) => (p === Boolean(st.running) ? p : Boolean(st.running)));
+    }, 150);
+    return () => clearInterval(timer);
+  }, []);
+
+  const refresh = () => {
+    const st = runnerOf()?.state() as Record<string, unknown> | undefined;
+    if (st) setReadout(st);
+    bump((v) => v + 1);
+  };
+
+  const selectProgram = (k: 'asm' | 'forth' | 'cbinary') => {
+    setKind(k);
+    runnerOf()?.loadProgram(k);
+    refresh();
+  };
+
+  const rv = readout && (readout.pc !== undefined)
+    ? readout
+    : null;
+  const forth = readout && readout.kind === 'forth' ? readout : null;
+
+  return (
+    <div style={sectionStyle}>
+      <div style={labelStyle}>LIVE PROGRAM RUNNER — RV32IM · FORTH · C-BINARY</div>
+      <div style={{ color: '#aeb9c8', fontSize: 10.5, fontFamily: 'monospace', marginBottom: 6 }}>
+        badge: SIMULATED_ARCHITECTURAL_MODEL · executed instructions drive the 3D interposer packets
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%', minWidth: 0 }}>
+        {(['asm', 'forth', 'cbinary'] as const).map((k) => (
+          <button key={k} data-testid={'soc-prog-' + k} style={{ ...btnStyle(kind === k, '#62d0ff'), maxWidth: '100%' }} onClick={() => selectProgram(k)}>
+            {PROGRAMS[k].label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+        {playing ? (
+          <button data-testid="soc-pause" style={btnStyle(false, '#f0c94f')} onClick={() => { runnerOf()?.pause(); refresh(); }}>❚❚ Pause</button>
+        ) : (
+          <button data-testid="soc-play" style={btnStyle(false, '#8ef0b2')} onClick={() => { runnerOf()?.play(); setPlaying(true); refresh(); }}>▶ Play</button>
+        )}
+        <button data-testid="soc-step" style={btnStyle(false, '#62d0ff')} onClick={() => { runnerOf()?.step(); refresh(); }}>Step 1 inst</button>
+        <button data-testid="soc-reset" style={btnStyle(false, '#ff9d5c')} onClick={() => { runnerOf()?.reset(); setPlaying(false); refresh(); }}>Reset</button>
+      </div>
+      <pre data-testid="soc-source" style={{ margin: '8px 0 0', padding: 8, background: 'rgba(16,22,30,0.8)', borderRadius: 6, color: '#9fc4e8', fontSize: 10, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxWidth: '100%', overflowX: 'hidden' }}>
+        {kind === 'cbinary' ? PROGRAMS.cbinary.cSource.join('\n') : PROGRAMS[kind].source.join('\n')}
+      </pre>
+      {rv && (
+        <div data-testid="soc-readout" style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
+          <div>PC {String(rv.pc)} · cycles {String(rv.cycles)} · retired {String(rv.retired)}{rv.halted ? ' · HALTED' : playing ? ' · RUNNING' : ' · PAUSED'}</div>
+          <div>x5 {String(rv.x5)} · x6 {String(rv.x6)} · x7 {String(rv.x7)}</div>
+          <div>packets {String(rv.packetsEmitted)} · lw {String(rv.stats.loads)} · sw {String(rv.stats.stores)} · alu {String(rv.stats.alu)} · mul {String(rv.stats.mul)}</div>
+        </div>
+      )}
+      {forth && (
+        <div data-testid="soc-readout" style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
+          <div>cycles {String(forth.cycles)} · stack [{(forth.stack as number[]).join(', ')}] · depth {String(forth.stackDepth)}</div>
+          <div>output: [{(forth.output as number[]).join(', ')}]</div>
+          <div>packets {String(forth.packetsEmitted)} · halted {String(Boolean(forth.halted))}</div>
+        </div>
+      )}
+    </div>
+  );
+
+});
+
   if (bay === 3) {
     return (
       <div>
@@ -579,19 +675,7 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
               <div>E/op {Number(state.soc.result.energyPerOpPJ).toFixed(1)} pJ · hotspot {Number(state.soc.result.hotspotC).toFixed(0)} °C</div>
             </div>
           )}
-          <div style={{ color: '#aeb9c8', fontSize: 11, marginTop: 10, marginBottom: 4 }}>RV32IM core</div>
-          <button style={btnStyle(false, '#62d0ff')} onClick={async () => {
-            const cpu = createRV32({ pcStart: 0 });
-            cpu.load([asm.opImm(0, 5, 0, 0), asm.opImm(0, 6, 0, 10), asm.R(0, 6, 5, 0, 5, 0x33), asm.opImm(0, 6, 6, -1), asm.B(-8, 0, 6, 1, 0x63), asm.halt()]);
-            cpu.run(200);
-            dispatch({ soc: { ...state.soc, rv32: { pc: cpu.pc, x5: cpu.regs[5], x6: cpu.regs[6], x7: cpu.regs[7], cycles: cpu.cycles, halted: cpu.halted } } });
-            flashToast('RV32IM sum-1..10 executed — x5 = 55');
-          }}>Run program</button>
-          {state.soc.rv32 && (
-            <div style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
-              PC {String(state.soc.rv32.pc)} · x5 {String(state.soc.rv32.x5)} · x6 {String(state.soc.rv32.x6)} · cycles {String(state.soc.rv32.cycles)}{state.soc.rv32.halted ? ' · HALTED' : ''}
-            </div>
-          )}
+          <SocLiveRunnerPanel />
         </div>
         <div style={sectionStyle}>
           <div style={labelStyle}>TILE POWER MODEL (05 REFERENCE · P = C·V²·f)</div>
