@@ -5,6 +5,7 @@ import { makeProbePin } from '../engine/probes.js';
 import { SKY130, Q4_PRIMITIVES } from '../data/reference.js';
 import { parseSky130Spec } from './silicon/sky130Spec.mjs';
 import { Sky130PolyCellViewer } from './silicon/sky130CellViewer.js';
+import { attachDirectEditing, type SiliconEditController } from './silicon/directEditing.js';
 // WP-3.4 geometry source of truth — SHA-256 sealed in data/cad-specs/MANIFEST.json.
 import sky130CadSpecRaw from '../../../../data/cad-specs/01_sky130_primitives_geometry.json';
 
@@ -57,6 +58,14 @@ export class Bay2Foundry {
   private crossDepthT: number = SKY130_LAYERS.length;
   /** Flow paths registered for the electron-pulse system (VDD/GND rails). */
   flowCurves: Array<{ id: string; curve: THREE.Curve3; radix: 'binary' | 'q4' }> = [];
+  /**
+   * WP-2.5 — direct Place/Route/Probe editing controller. Attached lazily on
+   * the first `update` after the world registers itself on `window.__lab`
+   * (the controller needs the store/history/frame singletons + the world
+   * surface for mesh sync). Exposed for the Playwright probes.
+   */
+  editController: SiliconEditController | null = null;
+  private probePinMeshes = new Map<number, THREE.Group>();
 
   constructor() {
     this.buildWafer();
@@ -386,6 +395,14 @@ export class Bay2Foundry {
   }
 
   update(dt: number): void {
+    // WP-2.5 — attach the direct-editing controller once the world is live
+    // (worldRef.current is set right after construction in App.tsx).
+    if (!this.editController && typeof window !== 'undefined') {
+      const lab = (window as unknown as { __lab?: { worldRef?: { current?: unknown } } }).__lab;
+      if (lab?.worldRef?.current) {
+        this.editController = attachDirectEditing(this);
+      }
+    }
     const eps = 0.001;
     if (Math.abs(this.peelT - this.peelGoal) > eps || Math.abs(this.crossDepthT - this.crossDepthGoal) > eps) {
       const k = 1 - Math.exp(-6 * dt);
@@ -406,5 +423,32 @@ export class Bay2Foundry {
   /** Die-space Y of a layer for FX anchoring (arc FX targets met1 gates). */
   layerY(key: LayerKey): number {
     return this.layers.find((l) => l.key === key)?.baseY ?? this.stackTopY;
+  }
+
+  /**
+   * WP-2.5 — sync the 3D probe pin meshes with the store probes. One pin per
+   * probe whose target component exists, placed at the component's bench
+   * position using the same bench→scene transform as the placed components
+   * (`src/world.ts setSandboxComponents`), standing on the met3 surface.
+   * Pin meshes carry no text — the hover callout stays the only telemetry
+   * surface (zero permanent floating labels).
+   */
+  syncProbePins(pins: Array<{ id: number; color: string; x: number; z: number }>): void {
+    const wanted = new Set(pins.map((p) => p.id));
+    for (const [id, mesh] of [...this.probePinMeshes]) {
+      if (!wanted.has(id)) {
+        this.group.remove(mesh);
+        this.probePinMeshes.delete(id);
+      }
+    }
+    for (const p of pins) {
+      if (this.probePinMeshes.has(p.id)) continue;
+      const colorHex = new THREE.Color(p.color).getHex();
+      const pin = makeProbePin(0.9, colorHex);
+      pin.name = `probe-pin-${p.id}`;
+      pin.position.set(-2 + p.x * 1.4, this.layerY('met3') + 0.5, -1.4 + p.z * 1.2);
+      this.group.add(pin);
+      this.probePinMeshes.set(p.id, pin);
+    }
   }
 }
