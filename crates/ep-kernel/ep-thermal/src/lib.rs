@@ -32,6 +32,7 @@
 #![forbid(unsafe_code)]
 
 pub mod blackbody;
+pub mod cryo;
 pub mod forensics;
 pub mod pde;
 pub mod reference;
