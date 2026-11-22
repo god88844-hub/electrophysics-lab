@@ -137,12 +137,15 @@ test('deck: divider case builds a resistive divider deck with tightened options'
   assert.ok(deck.includes(`print ${sourceCurrentVector('V1')}`));
   // `print` is a .control-mode command: it must sit after `op` inside the
   // .control/.endc block (a deck with prints outside .control errors out).
-  const controlIndex = deck.indexOf('.control');
-  const opIndex = deck.indexOf('op');
-  const printIndex = deck.indexOf('print v(mid)');
-  assert.ok(controlIndex >= 0 && opIndex > controlIndex && printIndex > opIndex, 'prints inside .control after op');
-  assert.ok(deck.indexOf('.endc') > deck.indexOf('print i(v1)'), '.endc closes after the prints');
-  assert.ok(deck.includes('.end'));
+  const lines = deck.split('\n');
+  const lineIndex = (text) => lines.findIndex((l) => l === text);
+  const controlLine = lineIndex('.control');
+  const opLine = lineIndex('op');
+  const printLine = lineIndex('print v(mid)');
+  assert.ok(controlLine >= 0 && opLine === controlLine + 2, '.control, set noaskquit, then op');
+  assert.ok(printLine > opLine, 'prints AFTER op inside the control block');
+  assert.ok(lineIndex('.endc') > lineIndex('print i(v1)'), '.endc closes after the prints');
+  assert.ok(lines[lines.length - 2] === '.end' && lines[lines.length - 1] === '');
   assert.deepEqual(nodes, ['src', 'mid']);
   assert.deepEqual(vSources, ['V1']);
   assert.equal(sourceCurrentVector('V1'), 'i(v1)', 'ngspice vector name is lowercase');
