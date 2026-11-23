@@ -29,6 +29,7 @@
 pub mod characterize;
 pub mod components;
 pub mod engine;
+pub mod packager;
 pub mod queue;
 pub mod radix;
 pub mod truth_table;
