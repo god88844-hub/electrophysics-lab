@@ -1,15 +1,3 @@
-export const CAPTURE_FPS = 30;
-export const MAX_DURATION_MS = 30_000;
-export const MAX_FRAMES = CAPTURE_FPS * MAX_DURATION_MS / 1000;
-export const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
-export const CAPTURE_SIZE = { width: 960, height: 540 } as const;
-export const RASTER_SIZE = { width: 96, height: 54 } as const;
-const RASTER_BYTES = RASTER_SIZE.width * RASTER_SIZE.height * 4;
-const MAX_FRAME_INPUT_BYTES = 2048;
-export const CAPTURE_BADGE = 'SIMULATED_PHYSICS_MODEL' as const;
-const FORMAT = 'invention-lab/recording/1' as const;
-const encoder = new TextEncoder();
-
 export type Workspace = 'quantum' | 'silicon' | 'soc' | 'library';
 export type CaptureMode = 'cinematic' | 'forensic';
 export type Vector = readonly [number, number, number];
@@ -87,23 +75,52 @@ export interface CaptureManifest {
   media: RecordingMedia;
 }
 
-function copyPose(camera: CameraPose): CameraPose {
+type CopyPose = (camera: CameraPose) => CameraPose;
+type PlanOptions = { workspace: Workspace; camera: CameraPose; mode: CaptureMode; seed: number; durationMs?: number };
+type CreatePlan = (options: PlanOptions) => CapturePlan;
+type ReadCamera = (plan: CapturePlan, frame: number) => CameraPose;
+type NextFrame = (plan: CapturePlan, elapsedMs: number, previous: number) => number | null;
+type CanonicalJson = (value: unknown) => string;
+type HashBytes = (bytes: Uint8Array<ArrayBuffer>) => Promise<string>;
+type FrameHash = (plan: CapturePlan, frame: Omit<FrameEntry, 'sha256'>, input: CaptureInput) => Promise<string>;
+type MakeManifest = (
+  plan: CapturePlan, captured: readonly CapturedFrame[], media: RecordingMedia, stopReason: StopReason,
+  rasterAt?: (ordinal: number) => Uint8Array<ArrayBuffer>,
+) => Promise<CaptureManifest>;
+type ReplayHashes = (manifest: CaptureManifest) => Promise<string[]>;
+type VideoChunkAdmission = (retained: number, chunk: number) => boolean;
+type FrameEntries = FrameEntry[];
+type InputEvents = CaptureManifest['inputEvents'];
+type FrameRange = CaptureManifest['provenance']['frameRange'];
+type MaybeInput = CaptureInput | undefined;
+type MaybeText = string | undefined;
+
+// The Node 20 data-URL test loads this pure core. Keep declarations
+// JavaScript-compatible except for single-name binding type annotations.
+// BEGIN RECORDER CORE
+export const CAPTURE_FPS = 30;
+export const MAX_DURATION_MS = 30_000;
+export const MAX_FRAMES = CAPTURE_FPS * MAX_DURATION_MS / 1000;
+export const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
+export const CAPTURE_SIZE = { width: 960, height: 540 };
+export const RASTER_SIZE = { width: 96, height: 54 };
+const RASTER_BYTES = RASTER_SIZE.width * RASTER_SIZE.height * 4;
+const MAX_FRAME_INPUT_BYTES = 2048;
+export const CAPTURE_BADGE = 'SIMULATED_PHYSICS_MODEL';
+const FORMAT = 'invention-lab/recording/1';
+const encoder = new TextEncoder();
+
+const copyPose: CopyPose = camera => {
   const { position, target, up } = camera;
   if ([position, target, up].some(vector => vector.length !== 3 || !vector.every(Number.isFinite))) {
     throw new RangeError('Camera pose must contain finite three-dimensional vectors');
   }
   return { position: [...position], target: [...target], up: [...up] };
-}
+};
 
-export function createCapturePlan({
+export const createCapturePlan: CreatePlan = ({
   workspace, camera, mode, seed, durationMs = MAX_DURATION_MS,
-}: {
-  workspace: Workspace;
-  camera: CameraPose;
-  mode: CaptureMode;
-  seed: number;
-  durationMs?: number;
-}): CapturePlan {
+}) => {
   if (!Number.isFinite(durationMs) || durationMs < 1000 / CAPTURE_FPS || durationMs > MAX_DURATION_MS) {
     throw new RangeError('Recording duration must be between one frame and 30 seconds');
   }
@@ -131,9 +148,9 @@ export function createCapturePlan({
     }
   }
   return { workspace, mode, seed, fps: CAPTURE_FPS, durationMs, frameBudget, keyframes };
-}
+};
 
-export function cameraAt(plan: CapturePlan, frame: number): CameraPose {
+export const cameraAt: ReadCamera = (plan, frame) => {
   const after = plan.keyframes.findIndex(keyframe => keyframe.frame >= frame);
   if (after === 0) return plan.keyframes[0].camera;
   if (after < 0) return plan.keyframes[plan.keyframes.length - 1].camera;
@@ -148,49 +165,43 @@ export function cameraAt(plan: CapturePlan, frame: number): CameraPose {
     a[1] + (b[1] - a[1]) * eased,
     a[2] + (b[2] - a[2]) * eased,
   ] };
-}
+};
 
 /** Choose the next due tick after a real render. A scheduling gap stays a gap. */
-export function nextCaptureFrame(plan: CapturePlan, elapsedMs: number, previous: number): number | null {
+export const nextCaptureFrame: NextFrame = (plan, elapsedMs, previous) => {
   if (!Number.isFinite(elapsedMs) || elapsedMs < 0 || elapsedMs >= plan.durationMs) return null;
   const frame = Math.floor(elapsedMs * plan.fps / 1000);
   return frame > previous && frame < plan.frameBudget ? frame : null;
-}
+};
 
-function canonicalJson(value: unknown): string {
+const canonicalJson: CanonicalJson = value => {
   if (value === null || typeof value === 'string' || typeof value === 'boolean'
     || (typeof value === 'number' && Number.isFinite(value))) return JSON.stringify(value);
   if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
   if (typeof value !== 'object' || value === null) throw new TypeError('Invalid frame metadata');
-  const record = value as Record<string, unknown>;
-  return '{' + Object.keys(record).sort().map(key => JSON.stringify(key) + ':' + canonicalJson(record[key])).join(',') + '}';
-}
+  const entries = Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  return '{' + entries.map(([key, item]) => JSON.stringify(key) + ':' + canonicalJson(item)).join(',') + '}';
+};
 
-async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+const sha256: HashBytes = async bytes => {
   const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-}
+};
 
-function frameHash(plan: CapturePlan, frame: Omit<FrameEntry, 'sha256'>, input: CaptureInput): Promise<string> {
+const frameHash: FrameHash = (plan, frame, input) => {
   return sha256(encoder.encode(canonicalJson({
     format: FORMAT, badge: CAPTURE_BADGE, workspace: plan.workspace, mode: plan.mode, seed: plan.seed, frame, input,
   })));
-}
+};
 
-export async function makeCaptureManifest(
-  plan: CapturePlan,
-  captured: readonly CapturedFrame[],
-  media: RecordingMedia,
-  stopReason: StopReason,
-  rasterAt?: (ordinal: number) => Uint8Array<ArrayBuffer>,
-): Promise<CaptureManifest> {
+export const makeCaptureManifest: MakeManifest = async (plan, captured, media, stopReason, rasterAt) => {
   if (captured.length < 1 || captured.length > plan.frameBudget || captured.length > MAX_FRAMES) {
     throw new RangeError('Capture has no frames or exceeds the frame budget');
   }
-  const frames: FrameEntry[] = [];
-  const inputEvents: CaptureManifest['inputEvents'] = [];
+  const frames: FrameEntries = [];
+  const inputEvents: InputEvents = [];
   let previous = -1;
-  let lastInput: string | undefined;
+  let lastInput: MaybeText = undefined;
   for (const [ordinal, capturedFrame] of captured.entries()) {
     const { index, camera, input, telemetry } = capturedFrame;
     if (!Number.isInteger(index) || index <= previous || index >= plan.frameBudget) {
@@ -210,7 +221,7 @@ export async function makeCaptureManifest(
     };
     frames.push({ ...frame, sha256: await frameHash(plan, frame, input) });
   }
-  const frameRange = [frames[0].index, previous] as const;
+  const frameRange: FrameRange = [frames[0].index, previous];
   const frameSha256 = frames.map(frame => frame.sha256);
   const captureSha256 = await sha256(encoder.encode(canonicalJson({ plan, frameRange, frameSha256 })));
   return {
@@ -220,12 +231,12 @@ export async function makeCaptureManifest(
     skippedTicks: (stopReason === 'duration' ? plan.frameBudget : previous + 1) - frames.length,
     inputEvents, frames,
   };
-}
+};
 
 /** Replay the exported input changes against the recorded camera/telemetry and raster digests. */
-export async function replayFrameHashes(manifest: CaptureManifest): Promise<string[]> {
-  const result: string[] = [];
-  let input: CaptureInput | undefined;
+export const replayFrameHashes: ReplayHashes = async manifest => {
+  const result = [];
+  let input: MaybeInput = undefined;
   let nextEvent = 0;
   for (const { sha256: _recorded, ...frame } of manifest.frames) {
     const event = manifest.inputEvents[nextEvent];
@@ -238,7 +249,13 @@ export async function replayFrameHashes(manifest: CaptureManifest): Promise<stri
   }
   if (nextEvent !== manifest.inputEvents.length) throw new RangeError('Capture has unmatched input events');
   return result;
-}
+};
+
+export const admitsVideoChunk: VideoChunkAdmission = (retained, chunk) =>
+  Number.isSafeInteger(retained) && retained >= 0
+  && Number.isSafeInteger(chunk) && chunk >= 0
+  && chunk <= MAX_VIDEO_BYTES - retained;
+// END RECORDER CORE
 
 type VideoSink = ReturnType<typeof startVideoSink>;
 
@@ -287,7 +304,7 @@ function startVideoSink(canvas: HTMLCanvasElement) {
         recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 2_500_000 });
         recorder.ondataavailable = ({ data }) => {
           if (stopped || !data.size) return;
-          if (bytes + data.size > MAX_VIDEO_BYTES) {
+          if (!admitsVideoChunk(bytes, data.size)) {
             discard('WebM reached the 24 MiB capture budget');
             return;
           }

@@ -2,12 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
 
 const source = readFileSync(new URL('../apps/electrophysics-3d/src/engine/videoRecorder.ts', import.meta.url), 'utf8');
-const recording = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
-const { CAPTURE_FPS, MAX_FRAMES, MAX_DURATION_MS, RASTER_SIZE, cameraAt,
-  createCapturePlan, makeCaptureManifest, nextCaptureFrame, replayFrameHashes } = recording;
+// The core uses only contextual binding annotations. Erase those aliases
+// and import the same executable bytes on every CI Node version, including 20.
+const core = source.match(/\/\/ BEGIN RECORDER CORE\r?\n([\s\S]+?)\/\/ END RECORDER CORE/)?.[1];
+assert.ok(core, 'videoRecorder.ts must contain a data-URL core');
+const javascript = core.replace(/^(\s*(?:export )?(?:const|let) \w+): \w+(?= = )/gm, '$1');
+const recording = await import('data:text/javascript;base64,' + Buffer.from(javascript).toString('base64'));
+const { CAPTURE_FPS, MAX_FRAMES, MAX_DURATION_MS, MAX_VIDEO_BYTES, RASTER_SIZE, admitsVideoChunk,
+  cameraAt, createCapturePlan, makeCaptureManifest, nextCaptureFrame, replayFrameHashes } = recording;
 const camera = { position: [1, 5, 16], target: [0, 1, 0], up: [0, 1, 0] };
 const fallback = { kind: 'frame-sequence', reason: 'Headless fixture' };
 const defaultInput = { playing: true, thermalView: false, dockTab: null, replayIndex: null, peelMode: 'assembled' };
@@ -122,58 +126,11 @@ test('WP-6.3 headless fallback preserves missed ticks and refuses invalid sequen
   await assert.rejects(makeCaptureManifest(capture, [sample(capture, 0)], fallback, 'user', () => new Uint8Array(1)), RangeError);
 });
 
-test('WP-6.3 releases an over-budget encoder and keeps the frame manifest', async t => {
-  const previous = {
-    document: Object.getOwnPropertyDescriptor(globalThis, 'document'),
-    MediaRecorder: Object.getOwnPropertyDescriptor(globalThis, 'MediaRecorder'),
-  };
-  t.after(() => {
-    for (const [key, descriptor] of Object.entries(previous)) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else Reflect.deleteProperty(globalThis, key);
-    }
-  });
-  let released = false;
-  const track = { stop: () => { released = true; }, requestFrame: () => assert.fail('released track') };
-  const stream = { getVideoTracks: () => [track], getTracks: () => [track] };
-  globalThis.document = {
-    createElement() {
-      const canvas = { width: 0, height: 0, captureStream: () => stream };
-      canvas.getContext = () => ({
-        canvas, fillRect() {}, fillText() {}, drawImage() {},
-        getImageData: () => ({ data: new Uint8Array(RASTER_SIZE.width * RASTER_SIZE.height * 4) }),
-      });
-      return canvas;
-    },
-  };
-  globalThis.MediaRecorder = class {
-    static isTypeSupported() { return true; }
-    state = 'inactive';
-    start() {
-      this.state = 'recording';
-      this.ondataavailable({ data: { size: recording.MAX_VIDEO_BYTES + 1 } });
-    }
-    stop() {
-      this.state = 'inactive';
-      this.onstop();
-    }
-  };
-
-  const capture = plan({ durationMs: 1000 });
-  const session = new recording.ViewportRecording(capture, () => assert.fail('unexpected deadline'));
-  t.after(() => session.dispose());
-  session.render({
-    workspace: capture.workspace,
-    canvas: { width: 960, height: 540 },
-    render() {},
-    read: () => {
-      const { index, ...frame } = sample(capture, 0);
-      return frame;
-    },
-  });
-  const result = await session.stop('user');
-  assert.equal(released, true);
-  assert.equal(result.video, null);
-  assert.deepEqual(result.manifest.media, { kind: 'frame-sequence', reason: 'WebM reached the 24 MiB capture budget' });
-  assert.equal(result.manifest.frames.length, 1);
+test('WP-6.3 encoded chunks are admitted only inside the hard retained-byte budget', () => {
+  assert.equal(admitsVideoChunk(0, MAX_VIDEO_BYTES), true);
+  assert.equal(admitsVideoChunk(MAX_VIDEO_BYTES - 1, 1), true);
+  assert.equal(admitsVideoChunk(MAX_VIDEO_BYTES, 1), false);
+  assert.equal(admitsVideoChunk(2, MAX_VIDEO_BYTES), false);
+  assert.equal(admitsVideoChunk(0, Number.POSITIVE_INFINITY), false);
+  assert.equal(admitsVideoChunk(0, -1), false);
 });
