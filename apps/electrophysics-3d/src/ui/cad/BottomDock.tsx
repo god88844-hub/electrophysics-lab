@@ -3,6 +3,7 @@ import { store } from '../../state/store.js';
 import { physicsClient, type ForensicReport, type PhysicsSnapshot, type ProposedFix } from '../../physics/physicsClient.js';
 import { worldRef } from '../../worldRef.js';
 import { BlochPanel } from './BlochPanel.js';
+import { BundleExporter } from './BundleExporter.js';
 import { flashToast } from '../../state/store.js';
 import { SolverScope } from './SolverScope.js';
 import { LogicAnalyzer } from './LogicAnalyzer.js';
@@ -159,7 +160,7 @@ export function BottomDock(): React.ReactElement | null {
     const timer = setInterval(() => sampleFrameStore(telemetry), TELEMETRY_SAMPLE_MS);
     return () => clearInterval(timer);
   }, [open, telemetry]);
-  if (!open) return null;
+  if (!open) return <BundleExporter state={state} compact />;
   const report = forensic?.report as ForensicReport | undefined;
   const replay = (forensic?.replay ?? []) as Array<PhysicsSnapshot>;
   const fix = forensic?.fix as ProposedFix | null;
@@ -224,6 +225,7 @@ export function BottomDock(): React.ReactElement | null {
             Logic Analyzer
           </button>
         </div>
+        <BundleExporter state={state} />
         <button
           onClick={() => store.set({ dockOpen: false })}
           title="Close dock (Esc)"
