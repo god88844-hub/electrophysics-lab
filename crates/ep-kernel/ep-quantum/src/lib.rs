@@ -25,15 +25,25 @@
 //! (truncated) — parity with the exact density-matrix solver asserted in
 //! `tests/mps_oracle.rs` (≤ 1e-9 on 6-qubit seeded random circuits).
 //!
+//! WP-5.5 adds the OpenQASM 2.0/3.0 subset parser → QHAL compiler +
+//! executor ([`qasm`]) and the hybrid classical-quantum control coupling
+//! ([`hybrid`]): an ep-chip RV32IM control program drives conditional
+//! gate/pulse feedback from mid-circuit measurements, with controller
+//! latency decayed into T1/T2 idle decoherence and the microwave heat load
+//! checked against the 04-JSON 15 mK cooling budget — all badged
+//! `SIMULATED_NOISY_QUANTUM` (asserted in `tests/qasm_hybrid.rs`).
+//!
 //! No unsafe; no I/O; wasm32-compatible.
 
 #![forbid(unsafe_code)]
 
 pub mod admission;
 pub mod devices;
+pub mod hybrid;
 pub mod lindblad;
 pub mod mps;
 pub mod optimizer;
+pub mod qasm;
 pub mod qec;
 
 pub use admission::{admit_offline, dense_working_set_bytes, offline_max_qubits};
