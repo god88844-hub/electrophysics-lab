@@ -26,6 +26,7 @@
 //! propagates, bus contention warns (last-write-wins by event order), and
 //! oscillation aborts with the oracle's explicit event-storm error.
 
+pub mod alu;
 pub mod characterize;
 pub mod components;
 pub mod engine;
