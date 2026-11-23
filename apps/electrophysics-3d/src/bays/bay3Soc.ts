@@ -3,7 +3,25 @@ import { MAT } from './materials.js';
 import { makeTextSprite } from '../engine/labels.js';
 import { REFERENCE } from '../data/reference.js';
 import { createLiveRunner, packetRouteFor, BUS_ROUTES, type SocLiveRunner, type SocLiveEvent } from './soc/liveExec.js';
+import type { CellOperatingPoint, TileTelemetry } from './soc/tileDrilldown.js';
 import * as chipEngine from '@chip/index.mjs';
+
+/**
+ * WP-4.7 — a tile picked by direct 3D raycast in the SoC Architect view.
+ * `chipletId` carries the solver tile zone (cpu/tpu/gpu/mem/npu) whose live
+ * telemetry feeds the Layer-1 stress drill-down.
+ */
+export interface TileSelection {
+  /** `'cpu' | 'tpu' | 'gpu' | 'mem' | 'npu' | 'tpu-tile-<r>-<c>'`. */
+  tileId: string;
+  /** Human label shown in the inspector stress panel. */
+  label: string;
+  kind: 'chiplet' | 'tpu-tile';
+  /** The die zone supplying solver telemetry (temp/power). */
+  chipletId: string;
+  /** Instance index 0..63 for TPU MAC tiles. */
+  instanceIndex?: number;
+}
 
 export interface SocTile {
   id: string;
@@ -144,6 +162,14 @@ export class Bay3Soc {
     thermalPlane.position.y = 0.295;
     g.add(thermalPlane);
     g.position.set(pos[0], pos[1], pos[2]);
+    // WP-4.7 — every mesh under this group resolves to the tile on raycast.
+    g.name = `tile-${id}`;
+    // The render camera rides through this material every frame — capture
+    // it for the tile pick raycast (no App/world coupling needed).
+    thermalMat.onBeforeRender = (renderer, _scene, camera) => {
+      this.pickCamera = camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
+      this.ensurePointerHook(renderer.domElement);
+    };
     this.group.add(g);
     const tile: SocTile = { id, name, group: g, thermalPlane, thermalMat, idlePowerW, powerW: idlePowerW, tempC: 45 };
     this.tiles.push(tile);
@@ -189,14 +215,13 @@ export class Bay3Soc {
     if (!tpu) return;
     const mat = new THREE.MeshStandardMaterial({ color: 0x4a5464, emissive: 0x000000, metalness: 0.5, roughness: 0.35 });
     this.tpuTiles = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.06, 0.22), mat, 64);
+    this.tpuTiles.name = 'tpu-tile-matrix';
     this.tpuTileActivity = new Array(64).fill(0);
     const dummy = new THREE.Object3D();
-    const originX = tpu.group.position.x;
-    const originZ = tpu.group.position.z;
     let i = 0;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
-        dummy.position.set(originX - 0.77 + c * 0.22, 0.34, originZ - 0.77 + r * 0.22);
+        dummy.position.set(-0.77 + c * 0.22, 0.34, -0.77 + r * 0.22);
         dummy.updateMatrix();
         this.tpuTiles.setMatrixAt(i, dummy.matrix);
         this.tpuTiles.setColorAt(i, new THREE.Color(0x4a5464));
@@ -204,7 +229,7 @@ export class Bay3Soc {
       }
     }
     this.tpuTiles.instanceColor!.needsUpdate = true;
-    this.group.add(this.tpuTiles);
+    tpu.group.add(this.tpuTiles);
   }
 
   /** Per-tile switching activity 0..1 (64 entries) → emissive heat color. */
@@ -249,6 +274,7 @@ export class Bay3Soc {
   /** Optional multi-radix NPU swap. */
   setNpuAttached(attached: boolean): void {
     if (this.npuTile) this.npuTile.group.visible = attached;
+    if (!attached && this.selected?.tileId === 'npu') this.clearSelection();
   }
 
   /** Dissectible package: lid + chiplets float apart. */
@@ -405,7 +431,220 @@ export class Bay3Soc {
     }
   }
 
+  // ------------------------------------------------------------------
+  // WP-4.7 — direct 3D raycast tile selection + drill-down handoff.
+  // The bay owns its own pointer hook + raycaster + the live render camera
+  // (captured via the tile material's onBeforeRender — zero coupling into
+  // App.tsx / world.ts). Selecting a tile NEVER pauses WP-4.5's live
+  // execution packets or mutates solver state — it only places a
+  // non-destructive highlight marker and notifies the inspector.
+  // ------------------------------------------------------------------
+
+  /** The camera captured from this frame's render (tile materials render
+   * only while the SoC workspace is visible, so the capture is always the
+   * active camera). */
+  private pickCamera?: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  private pickRaycaster = new THREE.Raycaster();
+  private selectionMarker?: THREE.LineSegments;
+  private selected: TileSelection | null = null;
+  private pickCanvas?: HTMLCanvasElement;
+
+  private ensurePointerHook(canvas: HTMLCanvasElement): void {
+    if (this.pickCanvas === canvas) return;
+    this.pickCanvas = canvas;
+    let down: { id: number; x: number; y: number } | null = null;
+    canvas.addEventListener('pointerdown', (event) => {
+      if (this.group.visible && event.button === 0) down = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    }, { passive: true });
+    canvas.addEventListener(
+      'pointerup',
+      (e: PointerEvent) => {
+        const start = down;
+        down = null;
+        if (!this.group.visible || !this.pickCamera || start?.id !== e.pointerId || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) return;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+        this.pickRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.pickCamera);
+        // Whole-bay raycast: chiplet groups + the 64-tile TPU matrix. The
+        // package lid is VISUALLY translucent (the tile layout reads through
+        // in the assembled state), so the pick resolves THROUGH non-tile
+        // occluders (lid, bus tubes, packets) to the first tile-bearing hit —
+        // the interaction matches the visual affordance (Law 1).
+        const targets: THREE.Object3D[] = this.tiles.filter((tile) => tile.group.visible).map((tile) => tile.group);
+        const hits = this.pickRaycaster.intersectObjects(targets, true);
+        for (const hit of hits) {
+          if (hit.object === this.tpuTiles && hit.instanceId !== undefined) {
+            const index = hit.instanceId;
+            const row = Math.floor(index / 8);
+            const column = index % 8;
+            this.setSelected({ tileId: `tpu-tile-${row}-${column}`, label: `TPU MAC tile (r${row}, c${column})`,
+              kind: 'tpu-tile', chipletId: 'tpu', instanceIndex: index });
+            return;
+          }
+          // Chiplet tile: resolve the nearest named 'tile-<id>' ancestor.
+          let p: THREE.Object3D | null = hit.object;
+          while (p) {
+            const n = p.name || '';
+            if (n.startsWith('tile-')) {
+              const id = n.slice(5);
+              const tile = this.tiles.find((t) => t.id === id);
+              if (tile) {
+                this.setSelected({
+                  tileId: id,
+                  label: tile.name,
+                  kind: 'chiplet',
+                  chipletId: id,
+                });
+                return;
+              }
+            }
+            p = p.parent;
+          }
+        }
+      },
+      { passive: true }
+    );
+  }
+
+  /** Place (or move) the non-destructive cyan highlight marker. */
+  private updateSelectionMarker(): void {
+    if (!this.selected) return;
+    if (!this.selectionMarker) {
+      const box = new THREE.BoxGeometry(1, 1, 1);
+      this.selectionMarker = new THREE.LineSegments(
+        new THREE.EdgesGeometry(box),
+        new THREE.LineBasicMaterial({ color: 0x2fd0ff, transparent: true, opacity: 0.95 })
+      );
+      box.dispose();
+      this.selectionMarker.name = 'wp47-selection-marker';
+      this.selectionMarker.frustumCulled = false;
+      this.group.add(this.selectionMarker);
+    }
+    const anchor = this.selectionAnchorOf(this.selected);
+    if (!anchor) return;
+    this.selectionMarker.position.set(anchor.x, anchor.y, anchor.z);
+    this.selectionMarker.scale.set(anchor.w, anchor.h, anchor.d);
+    this.selectionMarker.visible = true;
+  }
+
+  /** World-space anchor + extent of a selection (tile bbox or MAC instance). */
+  private selectionAnchorOf(sel: TileSelection): { x: number; y: number; z: number; w: number; h: number; d: number } | null {
+    if (sel.kind === 'tpu-tile') {
+      if (!this.tpuTiles || sel.instanceIndex === undefined) return null;
+      const matrix = new THREE.Matrix4();
+      this.tpuTiles.getMatrixAt(sel.instanceIndex, matrix);
+      const center = this.group.worldToLocal(this.tpuTiles.localToWorld(new THREE.Vector3().setFromMatrixPosition(matrix)));
+      return { x: center.x, y: center.y, z: center.z, w: 0.26, h: 0.10, d: 0.26 };
+    }
+    const tile = this.tiles.find((t) => t.id === sel.tileId);
+    if (!tile) return null;
+    const box = new THREE.Box3().setFromObject(tile.group);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    return { x: center.x, y: center.y, z: center.z, w: size.x * 1.04, h: size.y * 1.08, d: size.z * 1.04 };
+  }
+
+  /** Select a tile (raycast path or programmatic) + notify the inspector. */
+  setSelected(sel: TileSelection): void {
+    this.selected = sel;
+    this.updateSelectionMarker();
+  }
+
+  /** The current tile selection (null = nothing picked). */
+  getSelection(): TileSelection | null {
+    return this.selected;
+  }
+
+  /** Clear the selection + hide the marker. */
+  clearSelection(): void {
+    this.selected = null;
+    if (this.selectionMarker) this.selectionMarker.visible = false;
+  }
+
+  /** The worker publishes Fourier temperatures and acknowledges the power
+   * scale it actually applies to each zone. No idle readout is used as live power. */
+  drilldownTelemetry(snapshot: {vdd: number; temps: unknown}, powerScale: number): TileTelemetry | null {
+    if (!this.selected || !Number.isFinite(powerScale) || powerScale < 0) return null;
+    const sel = this.selected;
+    const tile = this.tiles.find((t) => t.id === sel.chipletId);
+    const temperatures = (snapshot.temps as {tiles?: Record<string, number>} | undefined)?.tiles;
+    const junctionTempC = temperatures?.[sel.chipletId];
+    if (!tile || junctionTempC === undefined || !Number.isFinite(junctionTempC)) return null;
+    return {
+      tileId: sel.tileId,
+      tileName: sel.label,
+      powerW: tile.idlePowerW * powerScale,
+      junctionTempC,
+      vddV: snapshot.vdd,
+      activity: sel.instanceIndex === undefined ? null : this.tpuTileActivity[sel.instanceIndex],
+      idlePowerW: tile.idlePowerW,
+    };
+  }
+
+  /** Bring a copy of the selected CAD geometry into the existing bench view.
+   * The original polygon stage, Layer-1 bench and Bay 3 runner stay intact. */
+  openRepresentativeCell(point: CellOperatingPoint, cell: THREE.Group, silicon: THREE.Group): void {
+    silicon.getObjectByName('wp47-representative-cell')?.removeFromParent();
+    const inspection = new THREE.Group();
+    inspection.name = 'wp47-representative-cell';
+    inspection.userData.operatingPoint = point;
+    const preview = cell.clone(true);
+    preview.position.set(0, 0, 0);
+    const bounds = new THREE.Box3().setFromObject(preview);
+    const span = bounds.getSize(new THREE.Vector3());
+    const center = bounds.getCenter(new THREE.Vector3());
+    const scale = 2.6 / Math.max(span.x, span.y, span.z);
+    preview.scale.setScalar(scale);
+    preview.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+    const load = point.loadOhm === null ? 'open circuit' : `${(point.loadOhm / 1000).toFixed(1)} kΩ`;
+    const inspectionName = `${point.cell} · ${point.vddV.toFixed(2)} V · ${point.junctionTempC.toFixed(1)} °C · ${load}`;
+    preview.traverse((object) => { object.name = inspectionName; });
+    inspection.add(preview);
+    inspection.position.set(-2.5, 0, 2.4);
+    silicon.add(inspection);
+  }
+
+  /**
+   * Project a tile's world anchor to client pixels through the captured
+   * render camera — the Playwright suite clicks EXACTLY where the real
+   * raycast resolves (no synthetic selection path in e2e).
+   */
+  tileScreenAnchor(tileId: string): { x: number; y: number; visible: boolean } | null {
+    if (typeof document === 'undefined' || !this.pickCamera) return null;
+    const canvas = this.pickCanvas;
+    if (!canvas) return null;
+    let anchor: { x: number; y: number; z: number } | null = null;
+    const m = /^tpu-tile-(\d+)-(\d+)$/.exec(tileId);
+    if (m) {
+      if (!this.tpuTiles) return null;
+      const row = Number(m[1]);
+      const column = Number(m[2]);
+      if (row >= 8 || column >= 8) return null;
+      const matrix = new THREE.Matrix4();
+      this.tpuTiles.getMatrixAt(row * 8 + column, matrix);
+      const top = new THREE.Vector3().setFromMatrixPosition(matrix);
+      top.y += 0.03;
+      anchor = this.tpuTiles.localToWorld(top);
+    } else {
+      const tile = this.tiles.find((t) => t.id === tileId);
+      if (!tile) return null;
+      const box = new THREE.Box3().setFromObject(tile.group);
+      const center = box.getCenter(new THREE.Vector3());
+      anchor = { x: center.x, y: box.max.y, z: center.z };
+    }
+    const rect = canvas.getBoundingClientRect();
+    const v = new THREE.Vector3(anchor.x, anchor.y, anchor.z).project(this.pickCamera);
+    return {
+      x: rect.left + ((v.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - v.y) / 2) * rect.height,
+      visible: v.z < 1 && v.x > -1 && v.x < 1 && v.y > -1 && v.y < 1,
+    };
+  }
+
   update(dt: number): void {
+    const previousExplode = this.explodeT;
     const k = 1 - Math.exp(-5 * dt);
     this.explodeT += (this.explodeGoal - this.explodeT) * k;
     const lid = this.group.getObjectByName('packageLid');
@@ -423,6 +662,8 @@ export class Bay3Soc {
       const z = this.npuTile && g === this.npuTile.group ? 1.55 : base[1];
       g.position.set(x + ox * this.explodeT, 0.79 + this.explodeT * 0.5 * ((i % 2) + 1), z + oz * this.explodeT);
     });
+
+    if (this.selected && Math.abs(previousExplode - this.explodeT) > 1e-4) this.updateSelectionMarker();
 
     // WP-4.5 — live program → packets. The runner executes instructions only
     // while playing; halted/paused produce ZERO events, so the packet system
