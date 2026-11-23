@@ -127,7 +127,9 @@ dependencies = [
 name = "ep-quantum"
 version = "0.1.0"
 dependencies = [
+ "ep-chip",
  "ep-core",
+ "ep-thermal",
  "serde",
  "serde_json",
 ]
