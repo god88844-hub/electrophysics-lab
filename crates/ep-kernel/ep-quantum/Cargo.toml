@@ -6,6 +6,8 @@ license.workspace = true
 description = "Lindblad/Kraus density-matrix kernel (WP-5.1): operator-splitting integrator, DRAG/ZZ/leakage, SOI MZI, Rydberg blockade — admission-gated via ep-core, parity-oracled against packages/quantum-engine"
 
 [dependencies]
+ep-chip = { path = "../ep-chip" }
 ep-core = { path = "../ep-core" }
+ep-thermal = { path = "../ep-thermal" }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -28,6 +28,7 @@ import { historyManager, makePlaceComponent, makeDeleteComponent, makeRouteWire,
 import { InspectorPanels } from './ui/InspectorPanels.js';
 import { BottomDock } from './ui/cad/BottomDock.js';
 import { ViewCube } from './ui/cad/ViewCube.js';
+import { RecorderControl, type RecorderRenderHook } from './ui/cad/RecorderControl.js';
 import { AdmissionBanner } from './ui/cad/AdmissionBanner.js';
 import { admitAndSurface, ADMISSION_BUDGETS, admissionSurfaceApi } from './ui/cad/admissionSurface.mjs';
 import { createTelemetryHistory, sampleFrameStore, TELEMETRY_SAMPLE_MS } from './ui/cad/telemetryScope.mjs';
@@ -86,6 +87,7 @@ export function App() {
   useWP16Instruments();
   const mountRef = useRef<HTMLDivElement>(null);
   const bundleRef = useRef<{ renderer: RendererBundle; rig: CameraRig; world: LabWorld } | null>(null);
+  const recorderRender = useRef<RecorderRenderHook | null>(null);
   const state = useLabState();
   const pointerNdc = useRef({ x: -2, y: -2, clientX: 0, clientY: 0 });
   const suppressHistoryRef = useRef(false);
@@ -339,7 +341,9 @@ export function App() {
       world.update(dt);
       world.bay1.setPulseLevel(world.bay1.pulseBeamLevel * Math.exp(-dt * 6));
       governor(dt);
-      renderer.render(dt);
+      const capture = recorderRender.current;
+      if (capture) capture(renderer, rig, dt);
+      else renderer.render(dt);
       const p = pointerNdc.current;
       if (p.x > -1.5) {
         const hit = world.pickHover(p.x, p.y, renderer.activeCamera);
@@ -701,6 +705,7 @@ export function App() {
         <span style={{ width: 1, height: 22, background: '#3a4250' }} />
         <button style={toolBtn} onClick={() => { void saveProjectAction(); }} title="Save project (.eplab) — SHA-256 sealed">Save</button>
         <button style={toolBtn} onClick={() => { void openProjectAction(); }} title="Open project (.eplab) — validated fail-closed">Open</button>
+        <RecorderControl viewport={bundleRef} renderHook={recorderRender} />
         {state.toast && (
           <span
             data-testid="project-toast"

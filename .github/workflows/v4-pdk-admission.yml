@@ -1,0 +1,114 @@
+# WP-3.6 — Statistical PDK & Native EDA Admission Gate (fail-closed, Level-1
+# honest). The gate verifies the pinned SkyWater/open_pdks provenance, the
+# strict 1.95 V SKY130 core SOA ceiling and all 4 verified SKY130A Q4
+# candidate SPICE decks, then emits the machine-readable admission record.
+#
+# WITHOUT an authenticated statistical PDK input the record is the honest
+# Level-1 INSUFFICIENT_MODEL_DATA / Level-2 UNQUALIFIED_NO_GO refusal — never
+# a silent downgrade, never a fabricated 6400-trial yield claim. With a
+# valid statistical PDK + native Magic/Netgen/ngspice DRC=0 / LVS
+# unique-port-match / PEX outputs supplied as a test fixture, the gate
+# validates the full admission schema cleanly (STATISTICAL_PDK_ADMITTED).
+#
+# Artifacts are written to $RUNNER_TEMP ONLY — the tracked tree stays 100 %
+# clean for Phase 30/39. The Phase 0 stage-m-native-eda workflow is untouched.
+name: v4 PDK & native EDA admission gate (fail-closed Level-1 honest)
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  pdk-admission-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Unit suite (pinned provenance, refusal ladder, tamper refusal, full-admission schema)
+        run: node --test tests/wp36-pdk-admission.test.mjs
+      - name: Default evidence — pinned provenance verified, Level-1 refusal (honest, machine-readable)
+        env:
+          RECORD: ${{ runner.temp }}/wp36-oracles/pdk-admission-record.json
+        run: |
+          mkdir -p "$(dirname "$RECORD")"
+          node scripts/v4-oracles/pdk-admission-gate.mjs > "$RECORD"
+          python3 - "$RECORD" <<'PY'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          assert d['format'] == 'invention-lab/wp36-pdk-admission/1'
+          assert d['provenance'] == 'SIMULATED_ARCHITECTURAL_MODEL'
+          assert d['admitted'] is False
+          assert d['level'] == 'INSUFFICIENT_MODEL_DATA'
+          assert d['level2'] == 'UNQUALIFIED_NO_GO'
+          pinned = d['checked']['pinnedProvenance']
+          assert pinned['sky130Commit'] == 'f62031a1be9aefe902d6d54cddd6f59b57627436'
+          assert pinned['openPdksCommit'] == '0c1f82326278a0871f0a1fc4bdacf94c88e78e4d'
+          assert pinned['soaCeilingV'] == 1.95
+          assert pinned['deckIds'] == ['q4_thresh_det', 'q4_inv', 'q4_mux4', 'q4_half_adder']
+          print('WP36 default record OK: pinned provenance verified, Level-1 refusal is honest and machine-readable')
+          PY
+      - name: Full-admission schema check (statistical PDK fixture + native DRC=0/LVS-unique/PEX outputs)
+        env:
+          RECORD: ${{ runner.temp }}/wp36-oracles/pdk-admission-record-full.json
+        run: |
+          python3 - "$RECORD" <<'PY'
+          import json, hashlib, sys
+          library = 'SKY130A processed statistical library bytes (CI fixture)'
+          section = '\n'.join(['* processed mc section', '.param mc_mm_switch=1', '.param mc_pr_switch=1'])
+          request = {
+              'q4Payload': open('data/reference-library/03_multiradix_logic_baselines.json', encoding='utf-8').read(),
+              'thresholds': json.load(open('benchmarks/stage-m-qualification-thresholds.json', encoding='utf-8')),
+              'nativeToolsAvailable': True,
+              'statisticalPdk': {
+                  'libraryBytes': library,
+                  'sectionName': 'mc',
+                  'sectionBody': section,
+                  'manifest': {
+                      'pdkLibrarySha256': hashlib.sha256(library.encode()).hexdigest(),
+                      'level2': 'UNQUALIFIED_NO_GO',
+                      'soaLimitV': 1.95,
+                  },
+              },
+              'nativeOutputs': {
+                  'magic': {'tool': 'magic', 'drcErrors': 0},
+                  'netgen': {'tool': 'netgen', 'lvsMismatches': 0, 'uniquePortMatch': True},
+                  'pex': {'tool': 'magic', 'extracted': True},
+                  'ngspice': {'tool': 'ngspice', 'decks': {d: {'passed': True} for d in
+                              ['q4_thresh_det', 'q4_inv', 'q4_mux4', 'q4_half_adder']}},
+              },
+          }
+          path = sys.argv[1]
+          json.dump(request, open(path + '.request.json', 'w'), indent=1)
+          print('admission request written')
+          PY
+          node scripts/v4-oracles/pdk-admission-gate.mjs "$RECORD.request.json" > "$RECORD"
+          python3 - "$RECORD" <<'PY'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          assert d['admitted'] is True, d['reasons']
+          assert d['level'] == 'STATISTICAL_PDK_ADMITTED'
+          assert d['yieldClaimPermitted']['totalNativeTrials'] == 6400
+          assert d['checked']['statisticalPdk']['switches'] == {'mc_mm_switch': 1, 'mc_pr_switch': 1}
+          print('WP36 full-admission schema check OK: STATISTICAL_PDK_ADMITTED with the 6400-trial yield contract')
+          PY
+      - name: Publish WP-3.6 admission verdict
+        if: always()
+        run: |
+          {
+            echo "## WP-3.6 PDK & native EDA admission gate"
+            echo "- default: pinned SkyWater f62031a1… + open_pdks 0c1f8232… + 1.95 V SOA + 4 Q4 decks verified; Level-1 INSUFFICIENT_MODEL_DATA refusal is honest (no statistical PDK on this runner)"
+            echo "- fixture: STATISTICAL_PDK_ADMITTED validates the full admission schema (6400-trial yield contract)"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp36-pdk-admission-records
+          path: ${{ runner.temp }}/wp36-oracles/
+          if-no-files-found: error

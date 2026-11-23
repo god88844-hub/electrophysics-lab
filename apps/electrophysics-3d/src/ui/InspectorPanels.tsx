@@ -7,9 +7,12 @@ import type { LabState } from '../state/store.js';
 import { Q4_PRIMITIVES, REFERENCE, TRANSMON } from '../data/reference.js';
 import { physicsClient } from '../physics/physicsClient.js';
 import { PROGRAMS } from '../bays/soc/liveExec.js';
+import { computeTileStress, constantsFromReference, solveRepresentativeCell } from '../bays/soc/tileDrilldown.js';
+import { buildForensicReport, createNetlist, evaluateThresholds, SANDBOX_COMPONENT_TYPES, solveDC } from '../../../../packages/physics-engine/src/index.mjs';
+import type { PhysicsSnapshot } from '../physics/physicsClient.js';
 import { quantumClient, type BreakthroughBundle } from '../physics/quantumClient.js';
 import { worldRef } from '../worldRef.js';
-import { flashToast } from '../state/store.js';
+import { flashToast, store } from '../state/store.js';
 
 const layerVisible: Record<string, boolean> = {};
 const layerOpacity: Record<string, number> = {};
@@ -502,104 +505,10 @@ export function InspectorPanels({ bay, state, dispatch }: BayPanelProps): React.
     );
   }
 
-  
-/**
- * WP-4.5 — SoC live-program runner (Bay 3 inspector section): real RV32IM
- * Assembly / Forth / pre-compiled C-binary programs executing on the
- * packages/chip-engine interpreter (browser execution path, Builder Law 6),
- * with Play / Pause / Step-1-Instruction / Reset controls and live
- * register/PC/stack readouts. Every executed instruction drives the 3D
- * interposer packet flow + per-tile power injection through Bay3Soc's
- * attached runner (badged SIMULATED_ARCHITECTURAL_MODEL).
- */
-const SocLiveRunnerPanel = React.memo(function SocLiveRunnerPanel(): React.ReactElement {
-  (window as unknown as Record<string, number>).__socPanelRenders = ((window as unknown as Record<string, number>).__socPanelRenders ?? 0) + 1;
-  const [, bump] = useState(0);
-  const [kind, setKind] = useState<'asm' | 'forth' | 'cbinary'>('asm');
-  const [playing, setPlaying] = useState(false);
-  const [readout, setReadout] = useState<Record<string, unknown> | null>(null);
-
-  // The runner is OWNED by Bay3Soc (`ensureLiveRunner` — bay-level singleton):
-  // it survives inspector remounts, and Bay3Soc.update ticks it every frame.
-  const runnerOf = () => worldRef.current?.bay3.ensureLiveRunner();
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      (window as unknown as Record<string, number>).__socIntervalTicks = ((window as unknown as Record<string, number>).__socIntervalTicks ?? 0) + 1;
-      const runner = worldRef.current?.bay3.getLiveRunner();
-      if (!runner) return;
-      const st = runner.state() as Record<string, unknown>;
-      // Change-guarded updates: a static DOM lets Playwright click reliably.
-      setReadout((prev) => (JSON.stringify(prev) === JSON.stringify(st) ? prev : st));
-      setPlaying((p) => (p === Boolean(st.running) ? p : Boolean(st.running)));
-    }, 150);
-    return () => clearInterval(timer);
-  }, []);
-
-  const refresh = () => {
-    const st = runnerOf()?.state() as Record<string, unknown> | undefined;
-    if (st) setReadout(st);
-    bump((v) => v + 1);
-  };
-
-  const selectProgram = (k: 'asm' | 'forth' | 'cbinary') => {
-    setKind(k);
-    runnerOf()?.loadProgram(k);
-    refresh();
-  };
-
-  const rv = readout && (readout.pc !== undefined)
-    ? readout
-    : null;
-  const forth = readout && readout.kind === 'forth' ? readout : null;
-
-  return (
-    <div style={sectionStyle}>
-      <div style={labelStyle}>LIVE PROGRAM RUNNER — RV32IM · FORTH · C-BINARY</div>
-      <div style={{ color: '#aeb9c8', fontSize: 10.5, fontFamily: 'monospace', marginBottom: 6 }}>
-        badge: SIMULATED_ARCHITECTURAL_MODEL · executed instructions drive the 3D interposer packets
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%', minWidth: 0 }}>
-        {(['asm', 'forth', 'cbinary'] as const).map((k) => (
-          <button key={k} data-testid={'soc-prog-' + k} style={{ ...btnStyle(kind === k, '#62d0ff'), maxWidth: '100%' }} onClick={() => selectProgram(k)}>
-            {PROGRAMS[k].label}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-        {playing ? (
-          <button data-testid="soc-pause" style={btnStyle(false, '#f0c94f')} onClick={() => { runnerOf()?.pause(); refresh(); }}>❚❚ Pause</button>
-        ) : (
-          <button data-testid="soc-play" style={btnStyle(false, '#8ef0b2')} onClick={() => { runnerOf()?.play(); setPlaying(true); refresh(); }}>▶ Play</button>
-        )}
-        <button data-testid="soc-step" style={btnStyle(false, '#62d0ff')} onClick={() => { runnerOf()?.step(); refresh(); }}>Step 1 inst</button>
-        <button data-testid="soc-reset" style={btnStyle(false, '#ff9d5c')} onClick={() => { runnerOf()?.reset(); setPlaying(false); refresh(); }}>Reset</button>
-      </div>
-      <pre data-testid="soc-source" style={{ margin: '8px 0 0', padding: 8, background: 'rgba(16,22,30,0.8)', borderRadius: 6, color: '#9fc4e8', fontSize: 10, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxWidth: '100%', overflowX: 'hidden' }}>
-        {kind === 'cbinary' ? PROGRAMS.cbinary.cSource.join('\n') : PROGRAMS[kind].source.join('\n')}
-      </pre>
-      {rv && (
-        <div data-testid="soc-readout" style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
-          <div>PC {String(rv.pc)} · cycles {String(rv.cycles)} · retired {String(rv.retired)}{rv.halted ? ' · HALTED' : playing ? ' · RUNNING' : ' · PAUSED'}</div>
-          <div>x5 {String(rv.x5)} · x6 {String(rv.x6)} · x7 {String(rv.x7)}</div>
-          <div>packets {String(rv.packetsEmitted)} · lw {String(rv.stats.loads)} · sw {String(rv.stats.stores)} · alu {String(rv.stats.alu)} · mul {String(rv.stats.mul)}</div>
-        </div>
-      )}
-      {forth && (
-        <div data-testid="soc-readout" style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
-          <div>cycles {String(forth.cycles)} · stack [{(forth.stack as number[]).join(', ')}] · depth {String(forth.stackDepth)}</div>
-          <div>output: [{(forth.output as number[]).join(', ')}]</div>
-          <div>packets {String(forth.packetsEmitted)} · halted {String(Boolean(forth.halted))}</div>
-        </div>
-      )}
-    </div>
-  );
-
-});
-
   if (bay === 3) {
     return (
       <div>
+        <SocTileDrilldownPanel verified={state.integrity.allVerified} />
         <div style={sectionStyle}>
           <div style={labelStyle}>PACKAGE</div>
           <button style={btnStyle(state.npuAttached, '#b08cff')} onClick={() => dispatch({ npuAttached: !state.npuAttached })}>
@@ -657,8 +566,8 @@ const SocLiveRunnerPanel = React.memo(function SocLiveRunnerPanel(): React.React
               for (let i = r * 4; i < r * 4 + 4; i++) for (let j = c * 4; j < c * 4 + 4; j++) sum += Math.abs(C[i]?.[j] ?? 0);
               maxTile = Math.max(maxTile, sum);
               return sum;
-            }).map((v) => v / maxTile);
-            worldRef.current?.bay3.setTpuTileActivity(act);
+            });
+            worldRef.current?.bay3.setTpuTileActivity(act.map((magnitude) => magnitude / maxTile));
             physicsClient.setTilePower(Math.min(180, run.dynamicPowerW * 8));
             worldRef.current?.bay3.setBusActivity([0.9, 0.8, 0.85, 0.7, 0.6]);
             dispatch({ soc: { ...state.soc, result: {
@@ -772,3 +681,236 @@ const SocLiveRunnerPanel = React.memo(function SocLiveRunnerPanel(): React.React
     </div>
   );
 }
+
+/**
+ * WP-4.5 — SoC live-program runner (Bay 3 inspector section): real RV32IM
+ * Assembly / Forth / pre-compiled C-binary programs executing on the
+ * packages/chip-engine interpreter (browser execution path, Builder Law 6),
+ * with Play / Pause / Step-1-Instruction / Reset controls and live
+ * register/PC/stack readouts. Every executed instruction drives the 3D
+ * interposer packet flow + per-tile power injection through Bay3Soc's
+ * attached runner (badged SIMULATED_ARCHITECTURAL_MODEL).
+ */
+const SocLiveRunnerPanel = React.memo(function SocLiveRunnerPanel(): React.ReactElement {
+  (window as unknown as Record<string, number>).__socPanelRenders = ((window as unknown as Record<string, number>).__socPanelRenders ?? 0) + 1;
+  const [, bump] = useState(0);
+  const [kind, setKind] = useState<'asm' | 'forth' | 'cbinary'>('asm');
+  const [playing, setPlaying] = useState(false);
+  const [readout, setReadout] = useState<Record<string, unknown> | null>(null);
+
+  // The runner is OWNED by Bay3Soc (`ensureLiveRunner` — bay-level singleton):
+  // it survives inspector remounts, and Bay3Soc.update ticks it every frame.
+  const runnerOf = () => worldRef.current?.bay3.ensureLiveRunner();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      (window as unknown as Record<string, number>).__socIntervalTicks = ((window as unknown as Record<string, number>).__socIntervalTicks ?? 0) + 1;
+      const runner = worldRef.current?.bay3.getLiveRunner();
+      if (!runner) return;
+      const st = runner.state() as Record<string, unknown>;
+      // Change-guarded updates: a static DOM lets Playwright click reliably.
+      setReadout((prev) => (JSON.stringify(prev) === JSON.stringify(st) ? prev : st));
+      setPlaying((p) => (p === Boolean(st.running) ? p : Boolean(st.running)));
+    }, 150);
+    return () => clearInterval(timer);
+  }, []);
+
+  const refresh = () => {
+    const st = runnerOf()?.state() as Record<string, unknown> | undefined;
+    if (st) setReadout(st);
+    bump((v) => v + 1);
+  };
+
+  const selectProgram = (k: 'asm' | 'forth' | 'cbinary') => {
+    setKind(k);
+    runnerOf()?.loadProgram(k);
+    refresh();
+  };
+
+  const rv = readout && (readout.pc !== undefined)
+    ? readout
+    : null;
+  const forth = readout && readout.kind === 'forth' ? readout : null;
+
+  return (
+    <div style={sectionStyle}>
+      <div style={labelStyle}>LIVE PROGRAM RUNNER — RV32IM · FORTH · C-BINARY</div>
+      <div style={{ color: '#aeb9c8', fontSize: 10.5, fontFamily: 'monospace', marginBottom: 6 }}>
+        badge: SIMULATED_ARCHITECTURAL_MODEL · executed instructions drive the 3D interposer packets
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%', minWidth: 0 }}>
+        {(['asm', 'forth', 'cbinary'] as const).map((k) => (
+          <button key={k} data-testid={'soc-prog-' + k} style={{ ...btnStyle(kind === k, '#62d0ff'), maxWidth: '100%' }} onClick={() => selectProgram(k)}>
+            {PROGRAMS[k].label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+        {playing ? (
+          <button data-testid="soc-pause" style={btnStyle(false, '#f0c94f')} onClick={() => { runnerOf()?.pause(); refresh(); }}>❚❚ Pause</button>
+        ) : (
+          <button data-testid="soc-play" style={btnStyle(false, '#8ef0b2')} onClick={() => { runnerOf()?.play(); setPlaying(true); refresh(); }}>▶ Play</button>
+        )}
+        <button data-testid="soc-step" style={btnStyle(false, '#62d0ff')} onClick={() => { runnerOf()?.step(); refresh(); }}>Step 1 inst</button>
+        <button data-testid="soc-reset" style={btnStyle(false, '#ff9d5c')} onClick={() => { runnerOf()?.reset(); setPlaying(false); refresh(); }}>Reset</button>
+      </div>
+      <pre data-testid="soc-source" style={{ margin: '8px 0 0', padding: 8, background: 'rgba(16,22,30,0.8)', borderRadius: 6, color: '#9fc4e8', fontSize: 10, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxWidth: '100%', overflowX: 'hidden' }}>
+        {kind === 'cbinary' ? PROGRAMS.cbinary.cSource.join('\n') : PROGRAMS[kind].source.join('\n')}
+      </pre>
+      {rv && (
+        <div data-testid="soc-readout" style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
+          <div>PC {String(rv.pc)} · cycles {String(rv.cycles)} · retired {String(rv.retired)}{rv.halted ? ' · HALTED' : playing ? ' · RUNNING' : ' · PAUSED'}</div>
+          <div>x5 {String(rv.x5)} · x6 {String(rv.x6)} · x7 {String(rv.x7)}</div>
+          <div>packets {String(rv.packetsEmitted)} · lw {String(rv.stats.loads)} · sw {String(rv.stats.stores)} · alu {String(rv.stats.alu)} · mul {String(rv.stats.mul)}</div>
+        </div>
+      )}
+      {forth && (
+        <div data-testid="soc-readout" style={{ color: '#eceff4', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, marginTop: 6 }}>
+          <div>cycles {String(forth.cycles)} · stack [{(forth.stack as number[]).join(', ')}] · depth {String(forth.stackDepth)}</div>
+          <div>output: [{(forth.output as number[]).join(', ')}]</div>
+          <div>packets {String(forth.packetsEmitted)} · halted {String(Boolean(forth.halted))}</div>
+        </div>
+      )}
+    </div>
+  );
+
+});
+
+const stressConstants = constantsFromReference(REFERENCE);
+const nmosBench = SANDBOX_COMPONENT_TYPES.find((component) => component.kind === 'nmos')!.defaults;
+const loadBench = SANDBOX_COMPONENT_TYPES.find((component) => component.kind === 'resistor')!.defaults;
+const representativeBench = { kp: nmosBench.kp!, lambda: nmosBench.lambda!, resistanceOhm: loadBench.R! };
+
+// WP-4.7 is part of the Bay 3 inspector. The physics worker is the source
+// of both the applied heat-input scale and the resulting Fourier samples.
+const SocTileDrilldownPanel = React.memo(function SocTileDrilldownPanel({ verified }: { verified: boolean }): React.ReactElement {
+  const [view, setView] = useState<ReturnType<typeof readStress> | null>(null);
+  const [drilled, setDrilled] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const powerScale = useRef<number | null>(null);
+
+  function readStress() {
+    const bay = worldRef.current?.bay3;
+    const snapshot = physicsClient.latest;
+    const selection = bay?.getSelection() ?? null;
+    const telemetry = verified && bay && snapshot && powerScale.current !== null
+      ? bay.drilldownTelemetry(snapshot, powerScale.current) : null;
+    return {
+      selection,
+      telemetry,
+      profile: telemetry ? computeTileStress(telemetry, stressConstants) : null,
+      point: telemetry ? solveRepresentativeCell(telemetry, stressConstants, representativeBench, createNetlist, solveDC) : null,
+    };
+  }
+
+  useEffect(() => {
+    const worker = physicsClient.ensure();
+    const history: PhysicsSnapshot[] = [];
+    const alarms = new Set<string>();
+    const publish = () => {
+      try {
+        const current = readStress();
+        setView(current);
+        setError('');
+      } catch (err) {
+        setView(null);
+        setError(String(err));
+      }
+    };
+    function observeSnapshot(snapshot: PhysicsSnapshot) {
+      if (!verified) return;
+      if (history.at(-1)?.t !== snapshot.t) {
+        if (history.length && snapshot.t < history.at(-1)!.t) {
+          history.length = 0;
+          alarms.clear();
+        }
+        history.push(snapshot);
+        while (history[0].t < snapshot.t - 0.1 || history.length > 32) history.shift();
+      }
+      const zone = worldRef.current?.bay3.getSelection()?.chipletId;
+      const temperatures = (snapshot.temps as unknown as {tiles?: Record<string, number>}).tiles;
+      if (!zone || typeof temperatures?.[zone] !== 'number' || !Number.isFinite(temperatures[zone])) return;
+      // The shared thermal evaluator enters its thermal branch with a real
+      // trace reading. Board delamination has its own worker report.
+      const event = evaluateThresholds({ traceTempC: snapshot.temps.traceC, junctionTempC: temperatures[zone], junctionNode: zone },
+        { cuMeltingC: REFERENCE.failures.failure_thresholds.cu_melting_c, siThermalRunawayC: stressConstants.runawayThresholdC })
+        .find((finding) => finding.type === 'si_thermal_runaway');
+      if (!event) { alarms.delete(zone); return; }
+      if (alarms.has(zone)) return;
+      const report = buildForensicReport({ event, samples: history,
+        thresholds: { si_thermal_runaway_c: stressConstants.runawayThresholdC },
+        meta: { engine: 'Bay 3 Fourier zone telemetry', simTimeS: snapshot.t, playbackScale: 1,
+          source: REFERENCE.failures.id, provenance: 'SIMULATED_PHYSICS_MODEL' },
+      }) as NonNullable<LabState['forensic']>['report'];
+      store.set({ forensic: { report, replay: history.slice(), fix: null }, dockOpen: true, dockTab: 'autopsy', replayIndex: null });
+      alarms.add(zone);
+      flashToast(`Thermal runaway in ${zone} · forensic dock opened`);
+    }
+    const onWorkerMessage = ({ data }: MessageEvent) => {
+      if (data.type === 'snapshot' && data.live !== false) {
+        observeSnapshot(data.snapshot);
+      } else if (data.type === 'state') {
+        const scale: unknown = data.params?.tilePowerScale;
+        powerScale.current = typeof scale === 'number' && Number.isFinite(scale) ? scale : null;
+        if (physicsClient.latest) observeSnapshot(physicsClient.latest);
+        publish();
+      }
+    };
+    worker.addEventListener('message', onWorkerMessage);
+    const request = () => {
+      if (worldRef.current?.bay3.getSelection()) worker.postMessage({ type: 'getState' });
+      else setView(null);
+    };
+    request();
+    const timer = setInterval(request, 150);
+    return () => {
+      clearInterval(timer);
+      worker.removeEventListener('message', onWorkerMessage);
+    };
+  }, [verified]);
+
+  function solve(openCad: boolean) {
+    try {
+      const current = readStress();
+      const point = current.point;
+      if (!point) return;
+      setDrilled(`${point.cell} · VDS ${point.drainV.toPrecision(3)} V · ID ${point.drainCurrentA.toExponential(2)} A · dissipation ${point.devicePowerW.toExponential(2)} W`);
+      setError('');
+      if (openCad) {
+        const world = worldRef.current;
+        const cell = world?.bay2.polyCellViewer.cells.get(point.cell);
+        if (!world || !cell) throw new Error('Representative cell geometry is unavailable');
+        world.bay3.openRepresentativeCell(point, cell, world.bay2.group);
+        store.set({ workspace: 'silicon', inspectorOpen: false });
+        flashToast(`${point.cell} · ${point.vddV.toFixed(2)} V · ${point.junctionTempC.toFixed(1)} °C · ${point.zonePowerW.toPrecision(3)} W zone load`);
+      }
+    } catch (err) { setError(String(err)); }
+  }
+
+  const { selection, telemetry, profile, point } = view ?? {};
+  return (
+    <div style={sectionStyle}>
+      <div style={labelStyle}>TILE DRILL-DOWN → LAYER 1 STRESS</div>
+      <div data-testid="wp47-selected-tile">{selection ? `${selection.label} (${selection.tileId})` : 'Click a tile in the SoC view'}</div>
+      {selection && !telemetry && <div role="status">{verified ? 'Waiting for live Fourier telemetry for this tile.' : 'Waiting for verified reference data.'}</div>}
+      {profile && telemetry && (
+        <>
+          <div data-testid="wp47-stress-panel" style={{ fontSize: 11, lineHeight: 1.6, marginTop: 6 }}>
+            <div>{profile.badge} · Zone power {telemetry.powerW.toPrecision(3)} W</div>
+            {telemetry.activity !== null && <div>MAC workload magnitude {(telemetry.activity * 100).toFixed(0)}%</div>}
+            <div data-testid="wp47-representative-cell">Representative {profile.representative.cell}</div>
+            <div data-testid="wp47-verdict">{profile.verdict.toUpperCase()}{profile.dvfsAction !== 'none' ? ` · DVFS ${profile.dvfsAction} recommendation` : ''}</div>
+            {profile.notes.map((note) => <div key={note}>{note}</div>)}
+            {point && <div data-testid="wp47-device-solve">Representative NMOS DC solve · VDS {point.drainV.toPrecision(3)} V · ID {point.drainCurrentA.toExponential(2)} A</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+            <button data-testid="wp47-drilldown" style={btnStyle(false, '#ff9d5a')} onClick={() => solve(false)}>Drill Down to Layer 1 Stress</button>
+            <button data-testid="wp47-open-cell" style={btnStyle(false, '#8ef0b2')} onClick={() => solve(true)}>Open Representative Cell in Silicon CAD</button>
+          </div>
+          {drilled?.startsWith(profile.representative.cell) && <div data-testid="wp47-drilled">{drilled}</div>}
+        </>
+      )}
+      {error && <div role="alert">{error}</div>}
+    </div>
+  );
+});
