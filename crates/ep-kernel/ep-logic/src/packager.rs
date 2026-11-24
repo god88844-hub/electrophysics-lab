@@ -6,8 +6,8 @@
 //! by the declared cycle rate and adds DC leakage. No default timing tables.
 //!
 //! Extraction admits finite combinational circuits within explicit budgets.
-//! Stateful/oscillating or uncharacterized circuits are refused, never stamped
-//! VERIFIED. Q4 retains WP-3.2's unqualified stage-chain provenance. Custom
+//! Stateful/oscillating circuits are refused. Explicit logical reference cells
+//! can be verified for truth without claiming physical characterization. Q4 retains WP-3.2's unqualified stage-chain provenance. Custom
 //! R=5..8 pins use the schema's analog domain with declared discrete levels.
 //! The app composer consumes Progress and Verification; app UI is out of scope.
 
@@ -29,6 +29,9 @@ const MAX_TRANSITIONS: usize = 16384;
 const MAX_INSTANCES: usize = 1024;
 const MAX_DEPTH: usize = 64;
 const MAX_EVENTS: usize = 250_000;
+const LOGICAL_ONLY: &str =
+    "INSUFFICIENT_MODEL_DATA: functional cells have no physical timing, dynamic energy, or leakage";
+const FLAT_EXTRACTION: &str = "SIMULATED_ARCHITECTURAL_MODEL: hierarchical settled truth checked against the flattened circuit; waveforms and energy extracted at leaf resolution";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PackageError(pub String);
@@ -160,7 +163,7 @@ impl Footprint {
 }
 
 /// Boundary endpoints have instance="". Namespaced instance IDs are opaque.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Endpoint {
     pub instance: String,
     pub pin: String,
@@ -221,6 +224,11 @@ pub enum LeafSource {
     },
     Transistors {
         netlist: TransistorNetlist,
+    },
+    Logical {
+        /// Output digits in mixed-radix input order (first pin varies fastest).
+        truth: Vec<Vec<u8>>,
+        reference: String,
     },
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -297,6 +305,7 @@ impl MacroModel {
     }
     fn transition(&self, before: &[u8], after: &[u8]) -> Result<Transition> {
         if before == after {
+            self.state(before)?;
             return Ok(Transition {
                 before: before.into(),
                 after: after.into(),
@@ -580,6 +589,24 @@ impl CustomIcPackage {
             Implementation::Netlist {
                 components,
                 wires,
+                source: source @ LeafSource::Logical { truth, reference },
+            } => {
+                let model = logical_model(
+                    &self.pins,
+                    truth,
+                    reference,
+                    self.macro_model.conditions.clone(),
+                )?;
+                if *components != vec![encoded(source)?]
+                    || !wires.is_empty()
+                    || encoded(&model)? != encoded(&self.macro_model)?
+                {
+                    return fail("logical implementation metadata/model mismatch");
+                }
+            }
+            Implementation::Netlist {
+                components,
+                wires,
                 source,
             } => {
                 let LeafSource::Characterized { kind, radix, cell } = source else {
@@ -730,6 +757,7 @@ fn summarize(
 ) -> Result<MacroModel> {
     let ins = inputs(pins);
     let mut arcs: BTreeMap<(String, String), f64> = BTreeMap::new();
+    let logical_only_cells = provenance.iter().any(|source| source == LOGICAL_ONLY);
     let mut cycle_energy = 0.0_f64;
     let energies: BTreeMap<_, _> = transitions
         .iter()
@@ -740,6 +768,9 @@ fn summarize(
             return fail("transition has no changed input");
         };
         for e in &t.events {
+            if logical_only_cells && e.delay_ns == 0.0 {
+                continue; // Ideal event ordering is functional, not a characterized timing arc.
+            }
             arcs.entry((ins[index].name.clone(), e.pin.clone()))
                 .and_modify(|d| *d = d.max(e.delay_ns))
                 .or_insert(e.delay_ns);
@@ -754,10 +785,71 @@ fn summarize(
     Ok(MacroModel {
         timing_arcs: arcs.into_iter().map(|((from,to),delay_ns)|TimingArc {from,to,delay_ns,tolerance_pct:5}).collect(),
         dynamic_power: DynamicPower {watts_per_toggle:cycle_energy,tolerance_pct:10,
-            definition:"worst sensitized one-input out-and-back cycle supply energy (J = W/(cycle/s)); DC leakage subtracted; load and slew in conditions".into()},
+            definition: if logical_only_cells {
+                "characterized contributions only (J = W/(cycle/s)); uncharacterized cells omitted; zero does not establish zero physical energy"
+            } else {
+                "worst sensitized one-input out-and-back cycle supply energy (J = W/(cycle/s)); DC leakage subtracted; load and slew in conditions"
+            }.into()},
         leakage_power_w,states,transitions,conditions,provenance,
     })
 }
+fn logical_model(
+    pins: &[Pin],
+    truth: &[Vec<u8>],
+    reference: &str,
+    conditions: Conditions,
+) -> Result<MacroModel> {
+    let vs = vectors(pins)?;
+    let outs = outputs(pins);
+    if reference.trim().is_empty()
+        || truth.len() != vs.len()
+        || truth.iter().any(|row| {
+            row.len() != outs.len()
+                || row
+                    .iter()
+                    .zip(&outs)
+                    .any(|(&v, p)| usize::from(v) >= p.digit_count())
+        })
+    {
+        return fail("invalid logical truth table/reference");
+    }
+    let states = vs
+        .iter()
+        .zip(truth)
+        .map(|(inputs, outputs)| State {
+            inputs: inputs.clone(),
+            outputs: outputs.clone(),
+            leakage_w: None,
+        })
+        .collect();
+    let rows: BTreeMap<_, _> = vs.iter().zip(truth).collect();
+    let transitions = pairs(&vs)
+        .map(|(before, after)| Transition {
+            before: before.clone(),
+            after: after.clone(),
+            events: rows[before]
+                .iter()
+                .zip(rows[after])
+                .zip(&outs)
+                .filter(|((a, b), _)| a != b)
+                .map(|((_, &value), p)| OutputEvent {
+                    pin: p.name.clone(),
+                    value,
+                    delay_ns: 0.0,
+                })
+                .collect(),
+            energy_j: 0.0,
+        })
+        .collect();
+    summarize(
+        pins,
+        states,
+        transitions,
+        conditions,
+        vec![LOGICAL_ONLY.into(), reference.into()],
+    )
+}
+
 fn finite_nonnegative(v: f64) -> bool {
     v.is_finite() && v >= 0.0
 }
@@ -765,8 +857,15 @@ fn validate_model(pins: &[Pin], model: &MacroModel) -> Result<()> {
     let expected = vectors(pins)?;
     let ins = inputs(pins);
     let outs = outputs(pins);
-    let states: BTreeSet<_> = model.states.iter().map(|s| s.inputs.clone()).collect();
-    if states.len() != model.states.len() || states != expected.iter().cloned().collect() {
+    let states: BTreeMap<_, _> = model
+        .states
+        .iter()
+        .map(|s| (&s.inputs, &s.outputs))
+        .collect();
+    if states.len() != model.states.len()
+        || !expected.iter().all(|v| states.contains_key(v))
+        || states.len() != expected.len()
+    {
         return fail("incomplete/duplicate state table");
     }
     for s in &model.states {
@@ -790,8 +889,8 @@ fn validate_model(pins: &[Pin], model: &MacroModel) -> Result<()> {
     }
     let mut seen = BTreeSet::new();
     for t in &model.transitions {
-        if !states.contains(&t.before)
-            || !states.contains(&t.after)
+        if !states.contains_key(&t.before)
+            || !states.contains_key(&t.after)
             || t.before
                 .iter()
                 .zip(&t.after)
@@ -803,7 +902,7 @@ fn validate_model(pins: &[Pin], model: &MacroModel) -> Result<()> {
         {
             return fail("invalid/duplicate transition");
         }
-        let mut result = model.state(&t.before)?.outputs.clone();
+        let mut result = states[&t.before].clone();
         let mut prev = 0.0;
         for e in &t.events {
             let i = outs
@@ -819,7 +918,7 @@ fn validate_model(pins: &[Pin], model: &MacroModel) -> Result<()> {
             result[i] = e.value;
             prev = e.delay_ns;
         }
-        if result != model.state(&t.after)?.outputs {
+        if &result != states[&t.after] {
             return fail("transition disagrees with state table");
         }
     }
@@ -977,11 +1076,47 @@ fn finish(
     Ok(package)
 }
 
+pub(crate) struct PackageSpec<'a> {
+    pub conditions: Conditions,
+    pub footprint: Footprint,
+    pub checked_at: &'a str,
+}
+
 pub struct Packager<'a> {
     pub library: &'a TimingLibrary,
     progress: Box<dyn FnMut(Progress) + 'a>,
 }
 impl<'a> Packager<'a> {
+    pub(crate) fn package_logical(
+        &self,
+        id: &str,
+        pins: Vec<Pin>,
+        logic: impl Fn(&[u8]) -> Vec<u8>,
+        reference: &str,
+        spec: PackageSpec<'_>,
+    ) -> Result<CustomIcPackage> {
+        validate_pins(&pins)?;
+        let truth: Vec<_> = vectors(&pins)?.iter().map(|v| logic(v)).collect();
+        let model = logical_model(&pins, &truth, reference, spec.conditions)?;
+        let source = LeafSource::Logical {
+            truth,
+            reference: reference.into(),
+        };
+        finish(
+            id,
+            pins,
+            Implementation::Netlist {
+                components: vec![encoded(&source)?],
+                wires: vec![],
+                source,
+            },
+            model.clone(),
+            model,
+            spec.footprint,
+            spec.checked_at,
+        )
+    }
+
     pub fn new(library: &'a TimingLibrary) -> Self {
         Self {
             library,
@@ -1803,8 +1938,13 @@ fn validate_circuit(registry: &Registry, c: &Circuit) -> Result<Vec<usize>> {
     Ok(order)
 }
 fn validate_dependencies(registry: &Registry, c: &Circuit) -> Result<()> {
-    for i in &c.instances {
-        validate_sub_ic_dag(registry, &i.ic_id)?;
+    for id in c
+        .instances
+        .iter()
+        .map(|i| &i.ic_id)
+        .collect::<BTreeSet<_>>()
+    {
+        validate_sub_ic_dag(registry, id)?;
     }
     validate_circuit(registry, c)?;
     Ok(())
@@ -1903,61 +2043,122 @@ fn fs(ns: f64) -> Result<u64> {
     }
     Ok((ns * 1e6).round() as u64)
 }
-fn steady(
-    registry: &Registry,
-    c: &Circuit,
-    order: &[usize],
-    initial: &[u8],
-) -> Result<(BTreeMap<Endpoint, u8>, Option<f64>)> {
-    let ins = inputs(&c.pins);
-    if initial.len() != ins.len()
-        || initial
-            .iter()
-            .zip(&ins)
-            .any(|(&v, p)| v as usize >= p.digit_count())
-    {
-        return fail("initial input radix/arity mismatch");
-    }
-    let mut values: BTreeMap<_, _> = ins
-        .iter()
-        .zip(initial)
-        .map(|(p, &v)| (Endpoint::boundary(&p.name), v))
-        .collect();
-    let driver = |target: &Endpoint, values: &BTreeMap<Endpoint, u8>| -> Result<u8> {
-        let wire = c
-            .wires
-            .iter()
-            .find(|w| &w.to == target)
-            .ok_or_else(|| PackageError("undriven pin".into()))?;
-        values
-            .get(&wire.from)
-            .copied()
-            .ok_or_else(|| PackageError("unsettled source".into()))
-    };
-    let mut leakage = Some(0.0);
-    for &idx in order {
-        let i = &c.instances[idx];
-        let p = &registry[&i.ic_id];
-        let input = inputs(&p.pins)
-            .iter()
-            .map(|pin| driver(&Endpoint::at(&i.id, &pin.name), &values))
-            .collect::<Result<Vec<_>>>()?;
-        for (pin, &v) in inputs(&p.pins).iter().zip(&input) {
-            values.insert(Endpoint::at(&i.id, &pin.name), v);
-        }
-        let state = p.macro_model.state(&input)?;
-        for (pin, &v) in outputs(&p.pins).iter().zip(&state.outputs) {
-            values.insert(Endpoint::at(&i.id, &pin.name), v);
-        }
-        leakage = leakage.zip(state.leakage_w).map(|(a, b)| a + b);
-    }
-    for p in outputs(&c.pins) {
-        let e = Endpoint::boundary(&p.name);
-        let v = driver(&e, &values)?;
-        values.insert(e, v);
-    }
-    Ok((values, leakage))
+struct Prepared<'a> {
+    circuit: &'a Circuit,
+    order: Vec<usize>,
+    drivers: HashMap<&'a Endpoint, &'a Endpoint>,
+    fanout: HashMap<&'a Endpoint, Vec<&'a Endpoint>>,
+    packages: HashMap<&'a str, &'a CustomIcPackage>,
 }
+
+impl<'a> Prepared<'a> {
+    fn new(registry: &'a Registry, circuit: &'a Circuit) -> Result<Self> {
+        let order = validate_circuit(registry, circuit)?;
+        let mut fanout = HashMap::<_, Vec<_>>::new();
+        for wire in &circuit.wires {
+            fanout.entry(&wire.from).or_default().push(&wire.to);
+        }
+        Ok(Self {
+            circuit,
+            order,
+            drivers: circuit.wires.iter().map(|w| (&w.to, &w.from)).collect(),
+            fanout,
+            packages: circuit
+                .instances
+                .iter()
+                .map(|i| (i.id.as_str(), &registry[&i.ic_id]))
+                .collect(),
+        })
+    }
+
+    fn states(&self) -> Result<Vec<State>> {
+        let outs = outputs(&self.circuit.pins);
+        vectors(&self.circuit.pins)?
+            .into_iter()
+            .map(|inputs| {
+                let (values, leakage_w) = self.steady(&inputs)?;
+                Ok(State {
+                    inputs,
+                    outputs: outs
+                        .iter()
+                        .map(|p| values[&Endpoint::boundary(&p.name)])
+                        .collect(),
+                    leakage_w,
+                })
+            })
+            .collect()
+    }
+
+    fn steady(&self, initial: &[u8]) -> Result<(HashMap<Endpoint, u8>, Option<f64>)> {
+        let c = self.circuit;
+        let ins = inputs(&c.pins);
+        if initial.len() != ins.len()
+            || initial
+                .iter()
+                .zip(&ins)
+                .any(|(&v, p)| v as usize >= p.digit_count())
+        {
+            return fail("initial input radix/arity mismatch");
+        }
+        let mut values: HashMap<_, _> = ins
+            .iter()
+            .zip(initial)
+            .map(|(p, &v)| (Endpoint::boundary(&p.name), v))
+            .collect();
+        let driver = |target: &Endpoint, values: &HashMap<Endpoint, u8>| -> Result<u8> {
+            let from = self.drivers[target];
+            values
+                .get(from)
+                .copied()
+                .ok_or_else(|| PackageError("unsettled source".into()))
+        };
+        let mut leakage = Some(0.0);
+        for &idx in &self.order {
+            let i = &c.instances[idx];
+            let p = self.packages[i.id.as_str()];
+            let input = inputs(&p.pins)
+                .iter()
+                .map(|pin| driver(&Endpoint::at(&i.id, &pin.name), &values))
+                .collect::<Result<Vec<_>>>()?;
+            for (pin, &v) in inputs(&p.pins).iter().zip(&input) {
+                values.insert(Endpoint::at(&i.id, &pin.name), v);
+            }
+            let state = p.macro_model.state(&input)?;
+            for (pin, &v) in outputs(&p.pins).iter().zip(&state.outputs) {
+                values.insert(Endpoint::at(&i.id, &pin.name), v);
+            }
+            leakage = leakage.zip(state.leakage_w).map(|(a, b)| a + b);
+        }
+        for p in outputs(&c.pins) {
+            let e = Endpoint::boundary(&p.name);
+            let v = driver(&e, &values)?;
+            values.insert(e, v);
+        }
+        Ok((values, leakage))
+    }
+
+    fn simulate(&self, initial: &[u8], stimuli: &[Stimulus]) -> Result<Simulation> {
+        let (values, _) = self.steady(initial)?;
+        simulate_events(self, self.circuit, stimuli, values)
+    }
+}
+
+/// Enumerate settled inputs and outputs with the pin-event simulation engine,
+/// validating dependencies once for the batch. Flattened mode expands to the
+/// source leaves without looking up any nested block's result table.
+pub fn enumerate_circuit_states(
+    registry: &Registry,
+    circuit: &Circuit,
+    mode: SolveMode,
+) -> Result<Vec<State>> {
+    validate_dependencies(registry, circuit)?;
+    if mode == SolveMode::Flattened {
+        let flat = flatten_validated(registry, circuit)?;
+        return Prepared::new(registry, &flat)?.states();
+    }
+    Prepared::new(registry, circuit)?.states()
+}
+
 /// Pin-event simulation uses ep-logic's deterministic (time, sequence) queue.
 /// Custom IC time ticks are femtoseconds, so sub-ps characterized arcs do not
 /// lose their ±5% tolerance when the package crosses a hierarchy boundary.
@@ -1974,16 +2175,14 @@ pub fn run_circuit(
     } else {
         circuit.clone()
     };
-    simulate(registry, &c, initial, stimuli)
+    Prepared::new(registry, &c)?.simulate(initial, stimuli)
 }
-fn simulate(
-    registry: &Registry,
+fn simulate_events(
+    prepared: &Prepared<'_>,
     c: &Circuit,
-    initial: &[u8],
     stimuli: &[Stimulus],
+    mut values: HashMap<Endpoint, u8>,
 ) -> Result<Simulation> {
-    let order = validate_circuit(registry, c)?;
-    let (mut values, _) = steady(registry, c, &order, initial)?;
     let mut queue = EventQueue::new();
     let mut previous = 0;
     for s in stimuli {
@@ -2029,12 +2228,12 @@ fn simulate(
                     continue;
                 }
                 values.insert(source.clone(), v);
-                for w in c.wires.iter().filter(|w| w.from == source) {
+                for to in prepared.fanout.get(&source).into_iter().flatten() {
                     queue.push(
                         time,
                         EventPayload::Input {
-                            block_id: w.to.instance.clone(),
-                            port_id: w.to.pin.clone(),
+                            block_id: to.instance.clone(),
+                            port_id: to.pin.clone(),
                             value,
                         },
                     );
@@ -2061,12 +2260,7 @@ fn simulate(
                     });
                     continue;
                 }
-                let i = c
-                    .instances
-                    .iter()
-                    .find(|i| i.id == block_id)
-                    .ok_or_else(|| PackageError("unknown simulation instance".into()))?;
-                let package = &registry[&i.ic_id];
+                let package = prepared.packages[block_id.as_str()];
                 if matches!(package.implementation, Implementation::SubIcs { .. })
                     && pending_until.get(&block_id).is_some_and(|&t| time < t)
                 {
@@ -2112,7 +2306,7 @@ fn simulate(
         .iter()
         .map(|p| values[&Endpoint::boundary(&p.name)])
         .collect::<Vec<_>>();
-    let (_, leakage) = steady(registry, c, &order, &final_inputs)?;
+    let (_, leakage) = prepared.steady(&final_inputs)?;
     Ok(Simulation {
         outputs: out,
         events,
@@ -2131,27 +2325,19 @@ fn circuit_model(
     } else {
         circuit.clone()
     };
-    let order = validate_circuit(registry, &c)?;
+    let prepared = Prepared::new(registry, &c)?;
     let vs = vectors(&c.pins)?;
-    let mut states = Vec::new();
-    for input in &vs {
-        let (values, leakage) = steady(registry, &c, &order, input)?;
-        states.push(State {
-            inputs: input.clone(),
-            outputs: outputs(&c.pins)
-                .iter()
-                .map(|p| values[&Endpoint::boundary(&p.name)])
-                .collect(),
-            leakage_w: leakage,
-        });
-    }
+    let states = prepared.states()?;
+    let by_input: BTreeMap<_, _> = states
+        .iter()
+        .map(|state| (&state.inputs, &state.outputs))
+        .collect();
     let ins = inputs(&c.pins);
     let mut transitions = Vec::new();
+    let mut event_count = 0;
     for (before, after) in pairs(&vs) {
         let index = before.iter().zip(after).position(|(a, b)| a != b).unwrap();
-        let result = simulate(
-            registry,
-            &c,
+        let result = prepared.simulate(
             before,
             &[Stimulus {
                 time_ns: 0.0,
@@ -2159,16 +2345,13 @@ fn circuit_model(
                 value: after[index],
             }],
         )?;
-        if result.outputs != states.iter().find(|s| s.inputs == *after).unwrap().outputs {
-            return fail("internal circuit did not settle");
+        if &result.outputs != by_input[after] {
+            return fail(format!(
+                "internal circuit did not settle: {before:?} -> {after:?}"
+            ));
         }
-        if transitions
-            .iter()
-            .map(|t: &Transition| t.events.len())
-            .sum::<usize>()
-            + result.events.len()
-            > MAX_EVENTS
-        {
+        event_count += result.events.len();
+        if event_count > MAX_EVENTS {
             return fail("extraction event admission budget exceeded");
         }
         transitions.push(Transition {
@@ -2201,6 +2384,47 @@ impl Packager<'_> {
         footprint: Footprint,
         checked_at: &str,
     ) -> Result<CustomIcPackage> {
+        self.package_hierarchy(
+            id,
+            circuit,
+            registry,
+            PackageSpec {
+                conditions,
+                footprint,
+                checked_at,
+            },
+            false,
+        )
+    }
+
+    /// In a reconvergent combinational ALU, a nested block can receive another
+    /// input edge before its previous waveform has settled. Extract directly
+    /// from the leaf solver for these hierarchies and independently enumerate
+    /// the nested blocks' settled truth. The sealed top-level model still
+    /// admits only isolated boundary transitions.
+    pub(crate) fn package_reconvergent(
+        &mut self,
+        id: &str,
+        circuit: Circuit,
+        registry: &Registry,
+        spec: PackageSpec<'_>,
+    ) -> Result<CustomIcPackage> {
+        self.package_hierarchy(id, circuit, registry, spec, true)
+    }
+
+    fn package_hierarchy(
+        &mut self,
+        id: &str,
+        circuit: Circuit,
+        registry: &Registry,
+        spec: PackageSpec<'_>,
+        reconvergent: bool,
+    ) -> Result<CustomIcPackage> {
+        let PackageSpec {
+            conditions,
+            footprint,
+            checked_at,
+        } = spec;
         self.report("validate", 0, 1);
         validate_dependencies(registry, &circuit)?;
         for i in &circuit.instances {
@@ -2229,9 +2453,27 @@ impl Packager<'_> {
         }
         self.report("validate", 1, 1);
         self.report("extraction", 0, 2);
-        let model = circuit_model(registry, &circuit, conditions.clone(), SolveMode::BlackBox)?;
-        self.report("extraction", 1, 2);
-        let reference = circuit_model(registry, &circuit, conditions, SolveMode::Flattened)?;
+        let (model, reference) = if reconvergent {
+            let reference =
+                circuit_model(registry, &circuit, conditions.clone(), SolveMode::Flattened)?;
+            self.report("extraction", 1, 2);
+            let prepared = Prepared::new(registry, &circuit)?;
+            let mut provenance = reference.provenance.clone();
+            provenance.push(FLAT_EXTRACTION.into());
+            let model = summarize(
+                &circuit.pins,
+                prepared.states()?,
+                reference.transitions.clone(),
+                conditions,
+                provenance,
+            )?;
+            (model, reference)
+        } else {
+            let model = circuit_model(registry, &circuit, conditions.clone(), SolveMode::BlackBox)?;
+            self.report("extraction", 1, 2);
+            let reference = circuit_model(registry, &circuit, conditions, SolveMode::Flattened)?;
+            (model, reference)
+        };
         self.report("extraction", 2, 2);
         let sub_ics = circuit
             .instances
@@ -2311,6 +2553,15 @@ pub fn reverify(
             refined.settings.dt_ps /= 2.0;
             raw_model(&refined, &package.macro_model.conditions)?
         }
+        Implementation::Netlist {
+            source: LeafSource::Logical { truth, reference },
+            ..
+        } => logical_model(
+            &package.pins,
+            truth,
+            reference,
+            package.macro_model.conditions.clone(),
+        )?,
         _ => return fail("characterized feed must be re-extracted from TimingLibrary"),
     };
     let evidence = compare_models(&package.pins, &package.macro_model, &reference, checked_at)?;
