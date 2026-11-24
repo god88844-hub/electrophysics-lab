@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useSyncExternalStore } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 import { createRenderer, createQualityGovernor, type RendererBundle } from './engine/renderer.js';
 import { CameraRig } from './engine/cameraRig.js';
@@ -16,6 +16,7 @@ import {
   openProjectViaDesktop,
   saveAutosave,
   restoreAutosave,
+  loadAutosaveRaw,
   clearAutosave,
   defaultProjectName,
 } from './state/project.js';
@@ -23,6 +24,8 @@ import { desktopBridge } from './desktop/index.js';
 import { verifyReferenceIntegrity, REFERENCE } from './data/reference.js';
 import { physicsClient, type PhysicsSnapshot, type ForensicReport, type ProposedFix, type FaultFx } from './physics/physicsClient.js';
 import { quantumClient, type BlochState, type BreakthroughBundle } from './physics/quantumClient.js';
+import { AcademyDrawer } from './ui/academy/AcademyDrawer.js';
+import { createAcademyProgress } from './academy/progress.js';
 import { LibraryOverlay } from './ui/LibraryOverlay.js';
 import { historyManager, makePlaceComponent, makeDeleteComponent, makeRouteWire, makeSetParam, committedHeadSnapshot } from './state/history.js';
 import { InspectorPanels } from './ui/InspectorPanels.js';
@@ -88,6 +91,7 @@ export function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const bundleRef = useRef<{ renderer: RendererBundle; rig: CameraRig; world: LabWorld } | null>(null);
   const recorderRender = useRef<RecorderRenderHook | null>(null);
+  const [academyProgress] = useState(createAcademyProgress);
   const state = useLabState();
   const pointerNdc = useRef({ x: -2, y: -2, clientX: 0, clientY: 0 });
   const suppressHistoryRef = useRef(false);
@@ -97,7 +101,7 @@ export function App() {
   const libraryLockedAt = REFERENCE.manifest.generatedAt;
   // Committed-state snapshot only (transient tool state is never serialized).
   const persistSnapshot = () =>
-    snapshotFromState(store.get(), wiresFromSandboxGroup(worldRef.current?.bay2.group ?? null));
+    academyProgress.withProject(snapshotFromState(store.get(), wiresFromSandboxGroup(worldRef.current?.bay2.group ?? null)));
   const applyLoadedProject = (loaded: { state: Record<string, unknown>; wires: Array<{ from: string; to: string }>; name: string; payloadSHA256: string }) => {
     store.set(loaded.state as Partial<LabState>);
     // Traces are mesh-only (not in the store) — re-add after the sandbox
@@ -155,8 +159,10 @@ export function App() {
       return;
     }
     try {
-      const loaded = await validateEplabProject(JSON.parse(picked.text), { referenceLibraryLockedAt: libraryLockedAt });
+      const project = JSON.parse(picked.text);
+      const loaded = await validateEplabProject(project, { referenceLibraryLockedAt: libraryLockedAt });
       applyLoadedProject(loaded);
+      void academyProgress.restore(project).catch(() => {});
     } catch (err) {
       // Fail-closed: corrupt/tampered file — store untouched, reason shown.
       // Validation messages already carry the precise "Open refused:" reason.
@@ -500,9 +506,14 @@ export function App() {
         })
         .catch(() => { /* best-effort: explicit saves report failures honestly */ });
     };
+    const autosaveBytes = loadAutosaveRaw();
     void restoreAutosave({ referenceLibraryLockedAt: libraryLockedAt })
       .then((restored) => {
-        if (restored) applyLoadedProject(restored);
+        if (!restored) return;
+        applyLoadedProject(restored);
+        if (autosaveBytes && autosaveBytes === loadAutosaveRaw()) {
+          void academyProgress.restore(JSON.parse(autosaveBytes)).catch(() => {});
+        }
       })
       .catch((err: unknown) => {
         clearAutosave();
@@ -706,6 +717,7 @@ export function App() {
         <button style={toolBtn} onClick={() => { void saveProjectAction(); }} title="Save project (.eplab) — SHA-256 sealed">Save</button>
         <button style={toolBtn} onClick={() => { void openProjectAction(); }} title="Open project (.eplab) — validated fail-closed">Open</button>
         <RecorderControl viewport={bundleRef} renderHook={recorderRender} />
+        <AcademyDrawer progress={academyProgress} buttonStyle={toolBtn} />
         {state.toast && (
           <span
             data-testid="project-toast"
