@@ -129,7 +129,7 @@ public static class DesktopMsiSummary {
     // WiX derives an 8.3 alias from the generated File identifier.
     string text = Encoding.Latin1.GetString(File.ReadAllBytes(file));
     var matches = System.Text.RegularExpressions.Regex.Matches(text,
-      @"[a-zA-Z0-9]{8}\.dll[|]WebView2Loader\.dll");
+      @"[a-zA-Z0-9_-]{8}\.dll[|]WebView2Loader\.dll");
     if (matches.Count == 0) return null;
     if (matches.Count != 1) throw new InvalidOperationException("Unexpected WiX loader alias count");
     string value = matches[0].Value;
