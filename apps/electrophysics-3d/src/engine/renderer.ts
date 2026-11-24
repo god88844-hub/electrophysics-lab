@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { mountStudioEnvironment } from './studioEnv.js';
 
 export type QualityLevel = 'high' | 'medium' | 'low';
 
@@ -26,7 +26,7 @@ export interface RendererBundle {
 
 /**
  * Studio-grade PBR renderer tuned for Intel integrated graphics:
- *  - procedural room environment via PMREMGenerator (no network fetch)
+ *  - procedural softbox PMREM and a bounded studio cyclorama
  *  - subtle selective bloom (UnrealBloomPass, half resolution, low strength)
  *  - automatic quality degradation: pixel ratio → bloom → shadow maps
  */
@@ -35,15 +35,16 @@ export function createRenderer(container: HTMLElement): RendererBundle {
   const maxPixelRatio = Math.min(window.devicePixelRatio, 1.75);
   renderer.setPixelRatio(maxPixelRatio);
   renderer.setSize(container.clientWidth, container.clientHeight);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMapping = THREE.AgXToneMapping;
+  renderer.toneMappingExposure = 1.2;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.domElement.style.display = 'block';
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0c0e11);
-  scene.fog = new THREE.Fog(0x0c0e11, 26, 70);
+  scene.userData.toneMapping = renderer.toneMapping;
+  const disposeStudio = mountStudioEnvironment(THREE, renderer, scene);
 
   const camera = new THREE.PerspectiveCamera(
     55,
@@ -54,37 +55,9 @@ export function createRenderer(container: HTMLElement): RendererBundle {
   camera.position.set(0, 5.2, 16);
   camera.lookAt(0, 1.2, 0);
 
-  // Procedural studio environment → PMREM → scene.environment (PBR reflections).
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const envTexture = pmrem.fromScene(new RoomEnvironment(), 0.035).texture;
-  scene.environment = envTexture;
-  scene.environmentIntensity = 0.42;
-  pmrem.dispose();
-
-  // Lighting: one shadowed key, cool fill, warm rim — all cheap.
-  const ambient = new THREE.AmbientLight(0xdfe3ea, 0.5);
-  scene.add(ambient);
-  const keyLight = new THREE.DirectionalLight(0xf6f7f4, 2.1); // neutral 5600 K studio key
-  keyLight.position.set(7, 12, 8);
-  keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(1024, 1024);
-  keyLight.shadow.camera.left = -14;
-  keyLight.shadow.camera.right = 14;
-  keyLight.shadow.camera.top = 14;
-  keyLight.shadow.camera.bottom = -14;
-  keyLight.shadow.camera.far = 40;
-  keyLight.shadow.bias = -0.0004;
-  scene.add(keyLight);
-  const fillLight = new THREE.DirectionalLight(0xdde4ee, 0.45); // soft neutral fill
-  fillLight.position.set(-8, 4, 6);
-  scene.add(fillLight);
-  const rimLight = new THREE.DirectionalLight(0xcfd6e0, 0.3);
-  rimLight.position.set(-4, 6, -9);
-  scene.add(rimLight);
-
   const composer = new EffectComposer(renderer);
-  composer.setSize(container.clientWidth, container.clientHeight);
-  composer.addPass(new RenderPass(scene, camera));
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(container.clientWidth * 0.5, container.clientHeight * 0.5),
     0.28, // low strength — HUD text is DOM, 3D labels stay crisp
@@ -92,7 +65,8 @@ export function createRenderer(container: HTMLElement): RendererBundle {
     0.85
   );
   composer.addPass(bloomPass);
-  composer.addPass(new OutputPass());
+  const outputPass = new OutputPass();
+  composer.addPass(outputPass);
 
   // Orthographic camera for CAD ortho views (O key toggle).
   const aspect = container.clientWidth / container.clientHeight;
@@ -123,23 +97,27 @@ export function createRenderer(container: HTMLElement): RendererBundle {
       renderer.shadowMap.enabled = false;
     }
     renderer.shadowMap.needsUpdate = true;
+    composer.setPixelRatio(renderer.getPixelRatio());
     // WP-1.5: publish the automatic iGPU quality-governor state on the frame
     // surface so acceptance tests can verify it stays live and automatic.
     frameStore.setQuality(level, renderer.getPixelRatio());
   }
 
   function render(delta: number): void {
-    composer.render(delta);
+    const view = useOrtho ? orthoCamera : camera;
+    if (bloomPass.enabled) {
+      renderPass.camera = view;
+      composer.render(delta);
+    } else {
+      renderer.render(scene, view);
+    }
   }
 
-  const bundleRef: { bundle?: RendererBundle } = {};
-
   function resize(): void {
-    const w = container.clientWidth;
-    const h = container.clientHeight;
+    const w = Math.max(1, container.clientWidth);
+    const h = Math.max(1, container.clientHeight);
     renderer.setSize(w, h);
     composer.setSize(w, h);
-    bloomPass.resolution.set(Math.max(1, w * 0.5), Math.max(1, h * 0.5));
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     const orthoAspect = w / h;
@@ -149,15 +127,20 @@ export function createRenderer(container: HTMLElement): RendererBundle {
   }
 
   function dispose(): void {
-    window.removeEventListener('resize', resize);
+    sizeObserver.disconnect();
+    disposeStudio();
+    bloomPass.dispose();
+    outputPass.dispose();
+    composer.dispose();
     renderer.dispose();
-    envTexture.dispose();
     if (renderer.domElement.parentElement === container) {
       container.removeChild(renderer.domElement);
     }
   }
 
-  window.addEventListener('resize', resize);
+  const sizeObserver = new ResizeObserver(resize);
+  sizeObserver.observe(container);
+  frameStore.setQuality(quality, renderer.getPixelRatio());
 
   const bundle: RendererBundle = {
     renderer,
@@ -183,7 +166,6 @@ export function createRenderer(container: HTMLElement): RendererBundle {
     resize,
     dispose,
   };
-  bundleRef.bundle = bundle;
   return bundle;
 }
 
@@ -203,7 +185,7 @@ export function createQualityGovernor(bundle: RendererBundle): (deltaMs: number)
       const fps = (frames * 1000) / (now - windowStart);
       frames = 0;
       windowStart = now;
-      if (fps < 42) {
+      if (fps < 55) {
         if (bundle.quality === 'high') {
           bundle.setQuality('medium');
         } else if (bundle.quality === 'medium' && !degradedOnce) {
