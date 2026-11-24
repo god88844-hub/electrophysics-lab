@@ -29,7 +29,9 @@ temporarily moved aside and restored byte-for-byte.
 The script rebuilds Vite and the app twice with the lockfiles enforced. It
 pins executable modification time for bundle inputs and checks every frontend
 file and release artifact. The rebuild report records both hashes and any
-verified WiX package-code, summary timestamp, or loader identifier deltas. Comparison operates on
+verified WiX package and product identifiers, loader identifiers and 8.3
+alias, compound-file root modification time, and cabinet member timestamps.
+All remaining bytes must match after normalizing those fields. Comparison operates on
 separate copies and refuses differences outside the documented metadata. It
 runs the WP-1.1 desktop smoke and checks WebView2 console errors, reference
 vault integrity and Academy availability.
