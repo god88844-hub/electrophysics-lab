@@ -64,48 +64,106 @@ test('integrity: all master-plan JSON Schemas are valid JSON with $schema + requ
   }
 });
 
-/** Work Package IDs: every PHASE_*.md WP-X.Y appears in 05_ACCEPTANCE_LEDGER.md. */
-test('integrity: every WP-X.Y in phase playbooks appears in the acceptance ledger', () => {
-  const phasesDir = path.join(root, 'docs', 'master-plan', 'phases');
-  const ledger = readFileSync(path.join(root, 'docs', 'master-plan', '05_ACCEPTANCE_LEDGER.md'), 'utf8');
-  const phaseFiles = readdirSync(phasesDir).filter((f) => f.startsWith('PHASE_') && f.endsWith('.md'));
-  assert.ok(phaseFiles.length >= 7, 'all 7 phase playbooks exist');
-  let totalWps = 0;
-  for (const f of phaseFiles) {
-    const md = readFileSync(path.join(phasesDir, f), 'utf8');
-    const wps = md.match(/WP-[0-9A-z]+\.\d+/g) ?? [];
-    totalWps += wps.length;
-    for (const wp of new Set(wps)) {
-      assert.ok(ledger.includes(wp), `${f} declares ${wp} — must appear in 05_ACCEPTANCE_LEDGER.md`);
+const plan = path.join(root, 'docs', 'master-plan');
+const phases = path.join(plan, 'phases');
+const phase07 = 'PHASE_07_PHOTOREALISTIC_STUDIO_RENDERING.md';
+const phase08 = 'PHASE_08_NATIVE_RUST_KERNEL_AND_LIVE_STUDIOS.md';
+
+function headingAnchor(heading) {
+  return heading.trim().toLowerCase().replace(/[^\p{L}\p{N}_ -]/gu, '').replace(/ /g, '-');
+}
+
+test('integrity: the ledger has one row per work package and the v4 baseline stays verified', () => {
+  const ledger = readFileSync(path.join(plan, '05_ACCEPTANCE_LEDGER.md'), 'utf8');
+  const rows = [...ledger.matchAll(/^\| (WP-(?:0A|\d+)\.\d+) \|[^|]*\| (\w+) \| ([^|]*)\|([^|]*)\|(.*)\|[ \t]*$/gm)];
+  const byId = new Map(rows.map(([, id, status, dependencies, verification, evidence]) =>
+    [id, { status, dependencies: dependencies.trim(), verification, evidence }]));
+  assert.equal(rows.length, 49, 'the v5 lock defines 49 work packages');
+  assert.equal(rows.length, byId.size, 'duplicate work package rows');
+  assert.equal([...byId.keys()].filter((id) => !/^WP-[78]\./.test(id)).length, 39);
+
+  for (const [id, row] of byId) {
+    assert.ok(['VERIFIED', 'IN_PROGRESS', 'NOT_STARTED'].includes(row.status), `${id} has a valid status`);
+    if (!/^WP-[78]\./.test(id)) assert.equal(row.status, 'VERIFIED', `${id} is a verified v4 baseline`);
+  }
+
+  for (const file of readdirSync(phases).filter((file) => /^PHASE_.*\.md$/.test(file))) {
+    const playbook = readFileSync(path.join(phases, file), 'utf8');
+    for (const id of new Set(playbook.match(/WP-(?:0A|\d+)\.\d+/g))) {
+      assert.ok(byId.has(id), `${id} from ${file} has a ledger row`);
     }
   }
-  assert.ok(totalWps >= 30, `work-package count ${totalWps} ≥ 30 (granular plan)`);
+
+  const phase7Ids = ['WP-7.1', 'WP-7.2', 'WP-7.3', 'WP-7.4', 'WP-7.5'];
+  const dependencies = {
+    'WP-7.1': 'WP-6.5',
+    'WP-7.2': 'WP-6.5',
+    'WP-7.3': 'WP-7.1, WP-7.2',
+    'WP-7.4': 'WP-7.1, WP-7.2',
+    'WP-7.5': 'WP-7.1, WP-7.2',
+    'WP-8.1': phase7Ids.join(', '),
+    'WP-8.2': 'WP-8.1',
+    'WP-8.3': 'WP-8.1, WP-8.2',
+    'WP-8.4': 'WP-8.1',
+    'WP-8.5': 'WP-8.2, WP-8.3, WP-8.4',
+  };
+  for (const [phase, file] of [[7, phase07], [8, phase08]]) {
+    const playbook = readFileSync(path.join(phases, file), 'utf8');
+    const sections = playbook.split(/^## (?=WP-)/m).slice(1);
+    const ids = Object.keys(dependencies).filter((id) => id.startsWith(`WP-${phase}.`));
+    assert.deepEqual(sections.map((section) => section.split(' ', 1)[0]), ids, file);
+    for (const [index, section] of sections.entries()) {
+      const id = ids[index];
+      const row = byId.get(id);
+      assert.equal(row.dependencies, dependencies[id], `${id} follows the locked DAG`);
+      assert.match(row.verification, /Playwright.+WebView2|Playwright.+native installer smoke/, `${id} requires desktop verification`);
+      if (row.status === 'NOT_STARTED') {
+        const anchor = headingAnchor(section.split('\n', 1)[0]);
+        assert.ok(row.evidence.includes(`[${id}](phases/${file}#${anchor})`), `${id} links to its exact checklist`);
+      }
+      for (const label of ['Objective', 'Exact files', 'Interface contracts', 'Failure modes', 'Hard acceptance gates']) {
+        assert.ok(section.includes(`**${label}**`), `${id} specifies ${label}`);
+      }
+      assert.match(section, /^- \[[ x]\] /m, `${id} has a checklist`);
+      assert.match(section.split('**Hard acceptance gates**')[1], /Playwright/, `${id} has a UI gate`);
+    }
+  }
 });
 
-/** No broken relative markdown links inside docs/master-plan/. */
-test('integrity: zero broken relative markdown links in docs/master-plan', () => {
-  const base = path.join(root, 'docs', 'master-plan');
-  const files = [];
-  const walk = (dir) => {
-    for (const f of readdirSync(dir)) {
-      const p = path.join(dir, f);
-      if (f.endsWith('.md')) files.push(p);
-      else if (!f.includes('.')) walk(p);
-      else if (f.endsWith('.json')) continue;
-      else walk(p);
+test('integrity: Phase 07 and Phase 08 are indexed and governed by Law 7', () => {
+  const rules = readFileSync(path.join(plan, '01_BUILDER_RULES.md'), 'utf8');
+  assert.match(rules, /^## Law 7 — End-to-End Desktop Visibility\s*$/m);
+  for (const name of ['00_INDEX.md', '02_SYSTEM_ARCHITECTURE.md', '04_ROADMAP_MASTER.md']) {
+    const document = readFileSync(path.join(plan, name), 'utf8');
+    for (const file of [phase07, phase08]) {
+      assert.ok(document.includes(`](phases/${file})`), `${name} links to ${file}`);
     }
-  };
-  walk(base);
-  assert.ok(files.length >= 13, 'master-plan markdown inventory complete');
-  const linkRe = /\]\((?!http|https|#|mailto)([^)#]+)/g;
+  }
+  for (const file of [phase07, phase08]) {
+    assert.match(readFileSync(path.join(phases, file), 'utf8'), /\[Law 7\]/, `${file} makes Law 7 explicit`);
+  }
+});
+
+test('integrity: zero broken relative markdown links or heading anchors in docs/master-plan', () => {
+  const markdownFiles = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) return markdownFiles(file);
+    return entry.name.endsWith('.md') ? [file] : [];
+  });
+  const files = markdownFiles(plan);
+  assert.ok(files.length >= 15, 'master-plan markdown inventory complete');
+  const linkRe = /\]\((?![a-z]+:)([^)#]*)(?:#([^)]*))?\)/gi;
   for (const file of files) {
     const md = readFileSync(file, 'utf8');
-    for (const m of md.matchAll(linkRe)) {
-      const target = path.resolve(path.dirname(file), m[1].trim());
-      assert.ok(
-        existsSync(target),
-        `${path.relative(root, file)} → broken relative link: ${m[1]}`
-      );
+    for (const [, relative, anchor] of md.matchAll(linkRe)) {
+      const target = relative ? path.resolve(path.dirname(file), relative.trim()) : file;
+      const source = path.relative(root, file);
+      assert.ok(existsSync(target), `${source} → broken relative link: ${relative}`);
+      if (anchor && target.endsWith('.md')) {
+        const headings = readFileSync(target, 'utf8').matchAll(/^#{1,6}[ \t]+(.+)$/gm);
+        const anchors = Array.from(headings, ([, heading]) => headingAnchor(heading));
+        assert.ok(anchors.includes(anchor), `${source} → missing heading: ${relative}#${anchor}`);
+      }
     }
   }
 });

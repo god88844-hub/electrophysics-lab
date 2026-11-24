@@ -1,4 +1,4 @@
-# Builder Rules — Hard Enforceable Laws (v4 Lock)
+# Builder Rules — Hard Enforceable Laws (v5 Lock)
 
 These laws bind every agent and engineer working on this repository. They are
 enforced by CI (workflows + `tests/master-plan-integrity.test.mjs` + the
@@ -80,6 +80,28 @@ Phase 30/39 provenance gates) and by PR review. Violations are reverted.
 - A kernel change without a matching oracle test is rejected; a frontend
   change that bypasses the admission controller is rejected.
 
+## Law 7 — End-to-End Desktop Visibility
+
+- Every Phase 07 and 08 work package must mount its feature in the desktop
+  workbench and exercise the user path from a visible control to its live
+  result. Headless-only libraries, optional UI omissions, and unmounted
+  React components fail acceptance.
+- Record Playwright UI assertions, live screenshots, and telemetry assertions
+  for every new path. Run the same user path in native Tauri WebView2 smoke.
+  Capture the workspace, action, resulting frame or request ID and
+  simulation badge where applicable. Verify disabled, unavailable and
+  refused states visibly. CI and review require the evidence before a
+  ledger row can become VERIFIED.
+- All new visual realism assets are generated procedurally. Use PMREM studio
+  lighting generated at runtime, Canvas/WebGL normal, roughness and
+  silkscreen maps, and beveled Three.js geometry driven by the sealed
+  `data/cad-specs/*.json` sources. Commit no `.glb`, `.gltf`, `.hdr`, `.png` or other
+  baked visual realism assets. Keep generated screenshots, telemetry and
+  captures outside tracked paths to preserve Law 3 and Phase 30/39 gates.
+- Measure FPS and memory under the Law 4 governor. Distinguish the reference
+  iGPU run from software-rendered CI, and treat missing hardware evidence
+  as an open gate. Follow Law 5 for every visible simulation claim.
+
 ## Enforcement Summary
 
 | Law | Automated check |
@@ -90,3 +112,4 @@ Phase 30/39 provenance gates) and by PR review. Violations are reverted.
 | 4 Admission | admission-controller unit tests + Playwright FPS trend |
 | 5 Honesty | provenance-badge grep audit + review |
 | 6 Parity | kernel oracle tests vs ESM packages |
+| 7 Desktop visibility | Playwright interaction, live screenshots and telemetry, native WebView2 smoke, asset audit |
