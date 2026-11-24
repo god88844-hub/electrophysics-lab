@@ -1,0 +1,11 @@
+{
+  "build": {
+    "beforeBuildCommand": "npm run build -- --manifest",
+    "beforeBundleCommand": "node ../../scripts/v4-release/stamp-bundle-input.mjs"
+  },
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost ws://localhost:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+name: v4 Windows desktop release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Preserve original Git source bytes
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable-x86_64-pc-windows-msvc
+      - name: Verify release unit contracts
+        run: node --test tests/wp65-release-verification.test.mjs
+      - name: Create and independently verify the exact Phase 39 source archive
+        run: |
+          python scripts/phase39-source-baseline.py --self-test
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/phase39-source-baseline.py --build
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/phase39-source-baseline.py --verify
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/phase39-strict-audit.py
+      - name: Build twice, smoke the native WebView2 app, and verify the release receipt
+        run: |
+          $source = "$env:RUNNER_TEMP/ep65-source"
+          $target = "$env:RUNNER_TEMP/ep65-target"
+          $output = "$env:RUNNER_TEMP/ep65-output"
+          ./scripts/v4-release/build-desktop-release.ps1 -Repo $PWD.Path -SourceDir $source -TargetDir $target -OutputDir $output
+      - name: Upload the verified Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrophysics-lab-windows-x64-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/ep65-output/first/electrophysics-lab.exe
+            ${{ runner.temp }}/ep65-output/first/WebView2Loader.dll
+            ${{ runner.temp }}/ep65-output/first/*-setup.exe
+            ${{ runner.temp }}/ep65-output/first/*.msi
+            ${{ runner.temp }}/ep65-output/desktop-release-receipt.json
+            ${{ runner.temp }}/ep65-output/desktop-rebuild-comparison.json

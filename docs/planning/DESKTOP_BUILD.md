@@ -1,44 +1,56 @@
-<!-- v4 POINTER: This legacy planning stub is superseded. The single source of truth for forward-looking planning is docs/master-plan/00_INDEX.md. Content below is preserved verbatim for history. -->
+# Desktop build and release (Tauri v2)
 
-# Desktop Build (Tauri v2) — Non-Invasive Packaging Path
+The web entry points are unchanged. The Windows desktop shell embeds the Vite
+production bundle and exposes the WP-1.1 IPC contract. Release packaging runs
+on a Windows machine with WebView2, Rust stable, Git, Node.js, Python 3.11 and
+PowerShell 7. CI uses MSVC. A local GNU toolchain works with a space-free
+source directory and Cargo target. The artifacts are unsigned.
 
-The web app (`npm run dev` / `npm run build` + `vite preview`) remains the
-primary product and the only CI-verified path. The Tauri shell in
-`apps/electrophysics-3d/src-tauri/` is an **optional, inert packaging target**:
-its presence changes nothing about the web build, the test suite, or CI.
+## Build from the Phase 39 archive
 
-## Prerequisites (one-time, local machine only)
-
-- Rust stable (`rustup default stable`)
-- Tauri CLI: `cargo install tauri-cli --version ^2`
-- Windows WebView2 runtime (preinstalled on Windows 11)
-
-## Build a standalone Windows `.exe`
+Use a clean checkout with original file bytes. On Windows create it with
+Git's autocrlf conversion disabled. Generate the archive from the commit
+being released, with its full Git history available.
 
 ```powershell
-cd apps/electrophysics-3d
-npx tauri build
+python scripts/phase39-source-baseline.py --build
+python scripts/phase39-source-baseline.py --verify
+python scripts/phase39-strict-audit.py
+./scripts/v4-release/build-desktop-release.ps1 -Repo $PWD.Path -SourceDir C:/ep65-source -TargetDir C:/ep65-target -OutputDir C:/ep65-artifacts
 ```
 
-Outputs land in `apps/electrophysics-3d/src-tauri/target/release/bundle/`
-(NSIS installer + MSI). The shell loads the exact Vite production build
-(`frontendDist: ../dist`) — the same physics/quantum/chip Web Workers, the
-same reference-library SHA-256 verification, no code fork.
+For GNU add -Toolchain stable-x86_64-pc-windows-gnu. Source and output
+directories must be new and outside the Git checkout. The script authenticates
+the exact Phase 39 ZIP against HEAD, its Git tree and the archived source
+manifest. It builds from those extracted bytes. Cargo must discover the
+standalone Tauri manifest, so the extracted root kernel workspace manifest is
+temporarily moved aside and restored byte-for-byte.
 
-## Why the config is safe for CI
+The script rebuilds Vite and the app twice with the lockfiles enforced. It
+pins executable modification time for bundle inputs and checks every frontend
+file and release artifact. The rebuild report records both hashes and any
+verified WiX package-code, summary timestamp, or loader identifier deltas. Comparison operates on
+separate copies and refuses differences outside the documented metadata. It
+runs the WP-1.1 desktop smoke and checks WebView2 console errors, reference
+vault integrity and Academy availability.
 
-- `src-tauri/**` is plain configuration + an inert `main.rs` — nothing imports
-  it, no web build step touches it, no workflow invokes `tauri`.
-- `npm run dev` / `npm run build` / `npm run test:e2e` are byte-identical to
-  the web-only flow.
-- The CSP in `tauri.conf.json` mirrors the platform's security posture
-  (loopback-only connect-src; no remote origins).
+The first build's release archive contains electrophysics-lab.exe,
+the NSIS setup executable, the MSI, and the verified release receipt. The GNU
+build includes WebView2Loader.dll beside the executable, which loads it at
+startup. The release CSP admits the Tauri IPC origin used by WebView2.
+[Tauri content security policy](https://v2.tauri.app/security/csp/).
+The receipt also records the exact Vite manifest and bundle hashes, Phase 39
+archive digest, source commit and tree, and all sealed vault manifest roots.
+It records the pinned SKY130 1.95 V SOA, all four Q4 primitives and the physical
+scope of the software release. Run the receipt verifier against the exact
+source commit and the retained build inputs to check the hashes again.
 
-## Not included (honest boundary)
+```powershell
+node scripts/v4-release/verify-desktop-release.mjs verify --repo . --baseline benchmarks/evidence/phase39 --artifacts C:/ep65-artifacts/first --frontend C:/ep65-artifacts/first/dist --receipt C:/ep65-artifacts/desktop-release-receipt.json
+```
 
-- No code-signing certificate is configured (unsigned installer; SmartScreen
-  will warn).
-- No native IPC bridge: the CAD workbench is fully client-side and needs no
-  Rust-side services today. If a future milestone adds local ngspice bridging
-  through the desktop shell, it goes through the existing
-  `services/physics-kernel` protocol first.
+The Windows workflow runs on manual dispatch and v* tags, then uploads the
+installers, executable, receipt and rebuild report as Actions artifacts.
+The verification ledger may use a later commit to record hashes of an
+earlier evidence commit. Putting the archive digest into its own source tree
+would change that digest.
