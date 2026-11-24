@@ -49,8 +49,7 @@ An interactive computing invention laboratory: design, assemble, simulate, exper
 and evaluate **electronics, binary/ternary/multivalued logic, analog and digital chips,
 CPUs, GPUs/TPUs and other computing architectures, and quantum circuits**.
 
-**AeroForge is a separate flight-simulation project** and is not part of this
-repository or its development roadmap.
+
 
 ## The mission
 
