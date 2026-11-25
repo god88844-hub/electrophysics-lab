@@ -45,7 +45,6 @@ function useLabState() {
 }
 
 const TOOLBAR_H = 40;
-const STATUS_H = 24;
 
 /**
  * WP-1.6 — instrument-dock mount hook: starts the zero-allocation
@@ -652,7 +651,8 @@ export function App() {
   const ph = state.physics;
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', background: '#14171c' }}>
+    <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', position: 'relative', overflow: 'clip',
+      display: 'flex', flexDirection: 'column', paddingTop: TOOLBAR_H, background: '#14171c' }}>
       {/* CAD toolbar (40 px) */}
       <div
         style={{
@@ -740,9 +740,6 @@ export function App() {
         </span>
       </div>
 
-      {/* 3D viewport — full remaining height (80 %+ unobstructed) */}
-      <div ref={mountRef} data-testid="cad-viewport" style={{ position: 'absolute', top: TOOLBAR_H, left: 0, right: 0, bottom: STATUS_H }} />
-
       {/* ViewCube gizmo (top-right of viewport) */}
       <ViewCube
         getCameraQuaternion={() => {
@@ -758,79 +755,83 @@ export function App() {
           bundleRef.current?.rig.setPresetView(dir, up);
         }}
       />
-      {/* Axis triad hint (bottom-left) */}
-      <div
-        style={{
-          position: 'absolute', bottom: STATUS_H + 8, left: 10, zIndex: 60,
-          color: '#8fa0b4', fontSize: 11, fontFamily: 'monospace',
-          background: 'rgba(20,23,28,0.7)', padding: '4px 8px', borderRadius: 6, border: '1px solid #2a323c',
-        }}
-      >
-        <span style={{ color: '#e05a40' }}>X</span>
-        <span style={{ color: '#8ef0b2' }}> Y</span>
-        <span style={{ color: '#62a8e0' }}> Z</span> · {unit}
-      </div>
+      <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0 }}>
+        <div ref={mountRef} data-testid="cad-viewport" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }} />
 
-      {/* Hover callout — replaces all permanent floating labels */}
-      {state.hover && (
+        {/* Axis triad hint (bottom-left) */}
         <div
           style={{
-            position: 'fixed',
-            left: state.hover.x + 14,
-            top: state.hover.y + 14,
-            background: 'rgba(20,23,28,0.95)',
-            border: '1px solid #3a4250',
-            color: '#eceff4',
-            padding: '5px 9px',
-            borderRadius: 6,
-            fontSize: 11.5,
-            fontFamily: 'monospace',
-            zIndex: 140,
-            pointerEvents: 'none',
+            position: 'absolute', bottom: 8, left: 10, zIndex: 60,
+            color: '#8fa0b4', fontSize: 11, fontFamily: 'monospace',
+            background: 'rgba(20,23,28,0.7)', padding: '4px 8px', borderRadius: 6, border: '1px solid #2a323c',
           }}
         >
-          <b>{state.hover.name}</b>
-          {state.hover.meta && <div style={{ color: '#8fa0b4' }}>{state.hover.meta}</div>}
+          <span style={{ color: '#e05a40' }}>X</span>
+          <span style={{ color: '#8ef0b2' }}> Y</span>
+          <span style={{ color: '#62a8e0' }}> Z</span> · {unit}
         </div>
-      )}
 
-      {/* Right property inspector (starts collapsed) */}
-      <div
-        style={{
-          position: 'absolute', top: TOOLBAR_H, right: 0, width: 320, bottom: STATUS_H,
-          background: 'rgba(20,23,28,0.96)', borderLeft: '1px solid #3a4250',
-          transform: state.inspectorOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          padding: 14, zIndex: 90, overflowY: 'auto', boxSizing: 'border-box',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h3 style={{ color: '#eceff4', margin: 0, fontSize: 14 }}>
-            {WORKSPACES.find((w) => w.id === state.workspace)?.name ?? 'Inspector'}
-          </h3>
-          <button
-            onClick={() => store.set({ inspectorOpen: false })}
-            style={{ background: 'none', border: '1px solid #3a4250', color: '#eceff4', cursor: 'pointer', fontSize: 14, borderRadius: 6, padding: '0 8px' }}
-            title="Close (Esc)"
+        {/* Hover callout — replaces all permanent floating labels */}
+        {state.hover && (
+          <div
+            style={{
+              position: 'fixed',
+              left: state.hover.x + 14,
+              top: state.hover.y + 14,
+              background: 'rgba(20,23,28,0.95)',
+              border: '1px solid #3a4250',
+              color: '#eceff4',
+              padding: '5px 9px',
+              borderRadius: 6,
+              fontSize: 11.5,
+              fontFamily: 'monospace',
+              zIndex: 140,
+              pointerEvents: 'none',
+            }}
           >
-            ✕
-          </button>
+            <b>{state.hover.name}</b>
+            {state.hover.meta && <div style={{ color: '#8fa0b4' }}>{state.hover.meta}</div>}
+          </div>
+        )}
+
+        {/* Right property inspector (starts collapsed) */}
+        <div
+          style={{
+            position: 'absolute', top: 0, right: 0, width: 320, bottom: 0,
+            background: 'rgba(20,23,28,0.96)', borderLeft: '1px solid #3a4250',
+            transform: state.inspectorOpen ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            padding: 14, zIndex: 90, overflowY: 'auto', boxSizing: 'border-box',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <h3 style={{ color: '#eceff4', margin: 0, fontSize: 14 }}>
+              {WORKSPACES.find((w) => w.id === state.workspace)?.name ?? 'Inspector'}
+            </h3>
+            <button
+              onClick={() => store.set({ inspectorOpen: false })}
+              style={{ background: 'none', border: '1px solid #3a4250', color: '#eceff4', cursor: 'pointer', fontSize: 14, borderRadius: 6, padding: '0 8px' }}
+              title="Close (Esc)"
+            >
+              ✕
+            </button>
+          </div>
+          <InspectorPanels bay={state.workspace === 'quantum' ? 1 : state.workspace === 'silicon' ? 2 : state.workspace === 'soc' ? 3 : 5} state={state} dispatch={(patch) => store.set(patch)} />
         </div>
-        <InspectorPanels bay={state.workspace === 'quantum' ? 1 : state.workspace === 'silicon' ? 2 : state.workspace === 'soc' ? 3 : 5} state={state} dispatch={(patch) => store.set(patch)} />
+
+        {/* Bottom instrument dock */}
+        <BottomDock />
       </div>
 
       {/* Bay 5 library overlay */}
       {state.libraryOpen && <LibraryOverlay onClose={() => store.set({ libraryOpen: false })} />}
 
-      {/* Bottom instrument dock */}
-      <BottomDock />
-
-      {/* CAD status bar (24 px) */}
-      <div
+      <footer
+        data-testid="cad-status-bar"
         style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: STATUS_H,
+          flexShrink: 0, minHeight: 30, boxSizing: 'border-box',
           background: '#14171c', borderTop: '1px solid #3a4250',
-          display: 'flex', alignItems: 'center', gap: 14, padding: '0 12px', zIndex: 130,
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 14px', padding: '4px 12px', zIndex: 130,
           color: '#8fa0b4', fontSize: 11, fontFamily: 'monospace',
         }}
       >
@@ -843,7 +844,7 @@ export function App() {
           <>
             <span>VDD {ph.vdd.toFixed(2)} V</span>
             <span>I_rail {Math.abs(ph.iRail * 1000).toFixed(1)} mA</span>
-            <span style={{ color: ph.traceC > 200 ? '#f07a4f' : '#8fa0b4' }}>T_max {ph.traceC.toFixed(0)} °C</span>
+            <span style={{ color: ph.traceC > 200 ? '#f07a4f' : '#8fa0b4' }}>T_trace {ph.traceC.toFixed(0)} °C</span>
             {(ph.shorted || ph.melted) && <span style={{ color: '#f07a4f', fontWeight: 700 }}>FAULT</span>}
           </>
         )}
@@ -851,7 +852,7 @@ export function App() {
         {/* WP-1.6 — admission refusals surface in the status bar too. */}
         <AdmissionBanner compact />
         <span>{WORKSPACES.find((w) => w.id === state.workspace)?.name}</span>
-      </div>
+      </footer>
     </div>
   );
 }
