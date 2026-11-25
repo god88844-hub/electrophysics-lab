@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { ElectronFlow } from './engine/electronFlow.js';
 import { frameStore } from './engine/solverFrame.mjs';
 import { fpsTrend } from './engine/fpsTrend.mjs';
-import { MAT, makeBreadboardTexture } from './bays/materials.js';
+import { MAT } from './bays/materials.js';
+import { store } from './state/store.js';
+import { ADMISSION_BUDGETS } from './ui/cad/admissionSurface.mjs';
 import { makeTextSprite } from './engine/labels.js';
 import { Bay1Quantum, type Bay1Mode } from './bays/bay1Quantum.js';
 import { Bay2Foundry, type LayerKey } from './bays/bay2Foundry.js';
@@ -33,7 +35,7 @@ const BAY4_STATUS_TEXT = 'kernel-frame telemetry';
 /** Curve decorator that adds a live Y offset — flow pulses ride layer peels. */
 class OffsetCurve extends THREE.Curve<THREE.Vector3> {
   constructor(
-    private base: THREE.Curve3,
+    private base: THREE.Curve<THREE.Vector3>,
     private getOffsetY: () => number
   ) {
     super();
@@ -69,7 +71,6 @@ export class LabWorld {
   private rigRoot = new THREE.Group();
   private hoverTargets: THREE.Object3D[] = [];
   private flowIndexById = new Map<string, number>();
-  private baselineActivity: Array<{ speed: number; brightness: number }> = [];
   private raycaster = new THREE.Raycaster();
   // WP-1.5 pre-allocated scratch — the frame→visual path never allocates.
   private flowColorScratch = new THREE.Color();
@@ -77,13 +78,10 @@ export class LabWorld {
   private hoverResult: { name: string; meta: string } = { name: '', meta: '' };
   private stageTempsScratch = [300, 4, 0.1, 0.015];
   private tilesRecordScratch: Record<string, number> = { cpu: 27, tpu: 27, gpu: 27, mem: 27 };
-  private flowActivities = new Map<string, { speed: number; brightness: number; color?: THREE.Color }>();
-  private busFlowColor = new THREE.Color(0x6fd0ff);
   private unsubs: Array<() => void> = [];
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
-    this.buildEnvironment();
     this.bay1 = new Bay1Quantum();
     this.bay2 = new Bay2Foundry();
     this.bay3 = new Bay3Soc();
@@ -105,9 +103,9 @@ export class LabWorld {
     this.bay4.group.visible = false;
     this.rigRoot.add(this.bay4.group);
     scene.add(this.rigRoot);
-    this.flow = new ElectronFlow(this.scene);
-    this.setWorkspace('quantum', true);
+    this.flow = new ElectronFlow(this.bay2.group);
     this.buildFlowSystem();
+    this.setWorkspace('quantum');
     this.smokeDie = new SmokeSystem(scene, 200, 0x8a949f, 0.26);
     this.smokeCryo = new SmokeSystem(scene, 160, 0xaad4ff, 0.3);
 
@@ -118,7 +116,11 @@ export class LabWorld {
       (window.__lab as unknown as Record<string, unknown>).fpsTrend = fpsTrend;
     }
     // Recompiled netlists change node/current topology — re-learn keys once.
-    this.unsubs.push(physicsClient.onNetlist(() => frameStore.resetTopology()));
+    this.unsubs.push(physicsClient.onNetlist(() => {
+      frameStore.resetTopology();
+      this.flow.clear();
+    }));
+    this.unsubs.push(physicsClient.onFailure(() => this.flow.clear()));
     this.unsubs.push(
       quantumClient.onState(({ bloch, gateFidelity }: { bloch: BlochState[]; gateFidelity: number | null }) =>
         frameStore.ingestQuantum(bloch, gateFidelity)
@@ -159,41 +161,13 @@ export class LabWorld {
     this.libraryRig.add(lamp);
   }
 
-  private buildEnvironment(): void {
-    const tex = makeBreadboardTexture();
-    tex.repeat.set(24, 14);
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(120, 70),
-      new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, metalness: 0.55, roughness: 0.85 })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    this.scene.add(floor);
-    const bench = new THREE.Mesh(new THREE.BoxGeometry(26, 0.06, 16), MAT.esdMat);
-    bench.position.y = 0.03;
-    bench.receiveShadow = true;
-    this.scene.add(bench);
-    // Neutral studio lights (5600 K), one shadowed key.
-    const key = new THREE.DirectionalLight(0xf6f7f4, 2.1);
-    key.position.set(8, 14, 9);
-    key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
-    key.shadow.camera.left = -16;
-    key.shadow.camera.right = 16;
-    key.shadow.camera.top = 16;
-    key.shadow.camera.bottom = -16;
-    key.shadow.camera.far = 50;
-    key.shadow.bias = -0.0004;
-    this.scene.add(key);
-    this.scene.add(new THREE.AmbientLight(0xdfe3ea, 0.5));
-    const fill = new THREE.DirectionalLight(0xdde4ee, 0.4);
-    fill.position.set(-9, 5, 7);
-    this.scene.add(fill);
-  }
-
   /** Mount exactly one workspace rig; cache the rest (visibility only). */
   setWorkspace(id: WorkspaceId): void {
     if (!this.workspaceGroups[id]) return;
+    if (this.activeWorkspace !== id) {
+      this.flow.clear();
+      store.set({ hover: null, cursor: null });
+    }
     this.activeWorkspace = id;
     for (const [key, g] of Object.entries(this.workspaceGroups)) {
       g.visible = key === id;
@@ -231,7 +205,7 @@ export class LabWorld {
 
   clearFailureVisuals(): void {
     this.bay4.clearFailureState();
-    this.resetFlowToBaseline();
+    this.flow.clear();
   }
 
   private buildFlowSystem(): void {
@@ -239,17 +213,9 @@ export class LabWorld {
       const color = fc.radix === 'q4' ? new THREE.Color(0xffc46b) : new THREE.Color(0x9fd0ff);
       const layerKey: LayerKey = fc.id === 'vdd-met2' ? 'met2' : 'met3';
       const ridingCurve = new OffsetCurve(fc.curve, () => this.bay2.getLayerOffsetY(layerKey));
-      this.flow.addPath({ curve: ridingCurve, color, nominalCurrent: 0.36 });
-      this.flowIndexById.set(fc.id, this.flow.activityCount() - 1);
-      this.baselineActivity.push({ speed: 0.75, brightness: 0.55 });
-      this.flowActivityFor(fc.id);
+      this.flowIndexById.set(fc.id, this.flow.addPath({ id: fc.id, curve: ridingCurve, color }));
     }
-    for (const fc of this.bay3.flowCurves) {
-      this.flow.addPath({ curve: fc.curve, color: new THREE.Color(0x6fd0ff), nominalCurrent: 0.4 });
-      this.flowIndexById.set(fc.id, this.flow.activityCount() - 1);
-      this.baselineActivity.push({ speed: 0.5, brightness: 0.4 });
-      this.flowActivityFor(fc.id);
-    }
+    // SoC has its own execution-driven packets under the SoC rig (WP-4.5).
     const met2Group = this.bay2.group.children.find((c) => c.name === 'layer-met2') as THREE.Group | undefined;
     if (met2Group) {
       const tube = met2Group.children.find(
@@ -267,24 +233,22 @@ export class LabWorld {
     if (dut) this.thermal.register(dut as THREE.Mesh, () => frameStore.thermal.junctionC + 273.15);
   }
 
-  /** Persistent per-path activity record (allocated once, mutated in place). */
-  private flowActivityFor(id: string): { speed: number; brightness: number; color?: THREE.Color } {
-    let a = this.flowActivities.get(id);
-    if (!a) {
-      a = { speed: 0.5, brightness: 0.4 };
-      this.flowActivities.set(id, a);
-    }
-    return a;
-  }
-
   /**
    * WP-1.5: the renderer consumes solver-frame typed arrays. The snapshot is
    * ingested once into the pre-allocated frame envelope (zero per-frame heap
    * allocation in steady state), then the visuals read the frame buffers.
    */
   applyPhysicsSnapshot(s: PhysicsSnapshot, opts: { live?: boolean } = {}): void {
-    frameStore.ingestSnapshot(s, opts);
+    const live = opts.live ?? physicsClient.live === true;
+    frameStore.ingestSnapshot(s, { live });
     this.applySolverFrame();
+    if (this.activeWorkspace !== 'silicon') return;
+    if (!live || !store.get().playing || !Number.isFinite(s.currents?.RAIL) ||
+        Object.keys(s.nodes ?? {}).length > ADMISSION_BUDGETS.mnaMaxNodes) {
+      this.flow.clear();
+      return;
+    }
+    this.applyRailFlow();
   }
 
   /** Forensic-replay frames: identical pipeline, schema-honest `live: false`. */
@@ -292,18 +256,19 @@ export class LabWorld {
     this.applyPhysicsSnapshot(s, { live: false });
   }
 
+  private applyRailFlow(): void {
+    // Thresholds are the midpoints between the sealed Q4 voltage levels.
+    const voltage = frameStore.readNode('vout_q4');
+    const color = this.flowColorScratch.setHex(voltage > 0.9 ? 0xffc46b : voltage > 0.3 ? 0xff9d5c : 0x4a5568);
+    const speed = Math.min(3, Math.abs(frameStore.readCurrent('RAIL')) / 0.36);
+    this.flow.setActivity(this.flowIndexById.get('vdd-met2')!, speed, 0.35 + speed * 0.45, color);
+    this.flow.setActivity(this.flowIndexById.get('gnd-met3')!, speed, 0.3 + speed * 0.4, color);
+  }
+
   /** Apply the current solver-frame buffers to the visuals (allocation-free). */
   private applySolverFrame(): void {
     const th = frameStore.thermal;
     const circuit = frameStore.circuits[0];
-    // Q4 output level → voltage-coded flow colour (Q4 LDO levels 0/0.6/1.2/1.8).
-    const voutQ4 = frameStore.readNode('vout_q4');
-    const q4Key = [0, 0.6, 1.2, 1.8].reduce((best, lvl) =>
-      Math.abs(lvl - voutQ4) < Math.abs(best - voutQ4) ? lvl : best, 0);
-    const flowColor = this.flowColorScratch.setHex(q4Key >= 1.2 ? 0xffc46b : q4Key >= 0.6 ? 0xff9d5c : 0x4a5568);
-    const iNorm = Math.min(3, Math.abs(frameStore.readCurrent('RAIL')) / 0.36);
-    this.setFlowActivity('vdd-met2', iNorm, 0.35 + iNorm * 0.45, flowColor);
-    this.setFlowActivity('gnd-met3', iNorm, 0.3 + iNorm * 0.4, flowColor);
     if (this.railTubeMat) {
       const tK = th.traceC + 273.15;
       if (tK > 500) {
@@ -344,28 +309,6 @@ export class LabWorld {
       this.smokeDie.spawn(new THREE.Vector3(1.2, 0.85, 1.4), 30, 0.4, 0.7);
     } else if (fx.kind === 'quench') {
       this.smokeCryo.spawn(new THREE.Vector3(0, 1.0, 0), 40, 0.5, 0.9);
-    }
-  }
-
-  setFlowActivity(id: string, speed: number, brightness: number, color?: THREE.Color): void {
-    const idx = this.flowIndexById.get(id);
-    if (idx === undefined) return;
-    const a = this.flowActivityFor(id);
-    a.speed = speed;
-    a.brightness = brightness;
-    a.color = color;
-    this.flow.setActivity(idx, a);
-  }
-
-  resetFlowToBaseline(): void {
-    let i = 0;
-    for (const [id, a] of this.flowActivities) {
-      const base = this.baselineActivity[i] ?? { speed: 0.5, brightness: 0.4 };
-      a.speed = base.speed;
-      a.brightness = base.brightness;
-      a.color = id.startsWith('bus') ? this.busFlowColor : undefined;
-      this.flow.setActivity(i, a);
-      i++;
     }
   }
 
@@ -447,7 +390,6 @@ export class LabWorld {
     );
     tube.name = 'trace-' + fromId + '-' + toId;
     group.add(tube);
-    this.flow.addPath({ curve, color: new THREE.Color(0xb87333), nominalCurrent: 0.36 });
   }
 
   /** Render user-placed sandbox components on the silicon bench (real meshes). */
@@ -481,7 +423,8 @@ export class LabWorld {
     this.bay4.update(dt, performance.now() * 0.001);
     this.smokeDie.update(dt);
     this.smokeCryo.update(dt);
-    this.flow.update(dt, 1);
+    if (store.get().playing) this.flow.update(dt);
+    else this.flow.clear();
   }
 
   dispose(): void {

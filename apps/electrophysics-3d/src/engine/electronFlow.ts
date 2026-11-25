@@ -1,100 +1,102 @@
 import * as THREE from 'three';
 
 export interface FlowPath {
-  curve: THREE.Curve3;
-  /** Base hue of the charge packets (set from node voltage / radix). */
+  id: string;
+  curve: THREE.Curve<THREE.Vector3>;
   color: THREE.Color;
-  /** Nominal DC current in A — used to derive baseline speed (I = V/R analysis). */
-  nominalCurrent: number;
 }
 
-export interface FlowActivity {
-  /** Speed multiplier: 0 = stopped (no current), 1 = nominal, >1 = overdrive. */
+interface FlowEntry {
+  path: FlowPath;
+  mesh: THREE.InstancedMesh;
+  params: Float32Array;
   speed: number;
-  /** Emissive brightness multiplier. */
   brightness: number;
-  /** Optional per-frame colour override (voltage-coded). */
   color?: THREE.Color;
 }
 
-/**
- * Real-time electron/signal pulses along metal traces, rendered with one
- * InstancedMesh per path (cheap on integrated GPUs). Speed and brightness are
- * driven strictly by computed node currents I(t) and voltages V(t) — never by
- * decorative animation.
- */
+/** Workspace-owned pulses. They start hidden and require a live current sample. */
 export class ElectronFlow {
-  private entries: Array<{
-    path: FlowPath;
-    mesh: THREE.InstancedMesh;
-    params: Float32Array; // per-instance s ∈ [0,1)
-    activity: FlowActivity;
-  }> = [];
+  private entries: FlowEntry[] = [];
+  private geometry = new THREE.SphereGeometry(0.045, 8, 6);
+  private material = new THREE.MeshBasicMaterial({ color: 0xffffff });
   private dummy = new THREE.Object3D();
   private pulseColor = new THREE.Color();
-  private baseColor = new THREE.Color();
 
   constructor(
-    private scene: THREE.Scene,
+    private owner: THREE.Group,
     private instancesPerPath = 14
   ) {}
 
-  addPath(path: FlowPath): string {
-    const geometry = new THREE.SphereGeometry(0.045, 8, 6);
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const mesh = new THREE.InstancedMesh(geometry, material, this.instancesPerPath);
+  addPath(path: FlowPath): number {
+    const mesh = new THREE.InstancedMesh(this.geometry, this.material, this.instancesPerPath);
+    mesh.name = `electron-flow:${path.id}`;
     mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(this.instancesPerPath * 3), 3);
     mesh.frustumCulled = false;
-    const params = new Float32Array(this.instancesPerPath);
-    for (let i = 0; i < this.instancesPerPath; i++) {
-      params[i] = i / this.instancesPerPath;
+    mesh.visible = false;
+    // Pulses are indicators and do not intercept CAD trace selection.
+    mesh.raycast = () => {};
+    this.owner.add(mesh);
+    const entry: FlowEntry = {
+      path, mesh, params: new Float32Array(this.instancesPerPath), speed: 0, brightness: 0,
+    };
+    this.reset(entry);
+    return this.entries.push(entry) - 1;
+  }
+
+  setActivity(index: number, speed: number, brightness: number, color?: THREE.Color): void {
+    const entry = this.entries[index];
+    if (!entry) return;
+    if (!(Number.isFinite(speed) && speed > 0 && Number.isFinite(brightness) && brightness > 0)) {
+      this.reset(entry);
+      return;
     }
-    this.scene.add(mesh);
-    const id = `flow-${this.entries.length}`;
-    this.entries.push({ path, mesh, params, activity: { speed: 1, brightness: 1 } });
-    return id;
+    entry.speed = speed;
+    entry.brightness = brightness;
+    entry.color = color;
   }
 
-  setActivity(index: number, activity: FlowActivity): void {
-    if (this.entries[index]) this.entries[index].activity = activity;
-  }
-
-  activityCount(): number {
-    return this.entries.length;
-  }
-
-  update(dt: number, simSpeed = 1): void {
+  clear(): void {
     for (const entry of this.entries) {
-      const { path, mesh, params, activity } = entry;
-      const curve = path.curve;
-      const advance = activity.speed * simSpeed * 0.22 * dt;
-      const brightness = Math.max(0, activity.brightness);
-      if (activity.color) this.baseColor.copy(activity.color);
-      else this.baseColor.copy(path.color);
+      if (entry.speed > 0 || entry.mesh.visible) this.reset(entry);
+    }
+  }
 
+  private reset(entry: FlowEntry): void {
+    entry.mesh.visible = false;
+    entry.speed = 0;
+    entry.brightness = 0;
+    entry.color = undefined;
+    for (let i = 0; i < entry.params.length; i++) entry.params[i] = i / entry.params.length;
+  }
+
+  update(dt: number): void {
+    if (!this.owner.visible) return;
+    for (const { path, mesh, params, speed, brightness, color } of this.entries) {
+      if (speed === 0) continue;
+      const advance = speed * 0.22 * dt;
       for (let i = 0; i < params.length; i++) {
-        params[i] = (params[i] + advance) % 1;
-        const p = curve.getPointAt(Math.min(0.999, params[i]));
-        this.dummy.position.copy(p);
-        // Fade packets near path ends for a smooth flow illusion.
-        const s = params[i];
+        const s = params[i] = (params[i] + advance) % 1;
+        path.curve.getPointAt(Math.min(0.999, s), this.dummy.position);
         const edgeFade = Math.min(1, Math.min(s, 1 - s) * 6);
-        this.pulseColor.copy(this.baseColor).multiplyScalar(brightness * edgeFade + 0.05);
+        this.pulseColor.copy(color ?? path.color).multiplyScalar(brightness * edgeFade + 0.05);
         mesh.setColorAt(i, this.pulseColor);
         this.dummy.updateMatrix();
         mesh.setMatrixAt(i, this.dummy.matrix);
       }
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.visible = true;
     }
   }
 
   dispose(): void {
-    for (const e of this.entries) {
-      this.scene.remove(e.mesh);
-      e.mesh.geometry.dispose();
-      (e.mesh.material as THREE.Material).dispose();
+    for (const entry of this.entries) {
+      entry.mesh.removeFromParent();
+      entry.mesh.dispose();
     }
-    this.entries = [];
+    this.entries.length = 0;
+    this.geometry.dispose();
+    this.material.dispose();
   }
 }
