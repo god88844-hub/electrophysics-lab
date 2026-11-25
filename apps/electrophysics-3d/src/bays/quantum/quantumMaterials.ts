@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { MaterialParams } from './rigSpec.mjs';
+import { applyProceduralPbr, type PbrSurface } from '../materials.js';
 
 /**
  * WP-5.4 — PBR material factory for the Quantum Lab rigs.
@@ -14,8 +15,16 @@ import type { MaterialParams } from './rigSpec.mjs';
 
 const cache = new Map<string, THREE.Material>();
 
+function surfaceFor(label: string): PbrSurface | undefined {
+  if (label.startsWith('stage-') || /^(qubit-pads|jj-markers|mzi-coupler)$/.test(label)) return 'gold';
+  if (/^(canister|coax-lines|support-rods|uhv-chamber|optical-table|cpw-resonators)$/.test(label)) return 'aluminum';
+  if (label === 'thermal-straps') return 'copper';
+  if (label === 'transmon-substrate') return 'sapphire';
+  if (/^(mzi-substrate|mzi-waveguides)$/.test(label)) return 'silicon';
+  return undefined;
+}
 function key(p: MaterialParams): string {
-  return `${p.colorHex}|${p.metalness}|${p.roughness}|${p.clearcoat}`;
+  return `${p.colorHex}|${p.metalness}|${p.roughness}|${p.clearcoat}|${surfaceFor(p.label) ?? ""}`;
 }
 
 /** Standard PBR material; upgrades to a clearcoat physical material when the spec string carries one. */
@@ -37,6 +46,12 @@ export function materialFor(p: MaterialParams): THREE.MeshStandardMaterial {
           metalness: p.metalness,
           roughness: p.roughness,
         });
+  const surface = surfaceFor(p.label);
+  if (surface === 'sapphire' && mat instanceof THREE.MeshPhysicalMaterial) {
+    mat.transmission = 0.78;
+    mat.ior = 1.76;
+  }
+  if (surface) applyProceduralPbr(mat, surface);
   mat.name = p.label;
   cache.set(k, mat);
   return mat as THREE.MeshStandardMaterial;
